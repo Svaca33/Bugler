@@ -113,7 +113,7 @@ public sealed class OtlpLogIngestTests : IAsyncLifetime
         var content = new ByteArrayContent(request.ToByteArray());
         content.Headers.ContentType = new("application/x-protobuf");
         var message = new HttpRequestMessage(HttpMethod.Post, "/v1/logs") { Content = content };
-        message.Headers.Add("x-api-key", apiKey);
+        message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         return await _client.SendAsync(message);
     }
 

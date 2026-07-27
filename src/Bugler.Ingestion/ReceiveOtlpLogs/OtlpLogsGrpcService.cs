@@ -13,7 +13,7 @@ internal sealed class OtlpLogsGrpcService(TelemetryBuffer buffer, IApiKeyValidat
     public override async Task<ExportLogsServiceResponse> Export(
         ExportLogsServiceRequest request, ServerCallContext context)
     {
-        var apiKey = context.RequestHeaders.GetValue(IngestionHeaders.ApiKey);
+        var apiKey = BearerApiKey.Extract(context.RequestHeaders.GetValue("authorization"));
         var instanceId = apiKey is null
             ? null
             : await apiKeys.ValidateAsync(apiKey, context.CancellationToken);

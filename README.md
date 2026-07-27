@@ -31,7 +31,7 @@ dotnet run --project src/Bugler.Host
 cd frontend && bun dev        # frontend dev server with HMR
 ```
 
-The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), and `:4318` (OTLP/HTTP). Database schema migrates automatically at startup. Applications authenticate exports with an instance API key in the `x-api-key` header, e.g. `OTEL_EXPORTER_OTLP_HEADERS="x-api-key=blgr_..."`.
+The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), and `:4318` (OTLP/HTTP). Database schema migrates automatically at startup. Applications authenticate exports with their instance API key as a bearer token, e.g. `OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."`.
 
 ### Tests
 

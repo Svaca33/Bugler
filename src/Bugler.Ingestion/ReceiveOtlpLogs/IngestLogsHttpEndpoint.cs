@@ -18,7 +18,7 @@ internal static class IngestLogsHttpEndpoint
         IApiKeyValidator apiKeys,
         CancellationToken cancellationToken)
     {
-        var apiKey = request.Headers[IngestionHeaders.ApiKey].FirstOrDefault();
+        var apiKey = BearerApiKey.Extract(request.Headers.Authorization.FirstOrDefault());
         var instanceId = apiKey is null
             ? null
             : await apiKeys.ValidateAsync(apiKey, cancellationToken);
