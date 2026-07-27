@@ -1,3 +1,5 @@
+using Bugler.Access;
+using Bugler.Exploration;
 using Bugler.Ingestion;
 using Bugler.Registry;
 
@@ -9,6 +11,9 @@ builder.Services.AddNpgsqlDataSource(
 
 builder.Services.AddRegistry();
 builder.Services.AddIngestion(builder.Configuration);
+builder.Services.AddAccess();
+builder.Services.AddExploration();
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
@@ -16,7 +21,9 @@ await RegistryModule.MigrateAsync(app.Services);
 await IngestionModule.MigrateAsync(app.Services);
 
 app.MapGet("/health", () => Results.Text("OK"));
+app.MapOpenApi();
 app.MapIngestion();
+app.MapExploration();
 
 app.Run();
 

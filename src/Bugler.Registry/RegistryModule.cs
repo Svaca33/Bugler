@@ -1,4 +1,5 @@
 using Bugler.Registry.ApiKeyValidation;
+using Bugler.Registry.BrowseCatalog;
 using Bugler.Registry.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,7 @@ public static class RegistryModule
             .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IApiKeyValidator, ApiKeyValidator>();
+        services.AddScoped<ICatalogReader, CatalogReader>();
         return services;
     }
 

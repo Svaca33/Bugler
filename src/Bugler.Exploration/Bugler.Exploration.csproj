@@ -6,10 +6,19 @@
     <ProjectReference Include="..\Bugler.Access\Bugler.Access.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Using Include="Bugler.SharedKernel.ApplicationId" Alias="ApplicationId" />
+  </ItemGroup>
 
 </Project>
