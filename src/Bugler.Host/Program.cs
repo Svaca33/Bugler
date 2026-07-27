@@ -1,9 +1,13 @@
 using Bugler.Access;
 using Bugler.Exploration;
+using Bugler.Host;
 using Bugler.Ingestion;
 using Bugler.Registry;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Which Kestrel listener serves which surface (App / OtlpGrpc / OtlpHttp).
+var surfaceByPort = ListenerSurfaces.FromConfiguration(builder.Configuration);
 
 builder.Services.AddNpgsqlDataSource(
     builder.Configuration.GetConnectionString("bugler")
@@ -21,24 +25,36 @@ await RegistryModule.MigrateAsync(app.Services);
 await IngestionModule.MigrateAsync(app.Services);
 await AccessModule.MigrateAsync(app.Services);
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// The static UI belongs to the app surface only.
+bool OnAppSurface(HttpContext context) =>
+    !surfaceByPort.TryGetValue(context.Connection.LocalPort, out var surface) || surface == Surface.App;
+app.UseWhen(OnAppSurface, spa =>
+{
+    spa.UseDefaultFiles();
+    spa.UseStaticFiles();
+});
+
+app.UseListenerSurfaces(surfaceByPort);
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Text("OK"));
-app.MapOpenApi();
-app.MapIngestion();
-app.MapExploration();
-app.MapAccess();
-app.MapRegistry();
+app.MapGet("/health", () => Results.Text("OK")); // untagged: probed on every surface
+
+var appSurface = app.MapGroup("").ServedOn(Surface.App);
+appSurface.MapOpenApi();
+appSurface.MapExploration();
+appSurface.MapAccess();
+appSurface.MapRegistry();
+
+app.MapGroup("").ServedOn(Surface.OtlpGrpc).MapOtlpGrpcIngestion();
+app.MapGroup("").ServedOn(Surface.OtlpHttp).MapOtlpHttpIngestion();
 
 // Serve the SPA for client-side routes when the frontend build is bundled in.
 var webRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 if (File.Exists(Path.Combine(webRoot, "index.html")))
 {
-    app.MapFallbackToFile("index.html");
+    appSurface.MapFallbackToFile("index.html");
 }
 
 app.Run();

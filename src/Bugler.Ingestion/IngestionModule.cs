@@ -33,10 +33,17 @@ public static class IngestionModule
         return services;
     }
 
-    public static IEndpointRouteBuilder MapIngestion(this IEndpointRouteBuilder endpoints)
+    /// <summary>OTLP/gRPC receivers (the ExportService pair).</summary>
+    public static IEndpointRouteBuilder MapOtlpGrpcIngestion(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGrpcService<OtlpLogsGrpcService>();
         endpoints.MapGrpcService<OtlpTraceGrpcService>();
+        return endpoints;
+    }
+
+    /// <summary>OTLP/HTTP receivers — protobuf POST /v1/logs and /v1/traces.</summary>
+    public static IEndpointRouteBuilder MapOtlpHttpIngestion(this IEndpointRouteBuilder endpoints)
+    {
         endpoints.MapPost("/v1/logs", IngestLogsHttpEndpoint.Handle);
         endpoints.MapPost("/v1/traces", IngestTracesHttpEndpoint.Handle);
         return endpoints;
