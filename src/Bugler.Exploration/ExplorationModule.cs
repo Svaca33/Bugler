@@ -19,10 +19,11 @@ public static class ExplorationModule
 
     public static IEndpointRouteBuilder MapExploration(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/logs", SearchLogsEndpoint.Handle);
-        endpoints.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail);
-        endpoints.MapGet("/api/traces", ListTracesEndpoint.Handle);
-        endpoints.MapGet("/api/traces/{traceId}", GetTraceWaterfallEndpoint.Handle);
+        var group = endpoints.MapGroup("").RequireAuthorization();
+        group.MapGet("/api/logs", SearchLogsEndpoint.Handle);
+        group.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail);
+        group.MapGet("/api/traces", ListTracesEndpoint.Handle);
+        group.MapGet("/api/traces/{traceId}", GetTraceWaterfallEndpoint.Handle);
         return endpoints;
     }
 }

@@ -19,11 +19,16 @@ var app = builder.Build();
 
 await RegistryModule.MigrateAsync(app.Services);
 await IngestionModule.MigrateAsync(app.Services);
+await AccessModule.MigrateAsync(app.Services);
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Text("OK"));
 app.MapOpenApi();
 app.MapIngestion();
 app.MapExploration();
+app.MapAccess();
 
 app.Run();
 
