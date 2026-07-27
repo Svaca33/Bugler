@@ -8,7 +8,7 @@ Metrics support is planned for a later phase.
 
 - Single-process **modular monolith** (.NET 10, ASP.NET Core): OTLP ingest (gRPC :4317, HTTP :4318), REST API, and the frontend served from one container.
 - **PostgreSQL** as the only backing store (telemetry + catalog + users).
-- **React + TypeScript** frontend (Vite, shadcn/ui, TanStack Router/Query).
+- **React + TypeScript** frontend (Bun toolchain, shadcn/ui, TanStack Router/Query).
 - Distributed via **Docker + docker-compose**.
 
 ## Domain
