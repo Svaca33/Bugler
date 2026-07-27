@@ -1,4 +1,4 @@
-namespace Bugler.Ingestion.ReceiveOtlpLogs;
+namespace Bugler.Ingestion;
 
 /// <summary>
 /// Extracts the Instance API key from a standard `Authorization: Bearer` header

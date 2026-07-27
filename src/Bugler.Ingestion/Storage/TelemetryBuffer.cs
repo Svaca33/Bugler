@@ -10,17 +10,24 @@ namespace Bugler.Ingestion.Storage;
 internal sealed class TelemetryBuffer
 {
     private readonly Channel<LogRecordRow> _logs;
+    private readonly Channel<SpanRow> _spans;
 
     public TelemetryBuffer(IOptions<IngestionOptions> options)
     {
-        _logs = Channel.CreateBounded<LogRecordRow>(new BoundedChannelOptions(options.Value.BufferCapacity)
+        var channelOptions = new BoundedChannelOptions(options.Value.BufferCapacity)
         {
             SingleReader = true,
             FullMode = BoundedChannelFullMode.DropWrite,
-        });
+        };
+        _logs = Channel.CreateBounded<LogRecordRow>(channelOptions);
+        _spans = Channel.CreateBounded<SpanRow>(channelOptions);
     }
 
     public bool TryEnqueue(LogRecordRow row) => _logs.Writer.TryWrite(row);
 
+    public bool TryEnqueue(SpanRow row) => _spans.Writer.TryWrite(row);
+
     public ChannelReader<LogRecordRow> Logs => _logs.Reader;
+
+    public ChannelReader<SpanRow> Spans => _spans.Reader;
 }

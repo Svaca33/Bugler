@@ -1,4 +1,5 @@
 using Bugler.Ingestion.ReceiveOtlpLogs;
+using Bugler.Ingestion.ReceiveOtlpTraces;
 using Bugler.Ingestion.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -18,6 +19,7 @@ public static class IngestionModule
         services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
         services.AddSingleton<TelemetryBuffer>();
         services.AddHostedService<LogWriter>();
+        services.AddHostedService<SpanWriter>();
 
         services.AddDbContext<IngestionDbContext>((provider, options) => options
             .UseNpgsql(
@@ -31,7 +33,9 @@ public static class IngestionModule
     public static IEndpointRouteBuilder MapIngestion(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGrpcService<OtlpLogsGrpcService>();
+        endpoints.MapGrpcService<OtlpTraceGrpcService>();
         endpoints.MapPost("/v1/logs", IngestLogsHttpEndpoint.Handle);
+        endpoints.MapPost("/v1/traces", IngestTracesHttpEndpoint.Handle);
         return endpoints;
     }
 
