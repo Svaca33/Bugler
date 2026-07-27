@@ -1,4 +1,44 @@
+using Bugler.Ingestion.ReceiveOtlpLogs;
+using Bugler.Ingestion.Storage;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+
 namespace Bugler.Ingestion;
 
 /// <summary>Composition entry point of the Ingestion context (the write path).</summary>
-public static class IngestionModule;
+public static class IngestionModule
+{
+    public static IServiceCollection AddIngestion(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddGrpc();
+        services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
+        services.AddSingleton<TelemetryBuffer>();
+        services.AddHostedService<LogWriter>();
+
+        services.AddDbContext<IngestionDbContext>((provider, options) => options
+            .UseNpgsql(
+                provider.GetRequiredService<NpgsqlDataSource>(),
+                npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "telemetry"))
+            .UseSnakeCaseNamingConvention());
+
+        return services;
+    }
+
+    public static IEndpointRouteBuilder MapIngestion(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGrpcService<OtlpLogsGrpcService>();
+        endpoints.MapPost("/v1/logs", IngestLogsHttpEndpoint.Handle);
+        return endpoints;
+    }
+
+    public static async Task MigrateAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<IngestionDbContext>()
+            .Database.MigrateAsync(cancellationToken);
+    }
+}

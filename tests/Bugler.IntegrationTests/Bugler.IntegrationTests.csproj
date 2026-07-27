@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.13.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -17,6 +18,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Bugler.SharedKernel.ApplicationId" Alias="ApplicationId" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +26,7 @@
     <ProjectReference Include="..\..\src\Bugler.Exploration\Bugler.Exploration.csproj" />
     <ProjectReference Include="..\..\src\Bugler.Registry\Bugler.Registry.csproj" />
     <ProjectReference Include="..\..\src\Bugler.Access\Bugler.Access.csproj" />
+    <ProjectReference Include="..\..\src\Bugler.Host\Bugler.Host.csproj" />
   </ItemGroup>
 
 </Project>
