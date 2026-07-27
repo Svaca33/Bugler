@@ -59,14 +59,17 @@ public static class AccessModule
     public static IEndpointRouteBuilder MapAccess(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/auth/status", AuthEndpoints.Status).AllowAnonymous();
-        endpoints.MapPost("/api/auth/setup", AuthEndpoints.Setup).AllowAnonymous();
-        endpoints.MapPost("/api/auth/login", AuthEndpoints.Login).AllowAnonymous();
+        endpoints.MapPost("/api/auth/setup", AuthEndpoints.Setup).AllowAnonymous()
+            .Produces<CurrentUserDto>();
+        endpoints.MapPost("/api/auth/login", AuthEndpoints.Login).AllowAnonymous()
+            .Produces<CurrentUserDto>();
         endpoints.MapPost("/api/auth/logout", AuthEndpoints.Logout).RequireAuthorization();
-        endpoints.MapGet("/api/auth/me", AuthEndpoints.Me).RequireAuthorization();
+        endpoints.MapGet("/api/auth/me", AuthEndpoints.Me).RequireAuthorization()
+            .Produces<CurrentUserDto>();
 
         var admin = endpoints.MapGroup("/api/users").RequireAuthorization("Admin");
         admin.MapGet("", ManageUsersEndpoints.List);
-        admin.MapPost("", ManageUsersEndpoints.Create);
+        admin.MapPost("", ManageUsersEndpoints.Create).Produces<UserDto>();
         admin.MapPost("/{id:guid}/deactivate", ManageUsersEndpoints.Deactivate);
         admin.MapPost("/{id:guid}/grants", ManageUsersEndpoints.Grant);
         admin.MapDelete("/{id:guid}/grants/{applicationId:guid}", ManageUsersEndpoints.Revoke);

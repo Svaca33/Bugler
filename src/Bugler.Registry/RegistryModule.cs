@@ -5,6 +5,7 @@ using Bugler.Registry.ManageApiKeys;
 using Bugler.Registry.ManageCatalog;
 using Bugler.Registry.RetentionPolicy;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -35,12 +36,15 @@ public static class RegistryModule
     {
         var admin = endpoints.MapGroup("/api/admin").RequireAuthorization("Admin");
         admin.MapGet("/applications", AdminCatalogEndpoints.ListApplications);
-        admin.MapPost("/applications", AdminCatalogEndpoints.CreateApplication);
+        admin.MapPost("/applications", AdminCatalogEndpoints.CreateApplication)
+            .Produces<ApplicationDto>();
         admin.MapGet("/applications/{applicationId:guid}/instances", AdminCatalogEndpoints.ListInstances);
-        admin.MapPost("/instances", AdminCatalogEndpoints.CreateInstance);
+        admin.MapPost("/instances", AdminCatalogEndpoints.CreateInstance).Produces<InstanceDto>();
         admin.MapPut("/instances/{id:guid}/retention", AdminCatalogEndpoints.SetRetention);
-        admin.MapGet("/instances/{id:guid}/keys", AdminApiKeyEndpoints.ListKeys);
-        admin.MapPost("/instances/{id:guid}/keys", AdminApiKeyEndpoints.IssueKey);
+        admin.MapGet("/instances/{id:guid}/keys", AdminApiKeyEndpoints.ListKeys)
+            .Produces<List<ApiKeyDto>>();
+        admin.MapPost("/instances/{id:guid}/keys", AdminApiKeyEndpoints.IssueKey)
+            .Produces<IssuedApiKeyDto>();
         admin.MapDelete("/keys/{id:guid}", AdminApiKeyEndpoints.RevokeKey);
         return endpoints;
     }

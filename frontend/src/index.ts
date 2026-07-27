@@ -1,41 +1,27 @@
 import { serve } from "bun";
 import index from "./index.html";
 
+const API_ORIGIN = process.env.BUGLER_API ?? "http://127.0.0.1:8080";
+
+/** Forwards API traffic to the Bugler backend so cookies stay first-party in dev. */
+function proxy(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  return fetch(new Request(API_ORIGIN + url.pathname + url.search, req));
+}
+
 const server = serve({
   routes: {
-    // Serve index.html for all unmatched routes.
+    "/api/*": proxy,
+    "/openapi/*": proxy,
+
+    // Serve the SPA for all other routes.
     "/*": index,
-
-    "/api/hello": {
-      async GET(req) {
-        return Response.json({
-          message: "Hello, world!",
-          method: "GET",
-        });
-      },
-      async PUT(req) {
-        return Response.json({
-          message: "Hello, world!",
-          method: "PUT",
-        });
-      },
-    },
-
-    "/api/hello/:name": async req => {
-      const name = req.params.name;
-      return Response.json({
-        message: `Hello, ${name}!`,
-      });
-    },
   },
 
   development: process.env.NODE_ENV !== "production" && {
-    // Enable browser hot reloading in development
     hmr: true,
-
-    // Echo console logs from the browser to the server
     console: true,
   },
 });
 
-console.log(`🚀 Server running at ${server.url}`);
+console.log(`🚀 Bugler frontend running at ${server.url}`);

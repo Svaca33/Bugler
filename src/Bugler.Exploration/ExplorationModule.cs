@@ -4,6 +4,7 @@ using Bugler.Exploration.ListTraces;
 using Bugler.Exploration.Scoping;
 using Bugler.Exploration.SearchLogs;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -21,10 +22,10 @@ public static class ExplorationModule
     public static IEndpointRouteBuilder MapExploration(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("").RequireAuthorization();
-        group.MapGet("/api/logs", SearchLogsEndpoint.Handle);
-        group.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail);
-        group.MapGet("/api/traces", ListTracesEndpoint.Handle);
-        group.MapGet("/api/traces/{traceId}", GetTraceWaterfallEndpoint.Handle);
+        group.MapGet("/api/logs", SearchLogsEndpoint.Handle).Produces<SearchLogsResponse>();
+        group.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail).Produces<LogRecordDto>();
+        group.MapGet("/api/traces", ListTracesEndpoint.Handle).Produces<ListTracesResponse>();
+        group.MapGet("/api/traces/{traceId}", GetTraceWaterfallEndpoint.Handle).Produces<TraceDetailResponse>();
         group.MapGet("/api/catalog", CatalogEndpoint.Handle);
         return endpoints;
     }

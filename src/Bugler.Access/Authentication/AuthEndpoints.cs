@@ -78,7 +78,7 @@ internal static class AuthEndpoints
         return Results.Ok(await ToCurrentUserAsync(user, dbContext, cancellationToken));
     }
 
-    public static async Task<IResult> Logout(HttpContext httpContext)
+    public static async Task<IResult> Logout(HttpContext httpContext, CancellationToken cancellationToken)
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Results.NoContent();
