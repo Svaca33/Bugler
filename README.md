@@ -21,6 +21,21 @@ The domain hierarchy is **Application → Instance → Tenant**:
 
 The codebase is split into four bounded contexts — **Ingestion**, **Exploration**, **Registry**, **Access** — described in [CONTEXT-MAP.md](CONTEXT-MAP.md), each with its own glossary (`src/Bugler.<Context>/CONTEXT.md`). Architectural decisions are recorded as ADRs in [docs/adr](docs/adr).
 
+## Running it
+
+```bash
+docker compose up --build -d
+```
+
+Open http://localhost:8080 — the first account created becomes the server administrator.
+Register an application and an instance in **Admin**, issue an API key, and point your
+services at the server:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://your-server:4318
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."
+```
+
 ## Development
 
 Prerequisites: .NET 10 SDK, Bun, Docker.
@@ -41,7 +56,7 @@ The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), and `:4318` (OTLP/HTT
 | Architecture | `tests/Bugler.ArchitectureTests` (ArchUnitNET) + `frontend/.dependency-cruiser.cjs` | `dotnet test` / `bun run arch` |
 | Integration (real PostgreSQL via Testcontainers) | `tests/Bugler.IntegrationTests` | `dotnet test` (needs Docker) |
 | Unit (frontend) | `frontend/**/*.test.tsx` | `bun test` |
-| E2E (Playwright) | `e2e/tests` | `cd e2e && bun run test` |
+| E2E (Playwright) | `e2e/tests` | `cd e2e && bun run test` (needs `docker compose up -d postgres`) |
 
 Architecture tests enforce the context boundaries described in [CONTEXT-MAP.md](CONTEXT-MAP.md); a dependency that crosses a context boundary outside its `Contracts` namespace fails the build.
 

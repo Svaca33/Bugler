@@ -16,10 +16,6 @@ _Avoid_: superuser, owner, root
 The permission for one User to read the telemetry of one Application. References the Application by id only.
 _Avoid_: permission, role assignment, ACL entry
 
-**Invitation**:
-An Admin-created offer that lets a person activate a User account.
-_Avoid_: signup, registration
-
 **Session**:
 An authenticated sign-in of a User, from login to logout or expiry.
 _Avoid_: token, login state

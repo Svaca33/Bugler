@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.git/
+.claude/
+e2e/
+tests/
+docs/
+frontend/openapi.json
+*.md

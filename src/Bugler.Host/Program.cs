@@ -21,6 +21,9 @@ await RegistryModule.MigrateAsync(app.Services);
 await IngestionModule.MigrateAsync(app.Services);
 await AccessModule.MigrateAsync(app.Services);
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -30,6 +33,13 @@ app.MapIngestion();
 app.MapExploration();
 app.MapAccess();
 app.MapRegistry();
+
+// Serve the SPA for client-side routes when the frontend build is bundled in.
+var webRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+if (File.Exists(Path.Combine(webRoot, "index.html")))
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 
