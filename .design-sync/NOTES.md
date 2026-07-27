@@ -4,7 +4,7 @@
 - `srcDir` is scoped to `src/components` deliberately: default `src/` would `export *` the whole app (routes, pages, API client) into the bundle.
 - Compound sub-parts (CardHeader, SelectTrigger, …) are bundle exports but intentionally NOT separate cards — the 6 cards come from `componentSrcMap` pins; sub-parts are documented in the parent's doc.
 - CSS: Tailwind v4 source CSS isn't browser-consumable. `frontend/ds-css/build.ts` (bun + the repo's own bun-plugin-tailwind) compiles `frontend/ds-css/entry.css` → `frontend/.ds-css/entry.css` (= `cfg.cssEntry`). The entry `@source`-scans `frontend/src` AND `.design-sync/previews`, so **re-run `buildCmd` after authoring/editing previews** — otherwise preview utility classes are missing from the compiled CSS.
-- Tokens: standard shadcn neutral theme in `frontend/styles/globals.css` (oklch, light + `.dark`). No custom fonts — system font stack; `[FONT_MISSING]` is not expected.
+- Tokens: brass theme in `frontend/styles/globals.css` (hex, light "warm paper" + `.dark` "navy console"; since 2026-07-27, replacing the original neutral oklch theme). Fonts: IBM Plex Sans/Mono via a remote Google Fonts `@import` at the top of globals.css — it survives the CSS compile and ships in the `styles.css` closure; `[FONT_REMOTE]` is the expected diagnostic, `[FONT_MISSING]` is not.
 - Playwright: machine cache has chromium-1234 (`%LOCALAPPDATA%/ms-playwright`); repo's `e2e/` pins `@playwright/test ^1.62.0`.
 - `FilterSelect` (frontend/src/features/explore) is app-level glue over Select — excluded from the DS by user scope decision (2026-07-27).
 - Converter deps in `.ds-sync/`: pin `typescript@5` — `typescript@latest` resolves to the v7 (Go) rewrite whose package no longer exports the old compiler API, which silently skips validate's `.d.ts` parse check. `playwright@1.62.0` matches the cached chromium-1234 and the repo's e2e pin.
@@ -15,12 +15,13 @@
 
 ## Known render warns
 
-(none — all warns from this campaign were fixed, not triaged-as-legitimate)
+- `[FONT_REMOTE] "IBM Plex Sans", "IBM Plex Mono"` — legitimate: the brass theme loads Plex from Google Fonts at runtime; verified rendering correctly in headless capture (2026-07-27).
 
 ## Re-sync risks
 
 - **Compiled-CSS snapshot**: `_ds_bundle.css` only contains utilities scanned from `frontend/src` + `.design-sync/previews` at `buildCmd` time. New previews or app code using new utilities need `buildCmd` re-run before the converter, or the classes silently miss. When in doubt, always re-run `buildCmd`.
 - **Conventions drift**: `.design-sync/conventions.md` enumerates classes/tokens — re-run its validation (grep against fresh `_ds_bundle.css` + component dirs) on every re-sync; app refactors can drop utilities from the scan.
 - **shadcn upstream refresh**: `frontend/src/components/ui/*.tsx` are vendored shadcn code — a regeneration (e.g. `npx shadcn@latest`) changes render hashes and correctly triggers re-verify of everything.
-- **Toolchain assumptions**: bun 1.3.x + bun-plugin-tailwind (repo dep) build the CSS; node 24 + npm-installed esbuild/ts-morph/typescript@5/playwright@1.62.0 (`.ds-sync/`, regenerated per clone) run the converter. No network-fetched assets; no fonts shipped (system stack).
+- **Toolchain assumptions**: bun 1.3.x + bun-plugin-tailwind (repo dep) build the CSS; node 24 + npm-installed esbuild/ts-morph/typescript@5/playwright@1.62.0 (`.ds-sync/`, regenerated per clone) run the converter.
+- **Remote fonts**: IBM Plex loads from Google Fonts at render time — an offline headless capture silently falls back to system fonts and screenshots will look subtly wrong without any warn beyond `[FONT_REMOTE]`. Grade font-sensitive changes only with network available.
 - **Grades**: verification state lives in the uploaded `_ds_sync.json` (project) and gitignored `.cache/` — a fresh clone re-verifies only what the anchor can't vouch for.
