@@ -1,0 +1,18 @@
+/* Design-sync stylesheet entry. Imports the app's real CSS (tokens, theme,
+   base layer) and widens Tailwind's source scan to the full app source and
+   the authored design-sync previews, so every utility either of them uses
+   is generated into the compiled output. */
+@import "../src/index.css";
+
+@source "../src";
+@source "../../.design-sync/previews";
+
+/* Safelist: semantic utilities the design agent needs that no app source
+   happens to use as a bare class (documented in .design-sync/conventions.md —
+   keep the two in sync). */
+@source inline("text-foreground");
+@source inline("text-secondary-foreground");
+@source inline("text-accent-foreground");
+@source inline("bg-input");
+@source inline("border-destructive");
+@source inline("rounded-lg");
