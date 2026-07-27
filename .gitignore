@@ -1,0 +1,33 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+*.binlog
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.local
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+appsettings.*.Local.json
+
+# IDE
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Claude
+.claude/*
+!.claude/settings.json
