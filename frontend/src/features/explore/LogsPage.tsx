@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { FilterSelect } from "./FilterSelect";
 import { formatTime, tenantOf } from "./format";
 import { LogDetailPanel } from "./LogDetailPanel";
-import { severityClass, severityFilterOptions, severityLabel } from "./severity";
+import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "./severity";
 
 export interface LogFilters {
   applicationId?: string;
@@ -21,6 +21,8 @@ export interface LogFilters {
 }
 
 const PAGE_SIZE = 100;
+
+const GRID = "grid grid-cols-[3px_172px_66px_148px_96px_1fr] items-center gap-3.5 px-5";
 
 export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFilters) => void }) {
   const { filters, onChange } = props;
@@ -68,9 +70,9 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
 
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+      <div className="flex min-w-0 flex-1 flex-col">
         <form
-          className="flex flex-wrap items-center gap-2"
+          className="flex flex-wrap items-center gap-2 border-b border-[#17293D] bg-[#0B1826] px-[22px] py-3.5"
           onSubmit={event => {
             event.preventDefault();
             onChange({ ...filters, q: search || undefined });
@@ -135,51 +137,84 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
           )}
         </form>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-muted text-left text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-medium">Time</th>
-                <th className="px-3 py-2 font-medium">Severity</th>
-                <th className="px-3 py-2 font-medium">Service</th>
-                <th className="px-3 py-2 font-medium">Tenant</th>
-                <th className="px-3 py-2 font-medium">Message</th>
-              </tr>
-            </thead>
-            <tbody data-testid="log-rows">
-              {items.map(log => (
-                <tr
-                  key={log.id}
-                  className="cursor-pointer border-t hover:bg-accent"
-                  onClick={() => setSelected(log)}
-                >
-                  <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">
-                    {formatTime(log.timestamp)}
-                  </td>
-                  <td
-                    className={`px-3 py-1.5 font-mono text-xs ${severityClass(Number(log.severityNumber))}`}
-                  >
-                    {log.severityText || severityLabel(Number(log.severityNumber))}
-                  </td>
-                  <td className="px-3 py-1.5">{log.serviceName}</td>
-                  <td className="px-3 py-1.5">{tenantOf(log)}</td>
-                  <td className="max-w-0 truncate px-3 py-1.5" style={{ width: "60%" }}>
-                    {log.body}
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && !logs.isPending && (
-                <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
-                    No log records match the current filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="flex items-center gap-3.5 px-5 py-3">
+          <h1 className="text-sm font-semibold tracking-[-0.1px]">Log records</h1>
+          {live && (
+            <span className="flex items-center gap-1.5 font-mono text-[11px] text-primary">
+              <span className="size-1.5 animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
+              refreshing every 5 s
+            </span>
+          )}
+          <span className="ml-auto font-mono text-[11.5px] text-[#6E86A0]">
+            {items.length} records
+          </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <div
+            className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
+          >
+            <span />
+            <span>TIME</span>
+            <span>SEVERITY</span>
+            <span>SERVICE</span>
+            <span>TENANT</span>
+            <span>MESSAGE</span>
+          </div>
+          <div data-testid="log-rows">
+            {items.map(log => {
+              const severity = Number(log.severityNumber);
+              const isSelected = selected?.id === log.id;
+              const isError = severity >= 17;
+              const rowBackground = isSelected
+                ? "bg-[rgba(233,164,60,0.09)] shadow-[inset_2px_0_0_#E9A43C] hover:bg-[rgba(233,164,60,0.14)]"
+                : isError
+                  ? "bg-[rgba(229,84,74,0.07)] hover:bg-[#12243A]"
+                  : "hover:bg-[#12243A]";
+              return (
+                <div
+                  key={log.id}
+                  className={`${GRID} h-[37px] cursor-pointer border-b border-[#101F31] ${rowBackground}`}
+                  onClick={() => setSelected(log)}
+                >
+                  <span className={`h-[15px] w-[3px] rounded-[2px] ${severityRailClass(severity)}`} />
+                  <span
+                    className={`whitespace-nowrap font-mono text-[11.5px] ${isSelected ? "text-[#B6C8DA]" : "text-[#7D93AA]"}`}
+                  >
+                    {formatTime(log.timestamp)}
+                  </span>
+                  <span
+                    className={`truncate font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] ${severityClass(severity)}`}
+                  >
+                    {log.severityText || severityLabel(severity)}
+                  </span>
+                  <span
+                    className={`truncate font-mono text-[11.5px] ${isSelected ? "text-[#C6D6E6]" : "text-[#A9BDD1]"}`}
+                  >
+                    {log.serviceName}
+                  </span>
+                  <span className="truncate font-mono text-[11.5px] text-[#7D93AA]">
+                    {tenantOf(log) || "—"}
+                  </span>
+                  <span
+                    className={`truncate font-mono text-[12.5px] ${
+                      isSelected ? "text-[#F6E3C4]" : severity < 9 ? "text-[#A9BDD1]" : "text-[#DCE8F3]"
+                    }`}
+                  >
+                    {log.body}
+                  </span>
+                </div>
+              );
+            })}
+            {items.length === 0 && !logs.isPending && (
+              <p className="py-16 text-center text-[#8CA1B8]">
+                No log records match the current filters.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 border-t border-[#17293D] px-5 py-2.5">
           <Button
             variant="outline"
             size="sm"
@@ -188,7 +223,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
           >
             {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
           </Button>
-          <span className="text-xs text-muted-foreground">{items.length} records</span>
+          <span className="font-mono text-[11px] text-[#6E86A0]">{items.length} records</span>
         </div>
       </div>
 

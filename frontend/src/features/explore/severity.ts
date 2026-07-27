@@ -10,10 +10,18 @@ export function severityLabel(severityNumber: number): string {
 }
 
 export function severityClass(severityNumber: number): string {
-  if (severityNumber >= 17) return "text-red-500";
-  if (severityNumber >= 13) return "text-amber-500";
-  if (severityNumber >= 9) return "text-sky-500";
-  return "text-muted-foreground";
+  if (severityNumber >= 17) return "text-[#F0685A]";
+  if (severityNumber >= 13) return "text-primary";
+  if (severityNumber >= 9) return "text-[#9FB5CA]";
+  return "text-[#6E86A0]";
+}
+
+/** Severity rail (the 3px bar at the left edge of a log row). */
+export function severityRailClass(severityNumber: number): string {
+  if (severityNumber >= 17) return "bg-destructive";
+  if (severityNumber >= 13) return "bg-[#C97B12]";
+  if (severityNumber >= 9) return "bg-[#274563]";
+  return "bg-[#1E344C]";
 }
 
 /** Threshold values for the "minimum severity" filter dropdown. */

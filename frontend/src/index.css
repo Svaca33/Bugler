@@ -9,3 +9,14 @@
     @apply m-0 min-h-screen bg-background text-foreground;
   }
 }
+
+/* Live-tail indicator pulse (Logs screen). */
+@keyframes bpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}

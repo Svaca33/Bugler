@@ -16,13 +16,13 @@ test("telemetry flows from an issued key to the log and trace viewers", async ({
   // Register a fresh application + instance and issue its key.
   const appName = `E2E ${Date.now()}`;
   await page.getByRole("link", { name: "Admin" }).click();
-  await page.getByPlaceholder("New application…").fill(appName);
+  await page.getByLabel("Add application").fill(appName);
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("button", { name: appName })).toBeVisible();
 
-  await page.getByPlaceholder("New instance (client)…").fill("e2e-client");
+  await page.getByLabel("Name (client)").fill("e2e-client");
   await page.getByRole("button", { name: "Add instance" }).click();
-  await expect(page.getByRole("cell", { name: "e2e-client" })).toBeVisible();
+  await expect(page.getByText("e2e-client", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Issue key" }).click();
   const apiKey = (await page.getByTestId("issued-key").textContent())?.trim();
@@ -37,7 +37,7 @@ test("telemetry flows from an issued key to the log and trace viewers", async ({
   expect(traceId).toBeDefined();
 
   // The log viewer shows the exported records for the new application.
-  await page.getByRole("link", { name: "Logs" }).click();
+  await page.getByRole("navigation").getByRole("link", { name: "Logs" }).click();
   await selectFilter(page, "All applications", appName);
   const rows = page.getByTestId("log-rows");
   await expect(rows.getByText("Payment declined: insufficient funds")).toBeVisible({ timeout: 15_000 });
@@ -50,7 +50,7 @@ test("telemetry flows from an issued key to the log and trace viewers", async ({
   await expect(page.getByTestId("waterfall")).toContainText("charge-card");
 
   // And the trace list flags it as an error.
-  await page.getByRole("link", { name: "Traces" }).click();
+  await page.getByRole("navigation").getByRole("link", { name: "Traces" }).click();
   await selectFilter(page, "All applications", appName);
   const traceRows = page.getByTestId("trace-rows");
   await expect(traceRows.getByText("POST /checkout")).toBeVisible();

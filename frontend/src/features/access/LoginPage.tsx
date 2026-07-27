@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import markDark from "@/bugler-mark-dark.svg";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,14 @@ function LoginForm() {
       disabled={login.isPending}
       onSubmit={() => login.mutate({ email, password }, { onSuccess: () => navigate({ to: "/" }) })}
     >
-      <Field label="E-mail" type="email" value={email} onChange={setEmail} autoFocus />
+      <Field
+        label="E-mail"
+        type="email"
+        value={email}
+        onChange={setEmail}
+        placeholder="you@company.com"
+        autoFocus
+      />
       <Field label="Password" type="password" value={password} onChange={setPassword} />
     </AuthCard>
   );
@@ -61,7 +69,13 @@ function SetupForm() {
       }
     >
       <Field label="Name" type="text" value={displayName} onChange={setDisplayName} autoFocus />
-      <Field label="E-mail" type="email" value={email} onChange={setEmail} />
+      <Field
+        label="E-mail"
+        type="email"
+        value={email}
+        onChange={setEmail}
+        placeholder="you@company.com"
+      />
       <Field label="Password (min 8 characters)" type="password" value={password} onChange={setPassword} />
     </AuthCard>
   );
@@ -77,28 +91,47 @@ function AuthCard(props: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid min-h-screen place-items-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
-          <CardDescription>{props.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="grid gap-4"
-            onSubmit={event => {
-              event.preventDefault();
-              props.onSubmit();
-            }}
-          >
-            {props.children}
-            {props.error !== undefined && <p className="text-sm text-destructive">{props.error}</p>}
-            <Button type="submit" disabled={props.disabled}>
-              {props.submitLabel}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div
+      className="grid min-h-screen place-items-center p-8"
+      style={{
+        background:
+          "radial-gradient(120% 80% at 50% -10%, rgba(233,164,60,0.10), transparent 60%)",
+      }}
+    >
+      <div className="flex w-full max-w-[392px] flex-col gap-[26px]">
+        <div className="flex items-center justify-center gap-2.5">
+          <img src={markDark} alt="" className="size-[34px]" />
+          <span className="text-[27px] font-semibold tracking-[-1.1px]">bugler</span>
+        </div>
+
+        <Card className="gap-5 rounded-xl border-[#1E344C] py-[26px] shadow-[0_18px_44px_-24px_#000]">
+          <CardHeader>
+            <CardTitle className="text-lg tracking-[-0.3px]">{props.title}</CardTitle>
+            <CardDescription className="text-[12.5px] leading-normal">
+              {props.description}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="grid gap-3.5"
+              onSubmit={event => {
+                event.preventDefault();
+                props.onSubmit();
+              }}
+            >
+              {props.children}
+              {props.error !== undefined && (
+                <p className="text-[12.5px] text-[#F0685A]">{props.error}</p>
+              )}
+              <Button type="submit" disabled={props.disabled} className="w-full">
+                {props.submitLabel}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center font-mono text-[11px] text-[#5F7590]">bugler 0.1.0 · self-hosted</p>
+      </div>
     </div>
   );
 }
@@ -108,6 +141,7 @@ function Field(props: {
   type: string;
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
   autoFocus?: boolean;
 }) {
   const id = props.label.toLowerCase().replace(/[^a-z]+/g, "-");
@@ -119,6 +153,7 @@ function Field(props: {
         type={props.type}
         value={props.value}
         onChange={event => props.onChange(event.target.value)}
+        placeholder={props.placeholder}
         autoFocus={props.autoFocus}
         required
       />

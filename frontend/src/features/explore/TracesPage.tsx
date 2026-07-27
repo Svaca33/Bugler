@@ -14,6 +14,8 @@ export interface TraceFilters {
   errorsOnly?: boolean;
 }
 
+const GRID = "grid grid-cols-[1fr_150px_200px_96px_66px_74px] items-center gap-4 px-5";
+
 export function TracesPage(props: { filters: TraceFilters; onChange: (filters: TraceFilters) => void }) {
   const { filters, onChange } = props;
   const catalog = useCatalog();
@@ -40,10 +42,11 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
   const instances =
     applications.find(a => a.id === filters.applicationId)?.instances ??
     applications.flatMap(a => a.instances);
+  const items = traces.data?.items ?? [];
 
   return (
-    <div className="flex flex-col gap-3 p-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#17293D] bg-[#0B1826] px-[22px] py-3.5">
         <FilterSelect
           placeholder="All applications"
           value={filters.applicationId}
@@ -65,58 +68,81 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
         </Button>
       </div>
 
-      <div className="overflow-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 font-medium">Root span</th>
-              <th className="px-3 py-2 font-medium">Service</th>
-              <th className="px-3 py-2 font-medium">Started</th>
-              <th className="px-3 py-2 font-medium text-right">Duration</th>
-              <th className="px-3 py-2 font-medium text-right">Spans</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody data-testid="trace-rows">
-            {(traces.data?.items ?? []).map(trace => (
-              <tr key={trace.traceId} className="border-t hover:bg-accent">
-                <td className="px-3 py-1.5">
-                  <Link
-                    to="/traces/$traceId"
-                    params={{ traceId: trace.traceId }}
-                    className="font-medium underline-offset-2 hover:underline"
-                  >
-                    {trace.rootName ?? trace.traceId}
-                  </Link>
-                </td>
-                <td className="px-3 py-1.5">{trace.rootService}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">
+      <div className="flex items-center gap-3.5 px-5 py-3">
+        <h1 className="text-sm font-semibold tracking-[-0.1px]">Traces</h1>
+        <span className="ml-auto font-mono text-[11.5px] text-[#6E86A0]">{items.length} traces</span>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div
+          className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
+        >
+          <span>ROOT SPAN</span>
+          <span>SERVICE</span>
+          <span>STARTED</span>
+          <span className="text-right">DURATION</span>
+          <span className="text-right">SPANS</span>
+          <span>STATUS</span>
+        </div>
+        <div data-testid="trace-rows">
+          {items.map(trace => {
+            const slow = Number(trace.durationMs) >= 500;
+            return (
+              <div
+                key={trace.traceId}
+                className={`${GRID} h-[38px] border-b border-[#101F31] hover:bg-[#12243A] ${
+                  trace.hasError ? "bg-[rgba(229,84,74,0.07)]" : ""
+                }`}
+              >
+                <span className="min-w-0 truncate">
+                  {trace.rootName != null ? (
+                    <Link
+                      to="/traces/$traceId"
+                      params={{ traceId: trace.traceId }}
+                      className={`text-[13px] font-medium underline-offset-2 hover:underline ${
+                        trace.hasError ? "text-[#F6C170]" : "text-foreground"
+                      }`}
+                    >
+                      {trace.rootName}
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/traces/$traceId"
+                      params={{ traceId: trace.traceId }}
+                      className="font-mono text-xs text-[#B6C8DA] underline-offset-2 hover:underline"
+                    >
+                      {trace.traceId}
+                    </Link>
+                  )}
+                </span>
+                <span className="truncate font-mono text-[11.5px] text-[#A9BDD1]">
+                  {trace.rootService}
+                </span>
+                <span className="whitespace-nowrap font-mono text-[11.5px] text-[#7D93AA]">
                   {formatTime(trace.startTime)}
-                </td>
-                <td className="px-3 py-1.5 text-right font-mono text-xs">
+                </span>
+                <span
+                  className={`text-right font-mono text-[11.5px] ${slow ? "text-primary" : "text-[#B6C8DA]"}`}
+                >
                   {Number(trace.durationMs).toFixed(0)} ms
-                </td>
-                <td className="px-3 py-1.5 text-right">{trace.spanCount}</td>
-                <td className="px-3 py-1.5">
+                </span>
+                <span className="text-right font-mono text-xs text-[#B6C8DA]">{trace.spanCount}</span>
+                <span>
                   {trace.hasError ? (
-                    <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-xs font-medium text-red-500">
+                    <span className="rounded-[5px] bg-[rgba(229,84,74,0.15)] px-[7px] py-0.5 font-mono text-[10.5px] font-medium text-[#F0685A]">
                       ERROR
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground">OK</span>
+                    <span className="font-mono text-[11px] text-[#6E86A0]">OK</span>
                   )}
-                </td>
-              </tr>
-            ))}
-            {(traces.data?.items.length ?? 0) === 0 && !traces.isPending && (
-              <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
-                  No traces match the current filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </span>
+              </div>
+            );
+          })}
+          {items.length === 0 && !traces.isPending && (
+            <p className="py-16 text-center text-[#8CA1B8]">No traces match the current filters.</p>
+          )}
+        </div>
       </div>
     </div>
   );
