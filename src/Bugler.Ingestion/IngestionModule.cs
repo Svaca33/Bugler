@@ -1,3 +1,4 @@
+using Bugler.Ingestion.PurgeExpiredTelemetry;
 using Bugler.Ingestion.ReceiveOtlpLogs;
 using Bugler.Ingestion.ReceiveOtlpTraces;
 using Bugler.Ingestion.Storage;
@@ -20,6 +21,8 @@ public static class IngestionModule
         services.AddSingleton<TelemetryBuffer>();
         services.AddHostedService<LogWriter>();
         services.AddHostedService<SpanWriter>();
+        services.AddSingleton<TelemetryPurger>();
+        services.AddHostedService<PurgeScheduler>();
 
         services.AddDbContext<IngestionDbContext>((provider, options) => options
             .UseNpgsql(

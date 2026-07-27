@@ -1,3 +1,4 @@
+using Bugler.Exploration.BrowseCatalog;
 using Bugler.Exploration.GetTraceWaterfall;
 using Bugler.Exploration.ListTraces;
 using Bugler.Exploration.Scoping;
@@ -24,6 +25,7 @@ public static class ExplorationModule
         group.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail);
         group.MapGet("/api/traces", ListTracesEndpoint.Handle);
         group.MapGet("/api/traces/{traceId}", GetTraceWaterfallEndpoint.Handle);
+        group.MapGet("/api/catalog", CatalogEndpoint.Handle);
         return endpoints;
     }
 }

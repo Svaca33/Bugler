@@ -9,7 +9,7 @@ builder.Services.AddNpgsqlDataSource(
     builder.Configuration.GetConnectionString("bugler")
     ?? throw new InvalidOperationException("Connection string 'bugler' is missing."));
 
-builder.Services.AddRegistry();
+builder.Services.AddRegistry(builder.Configuration);
 builder.Services.AddIngestion(builder.Configuration);
 builder.Services.AddAccess();
 builder.Services.AddExploration();
@@ -29,6 +29,7 @@ app.MapOpenApi();
 app.MapIngestion();
 app.MapExploration();
 app.MapAccess();
+app.MapRegistry();
 
 app.Run();
 

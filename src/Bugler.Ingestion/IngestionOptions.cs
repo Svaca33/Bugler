@@ -9,4 +9,7 @@ public sealed class IngestionOptions
 
     /// <summary>Maximum Signals written to PostgreSQL in one COPY Batch.</summary>
     public int MaxBatchSize { get; set; } = 5_000;
+
+    /// <summary>How often expired telemetry is purged.</summary>
+    public int PurgeIntervalMinutes { get; set; } = 60;
 }
