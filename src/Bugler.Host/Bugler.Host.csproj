@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bugler.Ingestion\Bugler.Ingestion.csproj" />
+    <ProjectReference Include="..\Bugler.Exploration\Bugler.Exploration.csproj" />
+    <ProjectReference Include="..\Bugler.Registry\Bugler.Registry.csproj" />
+    <ProjectReference Include="..\Bugler.Access\Bugler.Access.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

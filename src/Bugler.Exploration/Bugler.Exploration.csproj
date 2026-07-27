@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bugler.SharedKernel\Bugler.SharedKernel.csproj" />
+    <ProjectReference Include="..\Bugler.Registry\Bugler.Registry.csproj" />
+    <ProjectReference Include="..\Bugler.Access\Bugler.Access.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

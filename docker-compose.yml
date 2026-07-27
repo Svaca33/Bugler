@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: bugler
+      POSTGRES_USER: bugler
+      POSTGRES_PASSWORD: bugler # local development only
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bugler -d bugler"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # The Bugler server itself — enabled once the Dockerfile exists.
+  # bugler:
+  #   build: .
+  #   ports:
+  #     - "8080:8080" # UI + REST API
+  #     - "4317:4317" # OTLP/gRPC
+  #     - "4318:4318" # OTLP/HTTP
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+
+volumes:
+  postgres-data:
