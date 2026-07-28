@@ -25,13 +25,31 @@ dotnet run --project tools/Bugler.SampleSource -- --api-key blgr_...
 | `--endpoint <url>` | `http://localhost:4318` / `:4317` | OTLP endpoint |
 | `--rate <ops/s>` | `2` | Target operations per second |
 | `--count <n>` | run until Ctrl+C | Stop after N operations |
-| `--service <name>` | `sample-eshop` | `service.name` resource attribute |
 | `--quiet` | off | Suppress per-operation output |
 
-Run several copies with different `--service` names and API keys to fill more than
-one Service at once. Note that Bugler files the telemetry under the Service the key
-belongs to — `--service` only sets the `service.name` resource attribute, which is
-stored but never used for identity (ADR 0006).
+## Declared identity
+
+Bugler files every signal under the Service its API key belongs to; what the payload
+says about itself is kept as ordinary resource attributes and never establishes
+identity ([ADR 0006](../../docs/adr/0006-service-is-the-sender-identity.md)). These
+options only set those attributes, so point them at the facets of the Service the key
+was issued for and the sample data will not contradict its own registration:
+
+| Option | Default | Resource attribute |
+| --- | --- | --- |
+| `--namespace <ns>` | `demo` | `service.namespace` — Service Namespace |
+| `--environment <e>` | `sample` | `deployment.environment.name` — Environment |
+| `--service <name>` | `sample-eshop` | `service.name` — Service Name |
+| `--replica <id>` | machine name | `service.instance.id` — Replica |
+
+```bash
+dotnet run --project tools/Bugler.SampleSource -- \
+  --api-key blgr_… --namespace acme --environment prod --service backend
+```
+
+Run several copies with different keys to fill more than one Service at once, or
+several copies with one key and different `--replica` values to simulate the replicas
+of a single Service.
 
 Export failures (wrong endpoint, revoked key) are printed to stderr as
 `[otel Error] …` lines — the OpenTelemetry SDK would otherwise swallow them.

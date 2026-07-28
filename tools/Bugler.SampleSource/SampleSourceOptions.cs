@@ -8,7 +8,10 @@ internal sealed record SampleSourceOptions(
     OtlpExportProtocol Protocol,
     double Rate,
     int Count,
+    string Namespace,
+    string EnvironmentName,
     string ServiceName,
+    string Replica,
     bool Quiet)
 {
     private const string Usage = """
@@ -25,9 +28,17 @@ internal sealed record SampleSourceOptions(
                              http://localhost:4317 for grpc)
           --rate <ops/s>     target operations per second (default: 2)
           --count <n>        stop after N operations (default: run until Ctrl+C)
-          --service <name>   service.name resource attribute (default: sample-eshop)
           --quiet            suppress per-operation output
           --help             show this help
+
+        Declared identity — resource attributes only; the API key is what decides the
+        Service the telemetry is filed under (ADR 0006). Set these to the facets of the
+        Service the key belongs to so the payload does not contradict its registration:
+          --namespace <ns>   service.namespace (default: demo)
+          --environment <e>  deployment.environment.name (default: sample)
+          --service <name>   service.name (default: sample-eshop)
+          --replica <id>     service.instance.id, which tells replicas of one Service
+                             apart (default: the machine name)
         """;
 
     public static SampleSourceOptions? Parse(string[] args)
@@ -37,7 +48,10 @@ internal sealed record SampleSourceOptions(
         var protocol = OtlpExportProtocol.HttpProtobuf;
         var rate = 2.0;
         var count = 0;
+        var serviceNamespace = "demo";
+        var environmentName = "sample";
         var serviceName = "sample-eshop";
+        var replica = Environment.MachineName;
         var quiet = false;
 
         for (var i = 0; i < args.Length; i++)
@@ -75,8 +89,17 @@ internal sealed record SampleSourceOptions(
                     }
 
                     break;
+                case "--namespace":
+                    serviceNamespace = Next(args, ref i);
+                    break;
+                case "--environment":
+                    environmentName = Next(args, ref i);
+                    break;
                 case "--service":
                     serviceName = Next(args, ref i);
+                    break;
+                case "--replica":
+                    replica = Next(args, ref i);
                     break;
                 case "--quiet":
                     quiet = true;
@@ -98,8 +121,12 @@ internal sealed record SampleSourceOptions(
             throw new OptionsError($"--endpoint '{endpoint}' is not an absolute http(s) URL.");
         }
 
-        return new SampleSourceOptions(apiKey, endpointUri, protocol, rate, count, serviceName, quiet);
+        return new SampleSourceOptions(
+            apiKey, endpointUri, protocol, rate, count, serviceNamespace, environmentName, serviceName, replica, quiet);
     }
+
+    /// <summary>The identity the payload declares about itself, in the shape the UI labels a Service.</summary>
+    public string DeclaredIdentity => $"{Namespace}/{EnvironmentName}/{ServiceName}";
 
     public static int PrintError(OptionsError error)
     {

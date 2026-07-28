@@ -26,9 +26,13 @@ if (options is null)
 
 using var diagnostics = new OtelDiagnosticsListener();
 
+// The declared identity: the same three facets a Service is registered by, plus the
+// service.instance.id that tells its replicas apart. Bugler files everything under the
+// Service the API key proves and never reads these (ADR 0006) — they are sent so the
+// sample data mirrors its registration instead of contradicting it.
 var resourceBuilder = ResourceBuilder.CreateDefault()
-    .AddService(options.ServiceName, serviceInstanceId: Environment.MachineName)
-    .AddAttributes([KeyValuePair.Create<string, object>("deployment.environment", "sample")]);
+    .AddService(options.ServiceName, serviceNamespace: options.Namespace, serviceInstanceId: options.Replica)
+    .AddAttributes([KeyValuePair.Create<string, object>("deployment.environment.name", options.EnvironmentName)]);
 
 var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .SetResourceBuilder(resourceBuilder)
@@ -52,9 +56,11 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-Console.WriteLine($"Streaming sample e-shop telemetry as service '{options.ServiceName}'");
+Console.WriteLine("Streaming sample e-shop telemetry into Bugler");
 Console.WriteLine($"  endpoint: {options.Endpoint} ({(options.Protocol == OtlpExportProtocol.Grpc ? "grpc" : "http")})");
 Console.WriteLine($"  rate:     {options.Rate:0.##} ops/s, {(options.Count > 0 ? $"{options.Count} operations" : "until Ctrl+C")}");
+Console.WriteLine($"  declared: {options.DeclaredIdentity}, replica {options.Replica}");
+Console.WriteLine("            (filed under whichever Service the API key belongs to)");
 Console.WriteLine();
 
 var simulation = new ShopSimulation(loggerFactory);
@@ -89,7 +95,7 @@ Console.WriteLine("Flushing telemetry…");
 loggerFactory.Dispose();
 tracerProvider?.ForceFlush(10_000);
 tracerProvider?.Dispose();
-Console.WriteLine($"Sent {sent} operations to {options.Endpoint} as '{options.ServiceName}'.");
+Console.WriteLine($"Sent {sent} operations to {options.Endpoint} declared as '{options.DeclaredIdentity}'.");
 return 0;
 
 void ConfigureOtlp(OtlpExporterOptions exporter, string signalPath)

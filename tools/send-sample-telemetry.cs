@@ -22,12 +22,16 @@ var traceId = ByteString.CopyFrom(Guid.NewGuid().ToByteArray());
 var rootSpanId = ByteString.CopyFrom(Guid.NewGuid().ToByteArray()[..8]);
 var childSpanId = ByteString.CopyFrom(Guid.NewGuid().ToByteArray()[..8]);
 
+// What the payload declares about itself. Bugler files it under the Service the API key
+// proves and keeps these as ordinary resource attributes (ADR 0006).
 var resource = new Resource
 {
     Attributes =
     {
+        new KeyValue { Key = "service.namespace", Value = new AnyValue { StringValue = "demo" } },
+        new KeyValue { Key = "deployment.environment.name", Value = new AnyValue { StringValue = "production" } },
         new KeyValue { Key = "service.name", Value = new AnyValue { StringValue = "eshop-web" } },
-        new KeyValue { Key = "deployment.environment", Value = new AnyValue { StringValue = "production" } },
+        new KeyValue { Key = "service.instance.id", Value = new AnyValue { StringValue = Environment.MachineName } },
     },
 };
 
