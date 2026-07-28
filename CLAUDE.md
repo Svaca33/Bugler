@@ -32,7 +32,7 @@ Module boundaries are enforced by `tests/Bugler.ArchitectureTests` (backend) and
 - DDD + SOLID rigor; each context keeps its own EF `DbContext`, postgres schema, and snake_case naming.
 - **Ports are surfaces** (enforced in [src/Bugler.Host/ListenerSurfaces.cs](src/Bugler.Host/ListenerSurfaces.cs)): 8080 = app (UI + REST + OpenAPI), 4317 = OTLP/gRPC, 4318 = OTLP/HTTP, `/health` everywhere. Kestrel listener names in appsettings must match a `Surface`; modules stay port-agnostic. UI and REST API intentionally share one origin (cookie auth, no CORS).
 - No `X-` prefixed headers (RFC 6648) — API keys travel as `Authorization: Bearer`.
-- Repo docs, comments, and commit messages are English.
+- Repo docs, comments, and commit messages are English — but talk to the user in Czech (chat replies, questions, summaries).
 
 ## Frontend
 
