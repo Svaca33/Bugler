@@ -122,6 +122,73 @@ internal static class AdminCatalogEndpoints
             service.Name, service.RetentionDays, service.CreatedAt));
     }
 
+    /// <summary>
+    /// Deletes an Application with every Service registered under it. API keys go with the
+    /// Services by cascade; telemetry and read grants follow from the recorded events.
+    /// </summary>
+    public static async Task<IResult> DeleteApplication(
+        Guid id,
+        RegistryDbContext dbContext,
+        IIntegrationEventPublisher publisher,
+        IOutboxSignal signal,
+        CancellationToken cancellationToken)
+    {
+        var applicationId = new ApplicationId(id);
+        var serviceIds = await dbContext.Services
+            .Where(s => s.ApplicationId == applicationId)
+            .Select(s => s.Id)
+            .ToListAsync(cancellationToken);
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var removed = await dbContext.Applications
+            .Where(a => a.Id == applicationId)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed == 0)
+        {
+            return Results.NotFound();
+        }
+
+        // One event for all of them: the erasure is a single statement and a single retry unit.
+        if (serviceIds.Count > 0)
+        {
+            await publisher.EnqueueAsync(new ServicesDeleted(serviceIds), cancellationToken);
+        }
+
+        await publisher.EnqueueAsync(new ApplicationDeleted(applicationId), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        signal.Nudge(); // Only now — before the commit the dispatcher would find nothing.
+        return Results.NoContent();
+    }
+
+    /// <summary>Deletes a Service, its API keys (cascade) and — through the event — everything it ever sent.</summary>
+    public static async Task<IResult> DeleteService(
+        Guid id,
+        RegistryDbContext dbContext,
+        IIntegrationEventPublisher publisher,
+        IOutboxSignal signal,
+        CancellationToken cancellationToken)
+    {
+        var serviceId = new ServiceId(id);
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var removed = await dbContext.Services
+            .Where(s => s.Id == serviceId)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed == 0)
+        {
+            return Results.NotFound();
+        }
+
+        await publisher.EnqueueAsync(new ServicesDeleted([serviceId]), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        signal.Nudge();
+        return Results.NoContent();
+    }
+
     public static async Task<IResult> SetRetention(
         Guid id, SetRetentionRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {

@@ -1,7 +1,9 @@
+using Bugler.Ingestion.EraseDeletedServiceTelemetry;
 using Bugler.Ingestion.PurgeExpiredTelemetry;
 using Bugler.Ingestion.ReceiveOtlpLogs;
 using Bugler.Ingestion.ReceiveOtlpTraces;
 using Bugler.Ingestion.Storage;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +25,7 @@ public static class IngestionModule
         services.AddHostedService<SpanWriter>();
         services.AddSingleton<TelemetryPurger>();
         services.AddHostedService<PurgeScheduler>();
+        services.AddScoped<IIntegrationEventHandler<ServicesDeleted>, DeletedServiceEraser>();
 
         services.AddDbContext<IngestionDbContext>((provider, options) => options
             .UseNpgsql(

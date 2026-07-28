@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { serviceLabel } from "@/lib/serviceLabel";
 
+import { DeleteConfirmation } from "./DeleteConfirmation";
+import { serviceConfirmationPhrase } from "./deletionConfirmation";
+
 const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
 /** Admin management of the telemetry topology: applications → services → API keys. */
@@ -108,6 +111,7 @@ export function CatalogAdminPage() {
           key={selected.id}
           applicationId={selected.id}
           applicationName={selected.name}
+          onDeleted={() => setSelectedApp(null)}
         />
       ) : (
         <p className="p-6 text-sm text-[#8CA1B8]">
@@ -118,9 +122,14 @@ export function CatalogAdminPage() {
   );
 }
 
-function TopologyDetail(props: { applicationId: string; applicationName: string }) {
+function TopologyDetail(props: {
+  applicationId: string;
+  applicationName: string;
+  onDeleted: () => void;
+}) {
   const queryClient = useQueryClient();
   const [issuedKey, setIssuedKey] = useState<{ serviceId: string; plaintext: string } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const services = useQuery({
     queryKey: ["admin", "services", props.applicationId],
@@ -147,6 +156,21 @@ function TopologyDetail(props: { applicationId: string; applicationName: string 
     },
   });
 
+  const deleteApplication = useMutation({
+    mutationFn: async () => {
+      const { error } = await api.DELETE("/api/admin/applications/{id}", {
+        params: { path: { id: props.applicationId } },
+      });
+      if (error !== undefined) throw new Error("Failed to delete application");
+    },
+    onSuccess: () => {
+      setConfirmingDelete(false);
+      queryClient.invalidateQueries({ queryKey: ["admin", "applications"] });
+      queryClient.invalidateQueries({ queryKey: ["catalog"] });
+      props.onDeleted();
+    },
+  });
+
   const list = services.data ?? [];
 
   return (
@@ -159,11 +183,31 @@ function TopologyDetail(props: { applicationId: string; applicationName: string 
         <span className="ml-auto text-[12.5px] text-[#8CA1B8]">
           {list.length} {list.length === 1 ? "service" : "services"}
         </span>
+        <button
+          type="button"
+          className="rounded-[5px] px-2 py-[3px] text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
+          onClick={() => setConfirmingDelete(true)}
+        >
+          Delete application
+        </button>
       </div>
+
+      <DeleteConfirmation
+        inputId={props.applicationId}
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={`Delete application "${props.applicationName}"?`}
+        consequence={`This erases ${list.length} ${list.length === 1 ? "service" : "services"}, their API keys and every log and span they ever sent.`}
+        phrase={props.applicationName}
+        pending={deleteApplication.isPending}
+        failed={deleteApplication.isError}
+        onConfirm={() => deleteApplication.mutate()}
+      />
 
       {list.map(service => (
         <ServiceCard
           key={service.id}
+          applicationId={props.applicationId}
           service={service}
           issuedPlaintext={issuedKey?.serviceId === service.id ? issuedKey.plaintext : null}
           onIssue={() => issueKey.mutate(service.id)}
@@ -177,6 +221,7 @@ function TopologyDetail(props: { applicationId: string; applicationName: string 
 }
 
 function ServiceCard(props: {
+  applicationId: string;
   service: {
     id: string;
     namespace: string;
@@ -189,6 +234,7 @@ function ServiceCard(props: {
   onIssuedSaved: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const keys = useQuery({
     queryKey: ["admin", "keys", props.service.id],
     queryFn: async () => {
@@ -205,6 +251,20 @@ function ServiceCard(props: {
       await api.DELETE("/api/admin/keys/{id}", { params: { path: { id: keyId } } });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "keys", props.service.id] }),
+  });
+
+  const deleteService = useMutation({
+    mutationFn: async () => {
+      const { error } = await api.DELETE("/api/admin/services/{id}", {
+        params: { path: { id: props.service.id } },
+      });
+      if (error !== undefined) throw new Error("Failed to delete service");
+    },
+    onSuccess: () => {
+      setConfirmingDelete(false);
+      queryClient.invalidateQueries({ queryKey: ["admin", "services", props.applicationId] });
+      queryClient.invalidateQueries({ queryKey: ["catalog"] });
+    },
   });
 
   const activeKeys = (keys.data ?? []).filter(k => k.revokedAt == null);
@@ -225,7 +285,26 @@ function ServiceCard(props: {
         <Button size="sm" variant="secondary" className="ml-auto" onClick={props.onIssue}>
           Issue key
         </Button>
+        <button
+          type="button"
+          className="rounded-[5px] px-2 py-[3px] text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
+          onClick={() => setConfirmingDelete(true)}
+        >
+          Delete
+        </button>
       </div>
+
+      <DeleteConfirmation
+        inputId={props.service.id}
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={`Delete service "${label}"?`}
+        consequence="This erases its API keys and every log and span it ever sent. Traces it shared with other services keep their remaining spans."
+        phrase={serviceConfirmationPhrase(props.service)}
+        pending={deleteService.isPending}
+        failed={deleteService.isError}
+        onConfirm={() => deleteService.mutate()}
+      />
 
       {props.issuedPlaintext !== null && (
         <div className="flex flex-col gap-2 rounded-[9px] border border-[rgba(233,164,60,0.55)] bg-[rgba(233,164,60,0.10)] p-3.5">

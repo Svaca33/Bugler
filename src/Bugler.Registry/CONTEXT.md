@@ -43,3 +43,7 @@ _Avoid_: TTL, expiration, lifetime
 **Catalog**:
 The browsable inventory of Applications and their Services.
 _Avoid_: directory, inventory, list
+
+**Deletion**:
+The permanent removal of an Application or a Service from the Catalog, together with everything registered under it and everything its Services ever sent. Irreversible and never partial.
+_Avoid_: archive, disable, decommission, purge

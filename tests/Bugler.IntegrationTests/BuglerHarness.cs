@@ -163,6 +163,26 @@ public sealed class BuglerHarness : IAsyncDisposable
         }
     }
 
+    /// <summary>Polls a scalar count query until it reads exactly the expected value, or gives up.</summary>
+    public async Task<long> WaitForCountAsync(string sql, long expected)
+    {
+        var dataSource = _factory.Services.GetRequiredService<NpgsqlDataSource>();
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+
+        while (true)
+        {
+            await using var command = dataSource.CreateCommand(sql);
+            var count = Convert.ToInt64(await command.ExecuteScalarAsync());
+
+            if (count == expected || DateTime.UtcNow > deadline)
+            {
+                return count;
+            }
+
+            await Task.Delay(200);
+        }
+    }
+
     public async Task ExecuteSqlAsync(string sql)
     {
         var dataSource = _factory.Services.GetRequiredService<NpgsqlDataSource>();

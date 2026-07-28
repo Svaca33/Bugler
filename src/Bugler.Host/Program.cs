@@ -1,8 +1,10 @@
 using Bugler.Access;
 using Bugler.Exploration;
 using Bugler.Host;
+using Bugler.Host.IntegrationEvents;
 using Bugler.Ingestion;
 using Bugler.Registry;
+using Bugler.SharedKernel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,11 @@ var surfaceByPort = ListenerSurfaces.FromConfiguration(builder.Configuration);
 builder.Services.AddNpgsqlDataSource(
     builder.Configuration.GetConnectionString("bugler")
     ?? throw new InvalidOperationException("Connection string 'bugler' is missing."));
+
+// The only place that knows which context listens to another context's facts.
+builder.Services.AddSingleton<OutboxSignal>();
+builder.Services.AddSingleton<IOutboxSignal>(p => p.GetRequiredService<OutboxSignal>());
+builder.Services.AddHostedService<OutboxDispatcher>();
 
 builder.Services.AddRegistry(builder.Configuration);
 builder.Services.AddIngestion(builder.Configuration);

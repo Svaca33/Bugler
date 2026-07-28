@@ -12,4 +12,5 @@
 - **Ingestion → Registry**: Ingestion asks Registry to validate an API key (key → ServiceId) and reads effective retention per service when purging. Nothing else crosses this boundary.
 - **Exploration → Access**: Exploration asks Access for the set of applications the current user may read; every query is constrained by that set.
 - **Exploration → Registry**: Exploration reads the catalog (application and service names, and the facets a Source Filter offers) for display and filter suggestions.
-- **Shared identifiers**: `ApplicationId` and `ServiceId` are the only types shared across contexts; no context reads another context's data store.
+- **Registry → Ingestion, Registry → Access**: on Deletion, Registry publishes `ServicesDeleted` and `ApplicationDeleted` through its outbox; Ingestion erases the Signals of the deleted Services and Access revokes the grants pointing at the deleted Application. Registry does not know who listens (ADR 0008).
+- **Shared identifiers**: `ApplicationId`, `ServiceId` and the integration event contracts are the only types shared across contexts; no context reads another context's data store.

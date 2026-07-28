@@ -31,3 +31,7 @@ _Avoid_: error, drop
 **Purge**:
 The permanent removal of Signals that have outlived their Service's retention.
 _Avoid_: cleanup, deletion job, GC
+
+**Erasure**:
+The permanent removal of a Service's Signals because the Service itself is gone, as opposed to a Purge, which is driven by retention alone.
+_Avoid_: purge, cleanup, wipe

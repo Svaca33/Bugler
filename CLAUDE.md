@@ -22,7 +22,7 @@ Modular monolith of bounded contexts — see [CONTEXT-MAP.md](CONTEXT-MAP.md) an
 - `src/Bugler.Registry` — applications, services, API keys (`Authorization: Bearer blgr_…`)
 - `src/Bugler.Ingestion` — OTLP receivers (gRPC + HTTP), buffered writers, retention purge
 - `src/Bugler.Exploration` — read path for the UI (logs, traces, waterfall)
-- `src/Bugler.SharedKernel` — shared ids/primitives only
+- `src/Bugler.SharedKernel` — shared ids/primitives and the integration event contracts (no behaviour)
 - `src/Bugler.Host` — composition root; owns deployment topology
 
 Module boundaries are enforced by `tests/Bugler.ArchitectureTests` (backend) and dependency-cruiser (`cd frontend && bun run arch`).

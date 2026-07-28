@@ -1,4 +1,5 @@
 using Bugler.Registry.Catalog;
+using Bugler.Registry.Outbox;
 using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,7 @@ public sealed class RegistryDbContext(DbContextOptions<RegistryDbContext> option
     public DbSet<Application> Applications => Set<Application>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +46,14 @@ public sealed class RegistryDbContext(DbContextOptions<RegistryDbContext> option
             apiKey.HasIndex(k => k.KeyHash).IsUnique();
             apiKey.HasOne<Service>().WithMany()
                 .HasForeignKey(k => k.ServiceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(message =>
+        {
+            message.Property(m => m.EventType).HasMaxLength(200);
+            message.Property(m => m.LastError).HasMaxLength(2000);
+            // The dispatcher's only query: unparked messages that have come due.
+            message.HasIndex(m => new { m.ParkedAt, m.NextAttemptAt });
         });
     }
 }

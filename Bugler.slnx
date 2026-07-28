@@ -11,6 +11,7 @@
     <Project Path="tests/Bugler.Access.Tests/Bugler.Access.Tests.csproj" />
     <Project Path="tests/Bugler.ArchitectureTests/Bugler.ArchitectureTests.csproj" />
     <Project Path="tests/Bugler.Exploration.Tests/Bugler.Exploration.Tests.csproj" />
+    <Project Path="tests/Bugler.Host.Tests/Bugler.Host.Tests.csproj" />
     <Project Path="tests/Bugler.Ingestion.Tests/Bugler.Ingestion.Tests.csproj" />
     <Project Path="tests/Bugler.IntegrationTests/Bugler.IntegrationTests.csproj" />
     <Project Path="tests/Bugler.Registry.Tests/Bugler.Registry.Tests.csproj" />
