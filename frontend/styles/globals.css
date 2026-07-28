@@ -154,6 +154,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  /* Tailwind v4's preflight resets buttons to `cursor: default`; Bugler wants the
+     pointer back on everything clickable. Disabled controls keep their own cursor
+     (`disabled:cursor-not-allowed`, `disabled:pointer-events-none`). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
   /* every value, id, timestamp and duration in Bugler is mono */
   code, kbd, samp, pre, time, [data-mono] {
     font-family: var(--font-mono);
