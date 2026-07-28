@@ -9,15 +9,24 @@ public sealed record ApplicationDto(Guid Id, string Name, DateTimeOffset Created
 
 public sealed record CreateApplicationRequest(string Name);
 
-public sealed record InstanceDto(
-    Guid Id, Guid ApplicationId, string Name, int? RetentionDays, DateTimeOffset CreatedAt);
+public sealed record ServiceDto(
+    Guid Id,
+    Guid ApplicationId,
+    string Namespace,
+    string Environment,
+    string Name,
+    int? RetentionDays,
+    DateTimeOffset CreatedAt);
 
-public sealed record CreateInstanceRequest(Guid ApplicationId, string Name, int? RetentionDays);
+public sealed record CreateServiceRequest(
+    Guid ApplicationId, string Namespace, string Environment, string Name, int? RetentionDays);
 
 public sealed record SetRetentionRequest(int? RetentionDays);
 
 internal static class AdminCatalogEndpoints
 {
+    private const int MaxFacetLength = 200;
+
     public static async Task<IReadOnlyList<ApplicationDto>> ListApplications(
         RegistryDbContext dbContext, CancellationToken cancellationToken) =>
         await dbContext.Applications
@@ -29,7 +38,7 @@ internal static class AdminCatalogEndpoints
         CreateApplicationRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {
         var name = request.Name.Trim();
-        if (name.Length is 0 or > 200)
+        if (name.Length is 0 or > MaxFacetLength)
         {
             return Results.BadRequest("Application name must be 1-200 characters.");
         }
@@ -50,25 +59,29 @@ internal static class AdminCatalogEndpoints
         return Results.Ok(new ApplicationDto(application.Id.Value, application.Name, application.CreatedAt));
     }
 
-    public static async Task<IReadOnlyList<InstanceDto>> ListInstances(
+    public static async Task<IReadOnlyList<ServiceDto>> ListServices(
         Guid applicationId, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {
         var id = new ApplicationId(applicationId);
-        return await dbContext.Instances
-            .Where(i => i.ApplicationId == id)
-            .OrderBy(i => i.Name)
-            .Select(i => new InstanceDto(
-                i.Id.Value, i.ApplicationId.Value, i.Name, i.RetentionDays, i.CreatedAt))
+        return await dbContext.Services
+            .Where(s => s.ApplicationId == id)
+            .OrderBy(s => s.Namespace).ThenBy(s => s.Environment).ThenBy(s => s.Name)
+            .Select(s => new ServiceDto(
+                s.Id.Value, s.ApplicationId.Value, s.Namespace, s.Environment, s.Name,
+                s.RetentionDays, s.CreatedAt))
             .ToListAsync(cancellationToken);
     }
 
-    public static async Task<IResult> CreateInstance(
-        CreateInstanceRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
+    public static async Task<IResult> CreateService(
+        CreateServiceRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {
+        var serviceNamespace = request.Namespace.Trim();
+        var environment = request.Environment.Trim();
         var name = request.Name.Trim();
-        if (name.Length is 0 or > 200)
+
+        if (!IsValidFacet(serviceNamespace) || !IsValidFacet(environment) || !IsValidFacet(name))
         {
-            return Results.BadRequest("Instance name must be 1-200 characters.");
+            return Results.BadRequest("Namespace, environment and name must each be 1-200 characters.");
         }
 
         if (request.RetentionDays is < 1)
@@ -82,25 +95,31 @@ internal static class AdminCatalogEndpoints
             return Results.NotFound("Unknown application.");
         }
 
-        if (await dbContext.Instances.AnyAsync(
-                i => i.ApplicationId == applicationId && i.Name == name, cancellationToken))
+        if (await dbContext.Services.AnyAsync(
+                s => s.ApplicationId == applicationId &&
+                     s.Namespace == serviceNamespace &&
+                     s.Environment == environment &&
+                     s.Name == name,
+                cancellationToken))
         {
-            return Results.Conflict("An instance with this name already exists for the application.");
+            return Results.Conflict("This service is already registered for the application.");
         }
 
-        var instance = new Instance
+        var service = new Service
         {
-            Id = InstanceId.New(),
+            Id = ServiceId.New(),
             ApplicationId = applicationId,
+            Namespace = serviceNamespace,
+            Environment = environment,
             Name = name,
             RetentionDays = request.RetentionDays,
             CreatedAt = DateTimeOffset.UtcNow,
         };
-        dbContext.Instances.Add(instance);
+        dbContext.Services.Add(service);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Results.Ok(new InstanceDto(
-            instance.Id.Value, instance.ApplicationId.Value, instance.Name,
-            instance.RetentionDays, instance.CreatedAt));
+        return Results.Ok(new ServiceDto(
+            service.Id.Value, service.ApplicationId.Value, service.Namespace, service.Environment,
+            service.Name, service.RetentionDays, service.CreatedAt));
     }
 
     public static async Task<IResult> SetRetention(
@@ -111,16 +130,18 @@ internal static class AdminCatalogEndpoints
             return Results.BadRequest("Retention must be at least 1 day.");
         }
 
-        var instanceId = new InstanceId(id);
-        var instance = await dbContext.Instances
-            .FirstOrDefaultAsync(i => i.Id == instanceId, cancellationToken);
-        if (instance is null)
+        var serviceId = new ServiceId(id);
+        var service = await dbContext.Services
+            .FirstOrDefaultAsync(s => s.Id == serviceId, cancellationToken);
+        if (service is null)
         {
             return Results.NotFound();
         }
 
-        instance.RetentionDays = request.RetentionDays;
+        service.RetentionDays = request.RetentionDays;
         await dbContext.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
     }
+
+    private static bool IsValidFacet(string value) => value.Length is > 0 and <= MaxFacetLength;
 }

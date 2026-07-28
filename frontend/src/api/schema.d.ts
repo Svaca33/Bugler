@@ -37,72 +37,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/traces": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/status": {
         parameters: {
             query?: never;
@@ -295,13 +229,16 @@ export interface paths {
             parameters: {
                 query?: {
                     applicationId?: string;
-                    instanceId?: string;
-                    tenant?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
                     severityMin?: number | string;
                     from?: string;
                     to?: string;
                     q?: string;
                     traceId?: string;
+                    attr?: string[];
+                    res?: string[];
                     before?: string;
                     beforeId?: number | string;
                     limit?: number | string;
@@ -319,6 +256,46 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["SearchLogsResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ObservedKeysResponse"];
                     };
                 };
             };
@@ -379,10 +356,14 @@ export interface paths {
             parameters: {
                 query?: {
                     applicationId?: string;
-                    instanceId?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
                     from?: string;
                     to?: string;
                     errorsOnly?: boolean;
+                    attr?: string[];
+                    res?: string[];
                     limit?: number | string;
                 };
                 header?: never;
@@ -398,6 +379,46 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ListTracesResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traces/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ObservedKeysResponse"];
                     };
                 };
             };
@@ -708,7 +729,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/applications/{applicationId}/instances": {
+    "/api/admin/applications/{applicationId}/services": {
         parameters: {
             query?: never;
             header?: never;
@@ -732,7 +753,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["InstanceDto"][];
+                        "application/json": components["schemas"]["ServiceDto"][];
                     };
                 };
             };
@@ -745,7 +766,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/instances": {
+    "/api/admin/services": {
         parameters: {
             query?: never;
             header?: never;
@@ -763,7 +784,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CreateInstanceRequest"];
+                    "application/json": components["schemas"]["CreateServiceRequest"];
                 };
             };
             responses: {
@@ -773,7 +794,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["InstanceDto"];
+                        "application/json": components["schemas"]["ServiceDto"];
                     };
                 };
             };
@@ -784,7 +805,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/instances/{id}/retention": {
+    "/api/admin/services/{id}/retention": {
         parameters: {
             query?: never;
             header?: never;
@@ -823,7 +844,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/instances/{id}/keys": {
+    "/api/admin/services/{id}/keys": {
         parameters: {
             query?: never;
             header?: never;
@@ -916,6 +937,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/traces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -942,22 +1029,26 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
-            instances: components["schemas"]["CatalogInstanceDto"][];
-        };
-        CatalogInstanceDto: {
-            /** Format: uuid */
-            id: string;
-            name: string;
+            services: components["schemas"]["CatalogServiceDto"][];
         };
         CatalogResponse: {
             applications: components["schemas"]["CatalogApplicationDto"][];
         };
+        CatalogServiceDto: {
+            /** Format: uuid */
+            id: string;
+            namespace: string;
+            environment: string;
+            name: string;
+        };
         CreateApplicationRequest: {
             name: string;
         };
-        CreateInstanceRequest: {
+        CreateServiceRequest: {
             /** Format: uuid */
             applicationId: string;
+            namespace: string;
+            environment: string;
             name: string;
             /** Format: int32 */
             retentionDays: null | number | string;
@@ -980,17 +1071,6 @@ export interface components {
             /** Format: uuid */
             applicationId: string;
         };
-        InstanceDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            applicationId: string;
-            name: string;
-            /** Format: int32 */
-            retentionDays: null | number | string;
-            /** Format: date-time */
-            createdAt: string;
-        };
         IssuedApiKeyDto: {
             /** Format: uuid */
             id: string;
@@ -1008,7 +1088,7 @@ export interface components {
             /** Format: int64 */
             id: number | string;
             /** Format: uuid */
-            instanceId: string;
+            serviceId: string;
             /** Format: date-time */
             timestamp: string;
             /** Format: date-time */
@@ -1019,13 +1099,32 @@ export interface components {
             body: null | string;
             traceId: null | string;
             spanId: null | string;
-            serviceName: null | string;
             scopeName: null | string;
             resourceAttributes: components["schemas"]["JsonElement"];
             attributes: components["schemas"]["JsonElement"];
         };
+        ObservedKeyDto: {
+            scope: string;
+            path: string[];
+        };
+        ObservedKeysResponse: {
+            items: components["schemas"]["ObservedKeyDto"][];
+        };
         SearchLogsResponse: {
             items: components["schemas"]["LogRecordDto"][];
+        };
+        ServiceDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            applicationId: string;
+            namespace: string;
+            environment: string;
+            name: string;
+            /** Format: int32 */
+            retentionDays: null | number | string;
+            /** Format: date-time */
+            createdAt: string;
         };
         SetRetentionRequest: {
             /** Format: int32 */
@@ -1044,7 +1143,7 @@ export interface components {
             /** Format: int64 */
             id: number | string;
             /** Format: uuid */
-            instanceId: string;
+            serviceId: string;
             spanId: string;
             parentSpanId: null | string;
             name: string;
@@ -1057,8 +1156,8 @@ export interface components {
             /** Format: int16 */
             statusCode: number | string;
             statusMessage: null | string;
-            serviceName: null | string;
             scopeName: null | string;
+            resourceAttributes: components["schemas"]["JsonElement"];
             attributes: components["schemas"]["JsonElement"];
             events: components["schemas"]["JsonElement"];
             links: components["schemas"]["JsonElement"];
@@ -1073,7 +1172,8 @@ export interface components {
             spanCount: number | string;
             hasError: boolean;
             rootName: null | string;
-            rootService: null | string;
+            /** Format: uuid */
+            rootServiceId: null | string;
         };
         UserDto: {
             /** Format: uuid */

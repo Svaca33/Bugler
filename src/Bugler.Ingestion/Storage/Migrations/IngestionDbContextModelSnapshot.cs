@@ -41,10 +41,6 @@ namespace Bugler.Ingestion.Storage.Migrations
                         .HasColumnType("text")
                         .HasColumnName("body");
 
-                    b.Property<Guid>("InstanceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("instance_id");
-
                     b.Property<DateTime?>("ObservedTimestamp")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("observed_timestamp");
@@ -58,9 +54,9 @@ namespace Bugler.Ingestion.Storage.Migrations
                         .HasColumnType("text")
                         .HasColumnName("scope_name");
 
-                    b.Property<string>("ServiceName")
-                        .HasColumnType("text")
-                        .HasColumnName("service_name");
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id");
 
                     b.Property<short>("SeverityNumber")
                         .HasColumnType("smallint")
@@ -95,9 +91,9 @@ namespace Bugler.Ingestion.Storage.Migrations
                     b.HasIndex("TraceId")
                         .HasDatabaseName("ix_log_records_trace_id");
 
-                    b.HasIndex("InstanceId", "Timestamp")
+                    b.HasIndex("ServiceId", "Timestamp")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_log_records_instance_id_timestamp");
+                        .HasDatabaseName("ix_log_records_service_id_timestamp");
 
                     b.ToTable("log_records", "telemetry");
                 });
@@ -124,10 +120,6 @@ namespace Bugler.Ingestion.Storage.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("events");
-
-                    b.Property<Guid>("InstanceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("instance_id");
 
                     b.Property<short>("Kind")
                         .HasColumnType("smallint")
@@ -157,9 +149,9 @@ namespace Bugler.Ingestion.Storage.Migrations
                         .HasColumnType("text")
                         .HasColumnName("scope_name");
 
-                    b.Property<string>("ServiceName")
-                        .HasColumnType("text")
-                        .HasColumnName("service_name");
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id");
 
                     b.Property<string>("SpanId")
                         .IsRequired()
@@ -196,9 +188,9 @@ namespace Bugler.Ingestion.Storage.Migrations
                     b.HasIndex("TraceId")
                         .HasDatabaseName("ix_spans_trace_id");
 
-                    b.HasIndex("InstanceId", "StartTime")
+                    b.HasIndex("ServiceId", "StartTime")
                         .IsDescending(false, true)
-                        .HasDatabaseName("ix_spans_instance_id_start_time");
+                        .HasDatabaseName("ix_spans_service_id_start_time");
 
                     b.ToTable("spans", "telemetry");
                 });

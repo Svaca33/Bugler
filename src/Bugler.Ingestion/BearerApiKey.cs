@@ -1,7 +1,7 @@
 namespace Bugler.Ingestion;
 
 /// <summary>
-/// Extracts the Instance API key from a standard `Authorization: Bearer` header
+/// Extracts the Service API key from a standard `Authorization: Bearer` header
 /// (set via OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_...").
 /// </summary>
 internal static class BearerApiKey

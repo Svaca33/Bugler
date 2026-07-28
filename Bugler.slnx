@@ -15,4 +15,7 @@
     <Project Path="tests/Bugler.IntegrationTests/Bugler.IntegrationTests.csproj" />
     <Project Path="tests/Bugler.Registry.Tests/Bugler.Registry.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Bugler.SampleSource/Bugler.SampleSource.csproj" />
+  </Folder>
 </Solution>

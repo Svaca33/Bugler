@@ -12,7 +12,7 @@ using OpenTelemetry.Proto.Logs.V1;
 namespace Bugler.IntegrationTests;
 
 /// <summary>
-/// The admin lifecycle end to end: register an application and instance, issue a key,
+/// The admin lifecycle end to end: register an application and service, issue a key,
 /// export with it, revoke it, and watch exports get rejected.
 /// </summary>
 public sealed class RegistryAdminTests : IAsyncLifetime
@@ -35,14 +35,30 @@ public sealed class RegistryAdminTests : IAsyncLifetime
         var duplicate = await admin.PostAsJsonAsync("/api/admin/applications", new { name = "CRM" });
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
 
-        var instanceResponse = await admin.PostAsJsonAsync(
-            "/api/admin/instances",
-            new { applicationId = application.Id, name = "Globex prod", retentionDays = 14 });
-        instanceResponse.EnsureSuccessStatusCode();
-        var instance = (await instanceResponse.Content.ReadFromJsonAsync<InstanceDto>())!;
-        Assert.Equal(14, instance.RetentionDays);
+        var serviceRequest = new
+        {
+            applicationId = application.Id,
+            @namespace = "globex",
+            environment = "prod",
+            name = "backend",
+            retentionDays = 14,
+        };
+        var serviceResponse = await admin.PostAsJsonAsync("/api/admin/services", serviceRequest);
+        serviceResponse.EnsureSuccessStatusCode();
+        var service = (await serviceResponse.Content.ReadFromJsonAsync<ServiceDto>())!;
+        Assert.Equal(14, service.RetentionDays);
+        Assert.Equal("globex", service.Namespace);
 
-        var keyResponse = await admin.PostAsJsonAsync($"/api/admin/instances/{instance.Id}/keys", new { });
+        var duplicateService = await admin.PostAsJsonAsync("/api/admin/services", serviceRequest);
+        Assert.Equal(HttpStatusCode.Conflict, duplicateService.StatusCode);
+
+        // Same deployment, different role: a separate registration with its own key.
+        var mobile = await admin.PostAsJsonAsync(
+            "/api/admin/services",
+            new { applicationId = application.Id, @namespace = "globex", environment = "prod", name = "mobile" });
+        mobile.EnsureSuccessStatusCode();
+
+        var keyResponse = await admin.PostAsJsonAsync($"/api/admin/services/{service.Id}/keys", new { });
         keyResponse.EnsureSuccessStatusCode();
         var issued = (await keyResponse.Content.ReadFromJsonAsync<IssuedApiKeyDto>())!;
         Assert.StartsWith("blgr_", issued.Plaintext);
@@ -55,14 +71,14 @@ public sealed class RegistryAdminTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, (await IngestAsync(issued.Plaintext)).StatusCode);
 
         var retention = await admin.PutAsJsonAsync(
-            $"/api/admin/instances/{instance.Id}/retention", new { retentionDays = 7 });
+            $"/api/admin/services/{service.Id}/retention", new { retentionDays = 7 });
         Assert.Equal(HttpStatusCode.NoContent, retention.StatusCode);
     }
 
     [Fact]
     public async Task Catalog_is_visibility_filtered()
     {
-        var (crmAppId, _, _) = await _harness.SeedApplicationAsync("CRM", "Acme");
+        var (crmAppId, _, _) = await _harness.SeedApplicationAsync("CRM", "acme", "prod", "backend");
 
         var adminCatalog = await _harness.Client.GetFromJsonAsync<CatalogResponse>("/api/catalog");
         Assert.Equal(2, adminCatalog!.Applications.Count);

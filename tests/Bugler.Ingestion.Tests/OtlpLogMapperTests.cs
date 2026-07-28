@@ -10,7 +10,7 @@ namespace Bugler.Ingestion.Tests;
 
 public class OtlpLogMapperTests
 {
-    private static readonly InstanceId Instance = InstanceId.New();
+    private static readonly ServiceId Service = ServiceId.New();
     private static readonly DateTime KnownTime = new(2026, 7, 27, 10, 0, 0, DateTimeKind.Utc);
 
     private static ulong ToUnixNano(DateTime utc) => (ulong)(utc - DateTime.UnixEpoch).Ticks * 100;
@@ -50,18 +50,20 @@ public class OtlpLogMapperTests
             Attributes = { new KeyValue { Key = "order.id", Value = new AnyValue { IntValue = 42 } } },
         };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Instance));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
 
-        Assert.Equal(Instance.Value, row.InstanceId);
+        Assert.Equal(Service.Value, row.ServiceId);
         Assert.Equal(KnownTime, row.Timestamp);
         Assert.Equal((short)SeverityNumber.Warn, row.SeverityNumber);
         Assert.Equal("Warning", row.SeverityText);
         Assert.Equal("Order failed", row.Body);
         Assert.Equal("0102030405060708090a0b0c0d0e0f10", row.TraceId);
         Assert.Equal("0102030405060708", row.SpanId);
-        Assert.Equal("checkout", row.ServiceName);
         Assert.Equal("Bugler.Tests", row.ScopeName);
         Assert.Contains("\"tenant.id\":\"acme\"", row.ResourceAttributes);
+
+        // The Declared Identity is kept as a plain resource attribute, never lifted into the row.
+        Assert.Contains("\"service.name\":\"checkout\"", row.ResourceAttributes);
         Assert.Equal("""{"order.id":42}""", row.Attributes);
     }
 
@@ -70,7 +72,7 @@ public class OtlpLogMapperTests
     {
         var record = new LogRecord { ObservedTimeUnixNano = ToUnixNano(KnownTime) };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Instance));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
 
         Assert.Equal(KnownTime, row.Timestamp);
         Assert.Equal(KnownTime, row.ObservedTimestamp);
@@ -94,7 +96,7 @@ public class OtlpLogMapperTests
             },
         };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Instance));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
 
         Assert.Equal("""{"code":7,"fatal":true}""", row.Body);
     }
@@ -108,7 +110,7 @@ public class OtlpLogMapperTests
             SpanId = ByteString.Empty,
         };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Instance));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
 
         Assert.Null(row.TraceId);
         Assert.Null(row.SpanId);

@@ -1,14 +1,27 @@
 import { Link } from "@tanstack/react-router";
 
 import type { LogRecord } from "@/api/client";
+import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 
+import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
+import { AttributeLeafList } from "./AttributeLeafList";
 import { formatTime } from "./format";
 import { severityClass, severityLabel } from "./severity";
+import { serviceLabels } from "./sourceFilter";
 
-export function LogDetailPanel(props: { log: LogRecord; onClose: () => void }) {
-  const { log } = props;
+export function LogDetailPanel(props: {
+  log: LogRecord;
+  filters: AttributeFilter[];
+  onFiltersChange: (filters: AttributeFilter[]) => void;
+  onClose: () => void;
+}) {
+  const { log, filters, onFiltersChange } = props;
+  const catalog = useCatalog();
+  const toggle = (filter: AttributeFilter, active: boolean) =>
+    onFiltersChange(active ? removeFilter(filters, filter) : upsertFilter(filters, filter));
   const severity = Number(log.severityNumber);
+  const service = serviceLabels(catalog.data?.applications ?? []).get(log.serviceId);
   return (
     <aside className="flex w-96 shrink-0 flex-col gap-[18px] overflow-auto border-l border-[#17293D] bg-[#0B1826] px-5 py-4">
       <div className="flex items-center gap-2">
@@ -31,7 +44,7 @@ export function LogDetailPanel(props: { log: LogRecord; onClose: () => void }) {
           value={log.severityText || severityLabel(severity)}
           valueClass={severityClass(severity)}
         />
-        <Row label="Service" value={log.serviceName ?? "—"} />
+        <Row label="Service" value={service ?? "—"} />
         <Row label="Scope" value={log.scopeName ?? "—"} />
         <Row label="Span" value={log.spanId ?? "—"} />
       </dl>
@@ -50,10 +63,20 @@ export function LogDetailPanel(props: { log: LogRecord; onClose: () => void }) {
         </pre>
       </Section>
       <Section title="Attributes">
-        <JsonBlock value={log.attributes} />
+        <AttributeLeafList
+          attributes={log.attributes}
+          scope="attribute"
+          filters={filters}
+          onToggle={toggle}
+        />
       </Section>
       <Section title="Resource">
-        <JsonBlock value={log.resourceAttributes} />
+        <AttributeLeafList
+          attributes={log.resourceAttributes}
+          scope="resource"
+          filters={filters}
+          onToggle={toggle}
+        />
       </Section>
     </aside>
   );

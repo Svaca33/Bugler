@@ -1,8 +1,12 @@
 namespace Bugler.Ingestion.Storage;
 
-/// <summary>One span Signal normalized for storage, stamped with its authenticated Source.</summary>
+/// <summary>
+/// One span Signal normalized for storage, stamped with its authenticated Source.
+/// The sender's Declared Identity is not lifted out — it stays in <see cref="ResourceAttributes"/>,
+/// because the Service is what the API key proves (ADR 0006).
+/// </summary>
 public sealed record SpanRow(
-    Guid InstanceId,
+    Guid ServiceId,
     string TraceId,
     string SpanId,
     string? ParentSpanId,
@@ -12,7 +16,6 @@ public sealed record SpanRow(
     DateTime EndTime,
     short StatusCode,
     string? StatusMessage,
-    string? ServiceName,
     string? ScopeName,
     string ResourceAttributes,
     string Attributes,

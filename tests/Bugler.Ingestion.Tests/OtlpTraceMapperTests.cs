@@ -10,7 +10,7 @@ namespace Bugler.Ingestion.Tests;
 
 public class OtlpTraceMapperTests
 {
-    private static readonly InstanceId Instance = InstanceId.New();
+    private static readonly ServiceId Service = ServiceId.New();
     private static readonly DateTime Start = new(2026, 7, 27, 10, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = Start.AddMilliseconds(250);
 
@@ -71,11 +71,11 @@ public class OtlpTraceMapperTests
             },
         };
 
-        var (rows, dropped) = OtlpTraceMapper.Map(Request(span), Instance);
+        var (rows, dropped) = OtlpTraceMapper.Map(Request(span), Service);
 
         Assert.Equal(0, dropped);
         var row = Assert.Single(rows);
-        Assert.Equal(Instance.Value, row.InstanceId);
+        Assert.Equal(Service.Value, row.ServiceId);
         Assert.Equal("0102030405060708090a0b0c0d0e0f10", row.TraceId);
         Assert.Equal("0102030405060708", row.SpanId);
         Assert.Equal("0102030405060708", row.ParentSpanId);
@@ -85,8 +85,10 @@ public class OtlpTraceMapperTests
         Assert.Equal(End, row.EndTime);
         Assert.Equal((short)Status.Types.StatusCode.Error, row.StatusCode);
         Assert.Equal("boom", row.StatusMessage);
-        Assert.Equal("checkout", row.ServiceName);
         Assert.Equal("Bugler.Tests", row.ScopeName);
+
+        // The Declared Identity is kept as a plain resource attribute, never lifted into the row.
+        Assert.Contains("\"service.name\":\"checkout\"", row.ResourceAttributes);
         Assert.Equal("""{"http.status_code":500}""", row.Attributes);
         Assert.Contains("\"name\":\"exception\"", row.Events);
         Assert.Contains("\"exception.type\":\"IOException\"", row.Events);
@@ -111,7 +113,7 @@ public class OtlpTraceMapperTests
             Name = "broken",
         };
 
-        var (rows, dropped) = OtlpTraceMapper.Map(Request(valid, malformed), Instance);
+        var (rows, dropped) = OtlpTraceMapper.Map(Request(valid, malformed), Service);
 
         Assert.Equal(1, dropped);
         Assert.Equal("ok", Assert.Single(rows).Name);
@@ -129,7 +131,7 @@ public class OtlpTraceMapperTests
             EndTimeUnixNano = ToUnixNano(End),
         };
 
-        var (rows, _) = OtlpTraceMapper.Map(Request(span), Instance);
+        var (rows, _) = OtlpTraceMapper.Map(Request(span), Service);
 
         var row = Assert.Single(rows);
         Assert.Null(row.ParentSpanId);

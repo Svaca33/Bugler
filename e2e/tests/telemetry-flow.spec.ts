@@ -6,23 +6,25 @@ const ADMIN_PASSWORD = "LocalAdmin123!";
 
 /**
  * The whole product in one pass: sign in (or first-run setup), register an
- * application and instance, issue an API key, export real OTLP telemetry with
+ * application and service, issue an API key, export real OTLP telemetry with
  * it, and watch the logs and the trace waterfall appear in the UI.
  */
 test("telemetry flows from an issued key to the log and trace viewers", async ({ page }) => {
   test.setTimeout(180_000);
   await signIn(page);
 
-  // Register a fresh application + instance and issue its key.
+  // Register a fresh application + service and issue its key.
   const appName = `E2E ${Date.now()}`;
   await page.getByRole("link", { name: "Admin" }).click();
   await page.getByLabel("Add application").fill(appName);
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("button", { name: appName })).toBeVisible();
 
-  await page.getByLabel("Name (client)").fill("e2e-client");
-  await page.getByRole("button", { name: "Add instance" }).click();
-  await expect(page.getByText("e2e-client", { exact: true })).toBeVisible();
+  await page.getByLabel("Namespace (deployment)").fill("e2e");
+  await page.getByLabel("Environment").fill("prod");
+  await page.getByLabel("Service name").fill("backend");
+  await page.getByRole("button", { name: "Add service" }).click();
+  await expect(page.getByText("e2e/prod · backend", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Issue key" }).click();
   const apiKey = (await page.getByTestId("issued-key").textContent())?.trim();

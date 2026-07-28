@@ -5,13 +5,18 @@ namespace Bugler.Registry.BrowseCatalog;
 
 internal sealed class CatalogReader(RegistryDbContext dbContext) : ICatalogReader
 {
-    public async Task<IReadOnlyList<CatalogInstance>> GetInstancesAsync(CancellationToken cancellationToken) =>
-        await dbContext.Instances
+    public async Task<IReadOnlyList<CatalogService>> GetServicesAsync(CancellationToken cancellationToken) =>
+        await dbContext.Services
             .Join(
                 dbContext.Applications,
-                instance => instance.ApplicationId,
+                service => service.ApplicationId,
                 application => application.Id,
-                (instance, application) =>
-                    new CatalogInstance(instance.Id, application.Id, instance.Name, application.Name))
+                (service, application) => new CatalogService(
+                    service.Id,
+                    application.Id,
+                    application.Name,
+                    service.Namespace,
+                    service.Environment,
+                    service.Name))
             .ToListAsync(cancellationToken);
 }

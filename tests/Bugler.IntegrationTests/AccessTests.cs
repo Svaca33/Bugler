@@ -58,7 +58,7 @@ public sealed class AccessTests : IAsyncLifetime
     [Fact]
     public async Task NonAdmin_sees_only_granted_applications_and_no_admin_api()
     {
-        var (crmAppId, _, crmKey) = await _harness.SeedApplicationAsync("CRM", "Acme");
+        var (crmAppId, _, crmKey) = await _harness.SeedApplicationAsync("CRM", "acme", "prod", "backend");
         await IngestLogAsync(_harness.ApiKey, "eshop log line");
         await IngestLogAsync(crmKey, "crm log line");
         await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 2);

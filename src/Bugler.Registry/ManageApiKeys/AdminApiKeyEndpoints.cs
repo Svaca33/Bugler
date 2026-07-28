@@ -15,14 +15,14 @@ internal static class AdminApiKeyEndpoints
     public static async Task<IResult> ListKeys(
         Guid id, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {
-        var instanceId = new InstanceId(id);
-        if (!await dbContext.Instances.AnyAsync(i => i.Id == instanceId, cancellationToken))
+        var serviceId = new ServiceId(id);
+        if (!await dbContext.Services.AnyAsync(s => s.Id == serviceId, cancellationToken))
         {
             return Results.NotFound();
         }
 
         var keys = await dbContext.ApiKeys
-            .Where(k => k.InstanceId == instanceId)
+            .Where(k => k.ServiceId == serviceId)
             .OrderByDescending(k => k.CreatedAt)
             .Select(k => new ApiKeyDto(k.Id, k.CreatedAt, k.RevokedAt))
             .ToListAsync(cancellationToken);
@@ -32,8 +32,8 @@ internal static class AdminApiKeyEndpoints
     public static async Task<IResult> IssueKey(
         Guid id, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {
-        var instanceId = new InstanceId(id);
-        if (!await dbContext.Instances.AnyAsync(i => i.Id == instanceId, cancellationToken))
+        var serviceId = new ServiceId(id);
+        if (!await dbContext.Services.AnyAsync(s => s.Id == serviceId, cancellationToken))
         {
             return Results.NotFound();
         }
@@ -42,7 +42,7 @@ internal static class AdminApiKeyEndpoints
         var key = new ApiKey
         {
             Id = Guid.CreateVersion7(),
-            InstanceId = instanceId,
+            ServiceId = serviceId,
             KeyHash = ApiKeyMaterial.Hash(plaintext),
             CreatedAt = DateTimeOffset.UtcNow,
         };

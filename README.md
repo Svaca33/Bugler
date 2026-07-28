@@ -13,11 +13,11 @@ Metrics support is planned for a later phase.
 
 ## Domain
 
-The domain hierarchy is **Application → Instance → Tenant**:
+The domain hierarchy is **Application → Service → Tenant**:
 
 - An *Application* is a product; user access is granted per application.
-- An *Instance* is one client deployment; it owns its API key and retention.
-- A *Tenant* is a customer inside a multi-tenant instance, visible only as a filter attribute in telemetry.
+- A *Service* is one registered sender — one role of one deployment, identified by its namespace, environment and name (`demo/prod · backend`). It owns its API keys and retention, and its identity is what the key proves, never what the telemetry claims about itself ([ADR 0006](docs/adr/0006-service-is-the-sender-identity.md)).
+- A *Tenant* is a customer inside a multi-tenant Service, visible only as a filter attribute in telemetry.
 
 The codebase is split into four bounded contexts — **Ingestion**, **Exploration**, **Registry**, **Access** — described in [CONTEXT-MAP.md](CONTEXT-MAP.md), each with its own glossary (`src/Bugler.<Context>/CONTEXT.md`). Architectural decisions are recorded as ADRs in [docs/adr](docs/adr).
 
@@ -28,7 +28,7 @@ docker compose up --build -d
 ```
 
 Open http://localhost:8080 — the first account created becomes the server administrator.
-Register an application and an instance in **Admin**, issue an API key, and point your
+Register an application and a service in **Admin**, issue an API key, and point your
 services at the server:
 
 ```bash
@@ -46,7 +46,7 @@ dotnet run --project src/Bugler.Host
 cd frontend && bun dev        # frontend dev server with HMR
 ```
 
-The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), and `:4318` (OTLP/HTTP). Database schema migrates automatically at startup. Applications authenticate exports with their instance API key as a bearer token, e.g. `OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."`.
+The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), and `:4318` (OTLP/HTTP). Database schema migrates automatically at startup. Each process authenticates its exports with its Service API key as a bearer token, e.g. `OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."`.
 
 ### Tests
 

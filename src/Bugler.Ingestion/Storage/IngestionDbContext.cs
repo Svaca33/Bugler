@@ -20,7 +20,7 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             log.Property(l => l.Attributes).HasColumnType("jsonb");
             log.Property(l => l.TraceId).HasMaxLength(32);
             log.Property(l => l.SpanId).HasMaxLength(16);
-            log.HasIndex(l => new { l.InstanceId, l.Timestamp }).IsDescending(false, true);
+            log.HasIndex(l => new { l.ServiceId, l.Timestamp }).IsDescending(false, true);
             log.HasIndex(l => l.TraceId);
             log.HasIndex(l => l.Attributes).HasMethod("gin");
         });
@@ -35,7 +35,7 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             span.Property(s => s.Attributes).HasColumnType("jsonb");
             span.Property(s => s.Events).HasColumnType("jsonb");
             span.Property(s => s.Links).HasColumnType("jsonb");
-            span.HasIndex(s => new { s.InstanceId, s.StartTime }).IsDescending(false, true);
+            span.HasIndex(s => new { s.ServiceId, s.StartTime }).IsDescending(false, true);
             span.HasIndex(s => s.TraceId);
             span.HasIndex(s => s.Attributes).HasMethod("gin");
         });
@@ -45,7 +45,7 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
     public sealed class StoredSpan
     {
         public long Id { get; init; }
-        public Guid InstanceId { get; init; }
+        public Guid ServiceId { get; init; }
         public required string TraceId { get; init; }
         public required string SpanId { get; init; }
         public string? ParentSpanId { get; init; }
@@ -55,7 +55,6 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
         public DateTime EndTime { get; init; }
         public short StatusCode { get; init; }
         public string? StatusMessage { get; init; }
-        public string? ServiceName { get; init; }
         public string? ScopeName { get; init; }
         public required string ResourceAttributes { get; init; }
         public required string Attributes { get; init; }
@@ -67,7 +66,7 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
     public sealed class StoredLogRecord
     {
         public long Id { get; init; }
-        public Guid InstanceId { get; init; }
+        public Guid ServiceId { get; init; }
         public DateTime Timestamp { get; init; }
         public DateTime? ObservedTimestamp { get; init; }
         public short SeverityNumber { get; init; }
@@ -75,7 +74,6 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
         public string? Body { get; init; }
         public string? TraceId { get; init; }
         public string? SpanId { get; init; }
-        public string? ServiceName { get; init; }
         public string? ScopeName { get; init; }
         public required string ResourceAttributes { get; init; }
         public required string Attributes { get; init; }

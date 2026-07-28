@@ -5,16 +5,18 @@ import { api } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 
+import { AttributeFilterBar } from "./AttributeFilterBar";
+import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterSelect } from "./FilterSelect";
 import { formatTime } from "./format";
+import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
 
-export interface TraceFilters {
-  applicationId?: string;
-  instanceId?: string;
+export interface TraceFilters extends SourceFilters {
   errorsOnly?: boolean;
+  filters?: AttributeFilter[];
 }
 
-const GRID = "grid grid-cols-[1fr_150px_200px_96px_66px_74px] items-center gap-4 px-5";
+const GRID = "grid grid-cols-[1fr_196px_200px_96px_66px_74px] items-center gap-4 px-5";
 
 export function TracesPage(props: { filters: TraceFilters; onChange: (filters: TraceFilters) => void }) {
   const { filters, onChange } = props;
@@ -27,8 +29,11 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
         params: {
           query: {
             applicationId: filters.applicationId,
-            instanceId: filters.instanceId,
+            namespace: filters.namespace,
+            environment: filters.environment,
+            service: filters.service,
             errorsOnly: filters.errorsOnly,
+            ...toQueryParams(filters.filters ?? []),
             limit: 100,
           },
         },
@@ -39,9 +44,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
   });
 
   const applications = catalog.data?.applications ?? [];
-  const instances =
-    applications.find(a => a.id === filters.applicationId)?.instances ??
-    applications.flatMap(a => a.instances);
+  const labels = serviceLabels(applications);
   const items = traces.data?.items ?? [];
 
   return (
@@ -51,13 +54,33 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
           placeholder="All applications"
           value={filters.applicationId}
           options={applications.map(a => ({ value: a.id, label: a.name }))}
-          onChange={applicationId => onChange({ ...filters, applicationId, instanceId: undefined })}
+          onChange={applicationId =>
+            onChange({
+              ...filters,
+              applicationId,
+              namespace: undefined,
+              environment: undefined,
+              service: undefined,
+            })
+          }
         />
         <FilterSelect
-          placeholder="All instances"
-          value={filters.instanceId}
-          options={instances.map(i => ({ value: i.id, label: i.name }))}
-          onChange={instanceId => onChange({ ...filters, instanceId })}
+          placeholder="All namespaces"
+          value={filters.namespace}
+          options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
+          onChange={namespace => onChange({ ...filters, namespace })}
+        />
+        <FilterSelect
+          placeholder="All environments"
+          value={filters.environment}
+          options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
+          onChange={environment => onChange({ ...filters, environment })}
+        />
+        <FilterSelect
+          placeholder="All services"
+          value={filters.service}
+          options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
+          onChange={service => onChange({ ...filters, service })}
         />
         <Button
           variant={filters.errorsOnly ? "default" : "outline"}
@@ -66,6 +89,12 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
         >
           Errors only
         </Button>
+        <AttributeFilterBar
+          signal="traces"
+          source={filters}
+          filters={filters.filters ?? []}
+          onChange={next => onChange({ ...filters, filters: next.length > 0 ? next : undefined })}
+        />
       </div>
 
       <div className="flex items-center gap-3.5 px-5 py-3">
@@ -99,6 +128,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                     <Link
                       to="/traces/$traceId"
                       params={{ traceId: trace.traceId }}
+                      search={filters}
                       className={`text-[13px] font-medium underline-offset-2 hover:underline ${
                         trace.hasError ? "text-[#F6C170]" : "text-foreground"
                       }`}
@@ -109,6 +139,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                     <Link
                       to="/traces/$traceId"
                       params={{ traceId: trace.traceId }}
+                      search={filters}
                       className="font-mono text-xs text-[#B6C8DA] underline-offset-2 hover:underline"
                     >
                       {trace.traceId}
@@ -116,7 +147,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                   )}
                 </span>
                 <span className="truncate font-mono text-[11.5px] text-[#A9BDD1]">
-                  {trace.rootService}
+                  {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "—"}
                 </span>
                 <span className="whitespace-nowrap font-mono text-[11.5px] text-[#7D93AA]">
                   {formatTime(trace.startTime)}

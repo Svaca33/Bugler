@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "./client";
 
-/** The caller's visible applications and instances — feeds filters and admin pickers. */
+/** The caller's visible applications and services — feeds Source Filters and admin pickers. */
 export function useCatalog() {
   return useQuery({
     queryKey: ["catalog"],

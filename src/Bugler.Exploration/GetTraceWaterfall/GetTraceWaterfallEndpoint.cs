@@ -8,7 +8,7 @@ namespace Bugler.Exploration.GetTraceWaterfall;
 
 public sealed record TraceSpanDto(
     long Id,
-    Guid InstanceId,
+    Guid ServiceId,
     string SpanId,
     string? ParentSpanId,
     string Name,
@@ -17,8 +17,8 @@ public sealed record TraceSpanDto(
     DateTime EndTime,
     short StatusCode,
     string? StatusMessage,
-    string? ServiceName,
     string? ScopeName,
+    JsonElement ResourceAttributes,
     JsonElement Attributes,
     JsonElement Events,
     JsonElement Links);
@@ -34,24 +34,27 @@ internal static class GetTraceWaterfallEndpoint
         CancellationToken cancellationToken)
     {
         var normalizedTraceId = traceId.ToLowerInvariant();
-        var instanceIds = await scope.ResolveInstanceIdsAsync(null, null, cancellationToken);
-        if (instanceIds is { Length: 0 })
+
+        // No Source Filter here on purpose: a Trace may cross Services, and the waterfall
+        // must show every span the caller is allowed to see, not just one Service's.
+        var serviceIds = await scope.ResolveServiceIdsAsync(SourceFilter.None, cancellationToken);
+        if (serviceIds is { Length: 0 })
         {
             return TypedResults.NotFound();
         }
 
         await using var command = dataSource.CreateCommand();
-        var scopeFilter = instanceIds is null ? "" : " AND instance_id = ANY(@instances)";
-        if (instanceIds is not null)
+        var scopeFilter = serviceIds is null ? "" : " AND service_id = ANY(@services)";
+        if (serviceIds is not null)
         {
-            command.Parameters.AddWithValue("instances", instanceIds);
+            command.Parameters.AddWithValue("services", serviceIds);
         }
 
         command.Parameters.AddWithValue("traceId", normalizedTraceId);
         command.CommandText = $"""
-            SELECT id, instance_id, span_id, parent_span_id, name, kind, start_time, end_time,
-                   status_code, status_message, service_name, scope_name,
-                   attributes::text, events::text, links::text
+            SELECT id, service_id, span_id, parent_span_id, name, kind, start_time, end_time,
+                   status_code, status_message, scope_name,
+                   resource_attributes::text, attributes::text, events::text, links::text
             FROM telemetry.spans
             WHERE trace_id = @traceId{scopeFilter}
             ORDER BY start_time, id
@@ -73,7 +76,7 @@ internal static class GetTraceWaterfallEndpoint
                 reader.GetInt16(8),
                 reader.IsDBNull(9) ? null : reader.GetString(9),
                 reader.IsDBNull(10) ? null : reader.GetString(10),
-                reader.IsDBNull(11) ? null : reader.GetString(11),
+                Sql.ParseJson(reader.GetString(11)),
                 Sql.ParseJson(reader.GetString(12)),
                 Sql.ParseJson(reader.GetString(13)),
                 Sql.ParseJson(reader.GetString(14))));

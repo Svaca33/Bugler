@@ -2,10 +2,10 @@ using Bugler.SharedKernel;
 
 namespace Bugler.Registry.Contracts;
 
-/// <summary>Tells Ingestion how long each Instance's telemetry may live (override or server default).</summary>
+/// <summary>Tells Ingestion how long each Service's telemetry may live (override or server default).</summary>
 public interface IRetentionReader
 {
-    Task<IReadOnlyList<InstanceRetention>> GetEffectiveRetentionsAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<ServiceRetention>> GetEffectiveRetentionsAsync(CancellationToken cancellationToken);
 }
 
-public sealed record InstanceRetention(InstanceId InstanceId, int Days);
+public sealed record ServiceRetention(ServiceId ServiceId, int Days);

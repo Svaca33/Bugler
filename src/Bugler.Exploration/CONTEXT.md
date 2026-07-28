@@ -21,8 +21,24 @@ The hierarchical timing view of a Trace's Spans.
 _Avoid_: flame graph, Gantt, timeline view
 
 **Filter**:
-The criteria narrowing displayed telemetry: application, instance, tenant, severity, time range, full-text.
+The criteria narrowing displayed telemetry: Source Filters, severity, time range, full-text, and Attribute Filters. Tenant is not a first-class criterion — it is filtered via an Attribute Filter on `tenant.id`.
 _Avoid_: query, search criteria
+
+**Source Filter**:
+A Filter criterion narrowing which Services a query may touch — Application, Service Namespace, Environment or Service Name — each one left open meaning "all". Unlike an Attribute Filter it matches registered facts, so it cannot be fooled by what telemetry claims about itself.
+_Avoid_: scope filter, instance filter, source picker
+
+**Attribute Filter**:
+A Filter criterion matching one attribute — identified by its scope (signal attribute vs Resource Attribute) and its path — against an exact value. Combined with AND across keys; one value per key at a time.
+_Avoid_: property filter, tag filter, key-value filter
+
+**Resource Attribute**:
+An attribute describing the entity that emitted the telemetry (service, host, deployment) rather than the individual Log Record or Span.
+_Avoid_: tags, metadata, resource field
+
+**Observed Keys**:
+The attribute keys present in a recent sample of stored telemetry, offered when building an Attribute Filter. A sample, not a schema — rare keys older than the sample are absent.
+_Avoid_: key catalog, schema, known keys
 
 **Correlation**:
 Navigating between a Log Record and the Trace it belongs to via their shared trace id.

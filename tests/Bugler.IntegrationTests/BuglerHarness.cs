@@ -11,7 +11,7 @@ using Testcontainers.PostgreSql;
 namespace Bugler.IntegrationTests;
 
 /// <summary>
-/// A running Bugler over a real PostgreSQL container: one seeded Application/Instance
+/// A running Bugler over a real PostgreSQL container: one seeded Application/Service
 /// with a valid API key, and an admin account signed in on <see cref="Client"/>.
 /// </summary>
 public sealed class BuglerHarness : IAsyncDisposable
@@ -27,7 +27,7 @@ public sealed class BuglerHarness : IAsyncDisposable
 
     public string ApiKey { get; private set; } = null!;
     public Guid ApplicationId { get; private set; }
-    public Guid InstanceId { get; private set; }
+    public Guid ServiceId { get; private set; }
 
     public static async Task<BuglerHarness> StartAsync()
     {
@@ -49,14 +49,13 @@ public sealed class BuglerHarness : IAsyncDisposable
             new { email = AdminEmail, password = AdminPassword, displayName = "Admin" });
         setup.EnsureSuccessStatusCode();
 
-        (ApplicationId, InstanceId, ApiKey) = await SeedApplicationAsync("Eshop", "Acme production");
+        (ApplicationId, ServiceId, ApiKey) = await SeedApplicationAsync("Eshop", "acme", "prod", "web");
     }
 
-    /// <summary>Seeds an Application with one Instance and an issued API key, bypassing the API.</summary>
-    public async Task<(Guid ApplicationId, Guid InstanceId, string ApiKey)> SeedApplicationAsync(
-        string applicationName, string instanceName)
+    /// <summary>Seeds an Application with one Service and an issued API key, bypassing the API.</summary>
+    public async Task<(Guid ApplicationId, Guid ServiceId, string ApiKey)> SeedApplicationAsync(
+        string applicationName, string serviceNamespace, string environment, string serviceName)
     {
-        var apiKey = ApiKeyMaterial.GeneratePlaintext();
         await using var scope = _factory.Services.CreateAsyncScope();
         var registry = scope.ServiceProvider.GetRequiredService<RegistryDbContext>();
         var application = new Application
@@ -65,24 +64,50 @@ public sealed class BuglerHarness : IAsyncDisposable
             Name = applicationName,
             CreatedAt = DateTimeOffset.UtcNow,
         };
-        var instance = new Instance
+        registry.Applications.Add(application);
+        var (serviceId, apiKey) = AddService(registry, application.Id, serviceNamespace, environment, serviceName);
+        await registry.SaveChangesAsync();
+        return (application.Id.Value, serviceId, apiKey);
+    }
+
+    /// <summary>Seeds one more Service under an existing Application — a second sender of the same deployment.</summary>
+    public async Task<(Guid ServiceId, string ApiKey)> SeedServiceAsync(
+        Guid applicationId, string serviceNamespace, string environment, string serviceName)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var registry = scope.ServiceProvider.GetRequiredService<RegistryDbContext>();
+        var seeded = AddService(
+            registry, new SharedKernel.ApplicationId(applicationId), serviceNamespace, environment, serviceName);
+        await registry.SaveChangesAsync();
+        return seeded;
+    }
+
+    private static (Guid ServiceId, string ApiKey) AddService(
+        RegistryDbContext registry,
+        SharedKernel.ApplicationId applicationId,
+        string serviceNamespace,
+        string environment,
+        string serviceName)
+    {
+        var apiKey = ApiKeyMaterial.GeneratePlaintext();
+        var service = new Service
         {
-            Id = SharedKernel.InstanceId.New(),
-            ApplicationId = application.Id,
-            Name = instanceName,
+            Id = SharedKernel.ServiceId.New(),
+            ApplicationId = applicationId,
+            Namespace = serviceNamespace,
+            Environment = environment,
+            Name = serviceName,
             CreatedAt = DateTimeOffset.UtcNow,
         };
-        registry.Applications.Add(application);
-        registry.Instances.Add(instance);
+        registry.Services.Add(service);
         registry.ApiKeys.Add(new ApiKey
         {
             Id = Guid.CreateVersion7(),
-            InstanceId = instance.Id,
+            ServiceId = service.Id,
             KeyHash = ApiKeyMaterial.Hash(apiKey),
             CreatedAt = DateTimeOffset.UtcNow,
         });
-        await registry.SaveChangesAsync();
-        return (application.Id.Value, instance.Id.Value, apiKey);
+        return (service.Id.Value, apiKey);
     }
 
     /// <summary>A fresh client with its own cookie jar, not signed in.</summary>

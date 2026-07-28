@@ -34,10 +34,6 @@ namespace Bugler.Registry.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("InstanceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("instance_id");
-
                     b.Property<byte[]>("KeyHash")
                         .IsRequired()
                         .HasColumnType("bytea")
@@ -47,15 +43,19 @@ namespace Bugler.Registry.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at");
 
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id");
+
                     b.HasKey("Id")
                         .HasName("pk_api_keys");
-
-                    b.HasIndex("InstanceId")
-                        .HasDatabaseName("ix_api_keys_instance_id");
 
                     b.HasIndex("KeyHash")
                         .IsUnique()
                         .HasDatabaseName("ix_api_keys_key_hash");
+
+                    b.HasIndex("ServiceId")
+                        .HasDatabaseName("ix_api_keys_service_id");
 
                     b.ToTable("api_keys", "registry");
                 });
@@ -86,7 +86,7 @@ namespace Bugler.Registry.Migrations
                     b.ToTable("applications", "registry");
                 });
 
-            modelBuilder.Entity("Bugler.Registry.Catalog.Instance", b =>
+            modelBuilder.Entity("Bugler.Registry.Catalog.Service", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -100,44 +100,56 @@ namespace Bugler.Registry.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("environment");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("namespace");
+
                     b.Property<int?>("RetentionDays")
                         .HasColumnType("integer")
                         .HasColumnName("retention_days");
 
                     b.HasKey("Id")
-                        .HasName("pk_instances");
+                        .HasName("pk_services");
 
-                    b.HasIndex("ApplicationId", "Name")
+                    b.HasIndex("ApplicationId", "Namespace", "Environment", "Name")
                         .IsUnique()
-                        .HasDatabaseName("ix_instances_application_id_name");
+                        .HasDatabaseName("ix_services_application_id_namespace_environment_name");
 
-                    b.ToTable("instances", "registry");
+                    b.ToTable("services", "registry");
                 });
 
             modelBuilder.Entity("Bugler.Registry.Catalog.ApiKey", b =>
                 {
-                    b.HasOne("Bugler.Registry.Catalog.Instance", null)
+                    b.HasOne("Bugler.Registry.Catalog.Service", null)
                         .WithMany()
-                        .HasForeignKey("InstanceId")
+                        .HasForeignKey("ServiceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_api_keys_instances_instance_id");
+                        .HasConstraintName("fk_api_keys_services_service_id");
                 });
 
-            modelBuilder.Entity("Bugler.Registry.Catalog.Instance", b =>
+            modelBuilder.Entity("Bugler.Registry.Catalog.Service", b =>
                 {
                     b.HasOne("Bugler.Registry.Catalog.Application", null)
                         .WithMany()
                         .HasForeignKey("ApplicationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_instances_applications_application_id");
+                        .HasConstraintName("fk_services_applications_application_id");
                 });
 #pragma warning restore 612, 618
         }

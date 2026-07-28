@@ -1,15 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
+import { asFilters } from "@/features/explore/attributeFilters";
 import { LogsPage, type LogFilters } from "@/features/explore/LogsPage";
 
 export const Route = createFileRoute("/_app/")({
   validateSearch: (search: Record<string, unknown>): LogFilters => ({
     applicationId: asString(search.applicationId),
-    instanceId: asString(search.instanceId),
+    namespace: asString(search.namespace),
+    environment: asString(search.environment),
+    service: asString(search.service),
     severityMin: asNumber(search.severityMin),
     q: asString(search.q),
-    tenant: asString(search.tenant),
     traceId: asString(search.traceId),
+    filters: asFilters(search.filters),
   }),
   component: LogsRoute,
 });

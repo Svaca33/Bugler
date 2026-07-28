@@ -2,14 +2,17 @@ using Bugler.SharedKernel;
 
 namespace Bugler.Registry.Contracts;
 
-/// <summary>Read-only view of the Catalog for other contexts: which Instances exist and where they belong.</summary>
+/// <summary>Read-only view of the Catalog for other contexts: which Services exist and where they belong.</summary>
 public interface ICatalogReader
 {
-    Task<IReadOnlyList<CatalogInstance>> GetInstancesAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<CatalogService>> GetServicesAsync(CancellationToken cancellationToken);
 }
 
-public sealed record CatalogInstance(
-    InstanceId Id,
+/// <summary>One registered Service, with the facets a Source Filter addresses it by.</summary>
+public sealed record CatalogService(
+    ServiceId Id,
     ApplicationId ApplicationId,
-    string InstanceName,
-    string ApplicationName);
+    string ApplicationName,
+    string Namespace,
+    string Environment,
+    string Name);

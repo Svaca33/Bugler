@@ -7,11 +7,15 @@ using OpenTelemetry.Proto.Trace.V1;
 
 namespace Bugler.Ingestion.OtlpMapping;
 
-/// <summary>Flattens an OTLP trace Export Request into storage rows stamped with the Source's instance.</summary>
+/// <summary>
+/// Flattens an OTLP trace Export Request into storage rows stamped with the Source's Service.
+/// The request's Declared Identity is left inside the resource attributes — it never
+/// competes with the Service the API key proved (ADR 0006).
+/// </summary>
 public static class OtlpTraceMapper
 {
     /// <returns>The mapped rows plus the count of spans dropped for malformed trace/span ids.</returns>
-    public static (List<SpanRow> Rows, int Dropped) Map(ExportTraceServiceRequest request, InstanceId instanceId)
+    public static (List<SpanRow> Rows, int Dropped) Map(ExportTraceServiceRequest request, ServiceId serviceId)
     {
         var rows = new List<SpanRow>();
         var dropped = 0;
@@ -19,9 +23,7 @@ public static class OtlpTraceMapper
 
         foreach (var resourceSpans in request.ResourceSpans)
         {
-            var resourceAttributes = resourceSpans.Resource?.Attributes;
-            var resourceJson = OtlpJson.AttributesToJson(resourceAttributes);
-            var serviceName = OtlpJson.FindString(resourceAttributes, "service.name");
+            var resourceJson = OtlpJson.AttributesToJson(resourceSpans.Resource?.Attributes);
 
             foreach (var scopeSpans in resourceSpans.ScopeSpans)
             {
@@ -40,7 +42,7 @@ public static class OtlpTraceMapper
                     var startTime = OtlpJson.ToUtc(span.StartTimeUnixNano) ?? receivedAt;
 
                     rows.Add(new SpanRow(
-                        instanceId.Value,
+                        serviceId.Value,
                         traceId,
                         spanId,
                         OtlpJson.ToHex(span.ParentSpanId, expectedLength: 8),
@@ -50,7 +52,6 @@ public static class OtlpTraceMapper
                         OtlpJson.ToUtc(span.EndTimeUnixNano) ?? startTime,
                         (short)(span.Status?.Code ?? Status.Types.StatusCode.Unset),
                         string.IsNullOrEmpty(span.Status?.Message) ? null : span.Status.Message,
-                        serviceName,
                         scopeName,
                         resourceJson,
                         OtlpJson.AttributesToJson(span.Attributes),

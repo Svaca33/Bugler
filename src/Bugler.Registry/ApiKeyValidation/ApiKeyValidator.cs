@@ -7,7 +7,7 @@ namespace Bugler.Registry.ApiKeyValidation;
 
 internal sealed class ApiKeyValidator(RegistryDbContext dbContext) : IApiKeyValidator
 {
-    public async ValueTask<InstanceId?> ValidateAsync(string apiKey, CancellationToken cancellationToken)
+    public async ValueTask<ServiceId?> ValidateAsync(string apiKey, CancellationToken cancellationToken)
     {
         if (!apiKey.StartsWith(ApiKeyMaterial.Prefix, StringComparison.Ordinal))
         {
@@ -15,11 +15,11 @@ internal sealed class ApiKeyValidator(RegistryDbContext dbContext) : IApiKeyVali
         }
 
         var hash = ApiKeyMaterial.Hash(apiKey);
-        var instanceId = await dbContext.ApiKeys
+        var serviceId = await dbContext.ApiKeys
             .Where(k => k.KeyHash == hash && k.RevokedAt == null)
-            .Select(k => (InstanceId?)k.InstanceId)
+            .Select(k => (ServiceId?)k.ServiceId)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return instanceId;
+        return serviceId;
     }
 }

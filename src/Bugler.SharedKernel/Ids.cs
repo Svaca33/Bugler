@@ -7,9 +7,9 @@ public readonly record struct ApplicationId(Guid Value)
     public override string ToString() => Value.ToString();
 }
 
-/// <summary>Identifies an Instance — a single client deployment of an Application.</summary>
-public readonly record struct InstanceId(Guid Value)
+/// <summary>Identifies a Service — one registered sender of telemetry within an Application.</summary>
+public readonly record struct ServiceId(Guid Value)
 {
-    public static InstanceId New() => new(Guid.CreateVersion7());
+    public static ServiceId New() => new(Guid.CreateVersion7());
     public override string ToString() => Value.ToString();
 }

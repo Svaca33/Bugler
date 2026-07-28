@@ -19,11 +19,11 @@ internal static class IngestLogsHttpEndpoint
         CancellationToken cancellationToken)
     {
         var apiKey = BearerApiKey.Extract(request.Headers.Authorization.FirstOrDefault());
-        var instanceId = apiKey is null
+        var serviceId = apiKey is null
             ? null
             : await apiKeys.ValidateAsync(apiKey, cancellationToken);
 
-        if (instanceId is null)
+        if (serviceId is null)
         {
             return Results.Unauthorized();
         }
@@ -46,7 +46,7 @@ internal static class IngestLogsHttpEndpoint
             return Results.BadRequest();
         }
 
-        var rows = OtlpLogMapper.Map(export, instanceId.Value);
+        var rows = OtlpLogMapper.Map(export, serviceId.Value);
         var rejected = rows.Count(row => !buffer.TryEnqueue(row));
 
         if (rejected == rows.Count && rows.Count > 0)

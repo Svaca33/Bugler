@@ -17,8 +17,8 @@ internal sealed class SpanWriter(
     ILogger<SpanWriter> logger) : BackgroundService
 {
     private const string CopyCommand =
-        "COPY telemetry.spans (instance_id, trace_id, span_id, parent_span_id, name, kind, " +
-        "start_time, end_time, status_code, status_message, service_name, scope_name, " +
+        "COPY telemetry.spans (service_id, trace_id, span_id, parent_span_id, name, kind, " +
+        "start_time, end_time, status_code, status_message, scope_name, " +
         "resource_attributes, attributes, events, links) FROM STDIN (FORMAT BINARY)";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -65,7 +65,7 @@ internal sealed class SpanWriter(
             foreach (var row in batch)
             {
                 await importer.StartRowAsync(cancellationToken);
-                await importer.WriteAsync(row.InstanceId, NpgsqlDbType.Uuid, cancellationToken);
+                await importer.WriteAsync(row.ServiceId, NpgsqlDbType.Uuid, cancellationToken);
                 await importer.WriteAsync(row.TraceId, NpgsqlDbType.Text, cancellationToken);
                 await importer.WriteAsync(row.SpanId, NpgsqlDbType.Text, cancellationToken);
                 await WriteNullableAsync(importer, row.ParentSpanId, cancellationToken);
@@ -75,7 +75,6 @@ internal sealed class SpanWriter(
                 await importer.WriteAsync(row.EndTime, NpgsqlDbType.TimestampTz, cancellationToken);
                 await importer.WriteAsync(row.StatusCode, NpgsqlDbType.Smallint, cancellationToken);
                 await WriteNullableAsync(importer, row.StatusMessage, cancellationToken);
-                await WriteNullableAsync(importer, row.ServiceName, cancellationToken);
                 await WriteNullableAsync(importer, row.ScopeName, cancellationToken);
                 await importer.WriteAsync(row.ResourceAttributes, NpgsqlDbType.Jsonb, cancellationToken);
                 await importer.WriteAsync(row.Attributes, NpgsqlDbType.Jsonb, cancellationToken);

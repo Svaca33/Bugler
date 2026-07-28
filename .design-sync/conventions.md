@@ -1,6 +1,6 @@
 # Bugler UI — build conventions
 
-Bugler is a log/trace observability tool. Its UI kit is six shadcn-style React primitives over Radix + Tailwind v4: `Button`, `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`), `Input`, `Label`, `Select` (+ `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectLabel`, `SelectItem`, `SelectSeparator`), `Textarea`.
+Bugler is a log/trace observability tool. Its UI kit is eight shadcn-style React primitives over Radix + Tailwind v4: `Button`, `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`), `Combobox` (searchable option picker), `FilterChip` (removable filter tag), `Input`, `Label`, `Select` (+ `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectLabel`, `SelectItem`, `SelectSeparator`), `Textarea`.
 
 ## Setup
 
@@ -21,7 +21,7 @@ Need something outside this set? Use the CSS variables inline: `style={{ backgro
 ## Recurring compositions
 
 - **Form field**: `<div className="grid gap-2"><Label htmlFor="x">…</Label><Input id="x" … /></div>`; error state = `aria-invalid` on the control + `<p className="text-destructive text-sm">…`.
-- **Filter bar**: row of `flex items-center gap-2` with small selects — `<SelectTrigger className="w-44" size="sm">`.
+- **Filter bar**: row of `flex items-center gap-2` with small selects — `<SelectTrigger className="w-44" size="sm">`; active criteria render as `FilterChip`s in the same row, added via a `Combobox` key picker.
 - **Dashboard**: cards in `grid gap-4 grid-cols-2`; stat tile = `CardDescription` label over a `CardTitle className="text-3xl"` value.
 
 ## Where the truth lives

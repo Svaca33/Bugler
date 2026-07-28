@@ -1,15 +1,15 @@
 using System.Text.Json;
 using Bugler.Exploration.Querying;
 using Bugler.Exploration.Scoping;
-using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
 namespace Bugler.Exploration.SearchLogs;
 
 public sealed record LogRecordDto(
     long Id,
-    Guid InstanceId,
+    Guid ServiceId,
     DateTime Timestamp,
     DateTime? ObservedTimestamp,
     short SeverityNumber,
@@ -17,7 +17,6 @@ public sealed record LogRecordDto(
     string? Body,
     string? TraceId,
     string? SpanId,
-    string? ServiceName,
     string? ScopeName,
     JsonElement ResourceAttributes,
     JsonElement Attributes);
@@ -27,18 +26,21 @@ public sealed record SearchLogsResponse(IReadOnlyList<LogRecordDto> Items);
 internal static class SearchLogsEndpoint
 {
     private const string Columns =
-        "id, instance_id, timestamp, observed_timestamp, severity_number, severity_text, " +
-        "body, trace_id, span_id, service_name, scope_name, resource_attributes::text, attributes::text";
+        "id, service_id, timestamp, observed_timestamp, severity_number, severity_text, " +
+        "body, trace_id, span_id, scope_name, resource_attributes::text, attributes::text";
 
     public static async Task<IResult> Handle(
         Guid? applicationId,
-        Guid? instanceId,
-        string? tenant,
+        [FromQuery(Name = "namespace")] string? serviceNamespace,
+        string? environment,
+        string? service,
         short? severityMin,
         DateTime? from,
         DateTime? to,
         string? q,
         string? traceId,
+        string[]? attr,
+        string[]? res,
         DateTime? before,
         long? beforeId,
         int? limit,
@@ -46,12 +48,17 @@ internal static class SearchLogsEndpoint
         NpgsqlDataSource dataSource,
         CancellationToken cancellationToken)
     {
-        var instanceIds = await scope.ResolveInstanceIdsAsync(
-            applicationId is { } app ? new ApplicationId(app) : null,
-            instanceId is { } instance ? new InstanceId(instance) : null,
+        if (!AttributeFilters.TryParse(attr, out var attributeFilters) ||
+            !AttributeFilters.TryParse(res, out var resourceFilters))
+        {
+            return TypedResults.BadRequest("Invalid attribute filter.");
+        }
+
+        var serviceIds = await scope.ResolveServiceIdsAsync(
+            SourceFilter.FromQuery(applicationId, serviceNamespace, environment, service),
             cancellationToken);
 
-        if (instanceIds is { Length: 0 })
+        if (serviceIds is { Length: 0 })
         {
             return TypedResults.Ok(new SearchLogsResponse([]));
         }
@@ -59,10 +66,10 @@ internal static class SearchLogsEndpoint
         await using var command = dataSource.CreateCommand();
         var conditions = new List<string>();
 
-        if (instanceIds is not null)
+        if (serviceIds is not null)
         {
-            conditions.Add("instance_id = ANY(@instances)");
-            command.Parameters.AddWithValue("instances", instanceIds);
+            conditions.Add("service_id = ANY(@services)");
+            command.Parameters.AddWithValue("services", serviceIds);
         }
 
         if (from is { } fromTime)
@@ -83,11 +90,8 @@ internal static class SearchLogsEndpoint
             command.Parameters.AddWithValue("severityMin", severityMin.Value);
         }
 
-        if (!string.IsNullOrEmpty(tenant))
-        {
-            conditions.Add("attributes->>'tenant.id' = @tenant");
-            command.Parameters.AddWithValue("tenant", tenant);
-        }
+        AttributeFilters.AddConditions(conditions, command, attributeFilters, "attributes", "attr");
+        AttributeFilters.AddConditions(conditions, command, resourceFilters, "resource_attributes", "res");
 
         if (!string.IsNullOrEmpty(q))
         {
@@ -129,17 +133,17 @@ internal static class SearchLogsEndpoint
         NpgsqlDataSource dataSource,
         CancellationToken cancellationToken)
     {
-        var instanceIds = await scope.ResolveInstanceIdsAsync(null, null, cancellationToken);
-        if (instanceIds is { Length: 0 })
+        var serviceIds = await scope.ResolveServiceIdsAsync(SourceFilter.None, cancellationToken);
+        if (serviceIds is { Length: 0 })
         {
             return TypedResults.NotFound();
         }
 
         await using var command = dataSource.CreateCommand();
-        var scopeFilter = instanceIds is null ? "" : " AND instance_id = ANY(@instances)";
-        if (instanceIds is not null)
+        var scopeFilter = serviceIds is null ? "" : " AND service_id = ANY(@services)";
+        if (serviceIds is not null)
         {
-            command.Parameters.AddWithValue("instances", instanceIds);
+            command.Parameters.AddWithValue("services", serviceIds);
         }
 
         command.Parameters.AddWithValue("id", id);
@@ -162,7 +166,6 @@ internal static class SearchLogsEndpoint
         reader.IsDBNull(7) ? null : reader.GetString(7),
         reader.IsDBNull(8) ? null : reader.GetString(8),
         reader.IsDBNull(9) ? null : reader.GetString(9),
-        reader.IsDBNull(10) ? null : reader.GetString(10),
-        Sql.ParseJson(reader.GetString(11)),
-        Sql.ParseJson(reader.GetString(12)));
+        Sql.ParseJson(reader.GetString(10)),
+        Sql.ParseJson(reader.GetString(11)));
 }

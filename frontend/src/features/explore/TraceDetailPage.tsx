@@ -1,20 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { api, type TraceSpan } from "@/api/client";
+import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 
+import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
+import { AttributeLeafList } from "./AttributeLeafList";
 import { formatTime } from "./format";
 import { JsonBlock } from "./LogDetailPanel";
+import { serviceLabels } from "./sourceFilter";
+import type { TraceFilters } from "./TracesPage";
 import { layoutWaterfall } from "./waterfall";
 
 const KIND_LABELS = ["UNSPECIFIED", "INTERNAL", "SERVER", "CLIENT", "PRODUCER", "CONSUMER"];
 
 const GRID = "grid grid-cols-[300px_1fr_90px] items-center gap-3 px-5";
 
-export function TraceDetailPage(props: { traceId: string }) {
+export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilters }) {
+  const { listFilters } = props;
   const [selected, setSelected] = useState<TraceSpan | null>(null);
+  const navigate = useNavigate();
+  const catalog = useCatalog();
+  const labels = serviceLabels(catalog.data?.applications ?? []);
+
+  // A span magnifier filters the traces LIST — apply the chip to the carried filters and go back.
+  const toggle = (filter: AttributeFilter, active: boolean) => {
+    const current = listFilters.filters ?? [];
+    const next = active ? removeFilter(current, filter) : upsertFilter(current, filter);
+    void navigate({
+      to: "/traces",
+      search: { ...listFilters, filters: next.length > 0 ? next : undefined },
+    });
+  };
 
   const trace = useQuery({
     queryKey: ["trace", props.traceId],
@@ -49,7 +68,11 @@ export function TraceDetailPage(props: { traceId: string }) {
     <div className="flex h-full min-h-0">
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3.5 border-b border-[#17293D] bg-[#0B1826] px-[22px] py-3.5">
-          <Link to="/traces" className="text-[12.5px] text-muted-foreground hover:text-foreground">
+          <Link
+            to="/traces"
+            search={listFilters}
+            className="text-[12.5px] text-muted-foreground hover:text-foreground"
+          >
             Traces
           </Link>
           <span className="text-[#2C4560]">/</span>
@@ -144,7 +167,7 @@ export function TraceDetailPage(props: { traceId: string }) {
             <DetailRow label="Span" value={selected.spanId} />
             <DetailRow label="Parent" value={selected.parentSpanId ?? "—"} />
             <DetailRow label="Kind" value={KIND_LABELS[Number(selected.kind)] ?? String(selected.kind)} />
-            <DetailRow label="Service" value={selected.serviceName ?? "—"} />
+            <DetailRow label="Service" value={labels.get(selected.serviceId) ?? "—"} />
             <DetailRow label="Start" value={formatTime(selected.startTime)} />
             <DetailRow
               label="Status"
@@ -156,7 +179,23 @@ export function TraceDetailPage(props: { traceId: string }) {
             <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5F7590]">
               Attributes
             </h3>
-            <JsonBlock value={selected.attributes} />
+            <AttributeLeafList
+              attributes={selected.attributes}
+              scope="attribute"
+              filters={listFilters.filters ?? []}
+              onToggle={toggle}
+            />
+          </section>
+          <section className="grid gap-1.5">
+            <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5F7590]">
+              Resource
+            </h3>
+            <AttributeLeafList
+              attributes={selected.resourceAttributes}
+              scope="resource"
+              filters={listFilters.filters ?? []}
+              onToggle={toggle}
+            />
           </section>
           <section className="grid gap-1.5">
             <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5F7590]">

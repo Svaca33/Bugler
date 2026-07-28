@@ -17,8 +17,8 @@ internal sealed class LogWriter(
     ILogger<LogWriter> logger) : BackgroundService
 {
     private const string CopyCommand =
-        "COPY telemetry.log_records (instance_id, timestamp, observed_timestamp, severity_number, " +
-        "severity_text, body, trace_id, span_id, service_name, scope_name, resource_attributes, attributes) " +
+        "COPY telemetry.log_records (service_id, timestamp, observed_timestamp, severity_number, " +
+        "severity_text, body, trace_id, span_id, scope_name, resource_attributes, attributes) " +
         "FROM STDIN (FORMAT BINARY)";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -66,7 +66,7 @@ internal sealed class LogWriter(
             foreach (var row in batch)
             {
                 await importer.StartRowAsync(cancellationToken);
-                await importer.WriteAsync(row.InstanceId, NpgsqlDbType.Uuid, cancellationToken);
+                await importer.WriteAsync(row.ServiceId, NpgsqlDbType.Uuid, cancellationToken);
                 await importer.WriteAsync(row.Timestamp, NpgsqlDbType.TimestampTz, cancellationToken);
                 await WriteNullableAsync(importer, row.ObservedTimestamp, NpgsqlDbType.TimestampTz, cancellationToken);
                 await importer.WriteAsync(row.SeverityNumber, NpgsqlDbType.Smallint, cancellationToken);
@@ -74,7 +74,6 @@ internal sealed class LogWriter(
                 await WriteNullableAsync(importer, row.Body, NpgsqlDbType.Text, cancellationToken);
                 await WriteNullableAsync(importer, row.TraceId, NpgsqlDbType.Text, cancellationToken);
                 await WriteNullableAsync(importer, row.SpanId, NpgsqlDbType.Text, cancellationToken);
-                await WriteNullableAsync(importer, row.ServiceName, NpgsqlDbType.Text, cancellationToken);
                 await WriteNullableAsync(importer, row.ScopeName, NpgsqlDbType.Text, cancellationToken);
                 await importer.WriteAsync(row.ResourceAttributes, NpgsqlDbType.Jsonb, cancellationToken);
                 await importer.WriteAsync(row.Attributes, NpgsqlDbType.Jsonb, cancellationToken);

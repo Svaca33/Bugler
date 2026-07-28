@@ -6,10 +6,11 @@ import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { serviceLabel } from "@/lib/serviceLabel";
 
 const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
-/** Admin management of the telemetry topology: applications → instances → API keys. */
+/** Admin management of the telemetry topology: applications → services → API keys. */
 export function CatalogAdminPage() {
   const queryClient = useQueryClient();
   const catalog = useCatalog();
@@ -41,8 +42,8 @@ export function CatalogAdminPage() {
 
   const apps = applications.data ?? [];
   const selected = apps.find(a => a.id === selectedApp) ?? null;
-  const instanceCountOf = (applicationId: string) =>
-    catalog.data?.applications.find(a => a.id === applicationId)?.instances.length ?? 0;
+  const serviceCountOf = (applicationId: string) =>
+    catalog.data?.applications.find(a => a.id === applicationId)?.services.length ?? 0;
 
   return (
     <div className="flex h-full min-h-0">
@@ -55,7 +56,7 @@ export function CatalogAdminPage() {
         <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto px-2.5">
           {apps.map(app => {
             const isSelected = app.id === selectedApp;
-            const instanceCount = instanceCountOf(app.id);
+            const serviceCount = serviceCountOf(app.id);
             return (
               <button
                 key={app.id}
@@ -73,7 +74,7 @@ export function CatalogAdminPage() {
                   {app.name}
                 </span>
                 <span className={`text-[11px] ${isSelected ? "text-[#8CA1B8]" : "text-[#7D93AA]"}`}>
-                  {instanceCount} {instanceCount === 1 ? "instance" : "instances"}
+                  {serviceCount} {serviceCount === 1 ? "service" : "services"}
                 </span>
               </button>
             );
@@ -110,7 +111,7 @@ export function CatalogAdminPage() {
         />
       ) : (
         <p className="p-6 text-sm text-[#8CA1B8]">
-          Select an application to manage its instances and API keys.
+          Select an application to manage its services and API keys.
         </p>
       )}
     </div>
@@ -119,34 +120,34 @@ export function CatalogAdminPage() {
 
 function TopologyDetail(props: { applicationId: string; applicationName: string }) {
   const queryClient = useQueryClient();
-  const [issuedKey, setIssuedKey] = useState<{ instanceId: string; plaintext: string } | null>(null);
+  const [issuedKey, setIssuedKey] = useState<{ serviceId: string; plaintext: string } | null>(null);
 
-  const instances = useQuery({
-    queryKey: ["admin", "instances", props.applicationId],
+  const services = useQuery({
+    queryKey: ["admin", "services", props.applicationId],
     queryFn: async () => {
-      const { data, error } = await api.GET("/api/admin/applications/{applicationId}/instances", {
+      const { data, error } = await api.GET("/api/admin/applications/{applicationId}/services", {
         params: { path: { applicationId: props.applicationId } },
       });
-      if (error !== undefined) throw new Error("Failed to load instances");
+      if (error !== undefined) throw new Error("Failed to load services");
       return data;
     },
   });
 
   const issueKey = useMutation({
-    mutationFn: async (instanceId: string) => {
-      const { data, error } = await api.POST("/api/admin/instances/{id}/keys", {
-        params: { path: { id: instanceId } },
+    mutationFn: async (serviceId: string) => {
+      const { data, error } = await api.POST("/api/admin/services/{id}/keys", {
+        params: { path: { id: serviceId } },
       });
       if (error !== undefined || data === undefined) throw new Error("Failed to issue key");
       return data;
     },
-    onSuccess: (issued, instanceId) => {
-      setIssuedKey({ instanceId, plaintext: issued.plaintext });
-      queryClient.invalidateQueries({ queryKey: ["admin", "keys", instanceId] });
+    onSuccess: (issued, serviceId) => {
+      setIssuedKey({ serviceId, plaintext: issued.plaintext });
+      queryClient.invalidateQueries({ queryKey: ["admin", "keys", serviceId] });
     },
   });
 
-  const list = instances.data ?? [];
+  const list = services.data ?? [];
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
@@ -156,37 +157,43 @@ function TopologyDetail(props: { applicationId: string; applicationName: string 
           {props.applicationId}
         </span>
         <span className="ml-auto text-[12.5px] text-[#8CA1B8]">
-          {list.length} {list.length === 1 ? "instance" : "instances"}
+          {list.length} {list.length === 1 ? "service" : "services"}
         </span>
       </div>
 
-      {list.map(instance => (
-        <InstanceCard
-          key={instance.id}
-          instance={instance}
-          issuedPlaintext={issuedKey?.instanceId === instance.id ? issuedKey.plaintext : null}
-          onIssue={() => issueKey.mutate(instance.id)}
+      {list.map(service => (
+        <ServiceCard
+          key={service.id}
+          service={service}
+          issuedPlaintext={issuedKey?.serviceId === service.id ? issuedKey.plaintext : null}
+          onIssue={() => issueKey.mutate(service.id)}
           onIssuedSaved={() => setIssuedKey(null)}
         />
       ))}
 
-      <AddInstanceForm applicationId={props.applicationId} />
+      <AddServiceForm applicationId={props.applicationId} />
     </div>
   );
 }
 
-function InstanceCard(props: {
-  instance: { id: string; name: string; retentionDays?: number | string | null };
+function ServiceCard(props: {
+  service: {
+    id: string;
+    namespace: string;
+    environment: string;
+    name: string;
+    retentionDays?: number | string | null;
+  };
   issuedPlaintext: string | null;
   onIssue: () => void;
   onIssuedSaved: () => void;
 }) {
   const queryClient = useQueryClient();
   const keys = useQuery({
-    queryKey: ["admin", "keys", props.instance.id],
+    queryKey: ["admin", "keys", props.service.id],
     queryFn: async () => {
-      const { data, error } = await api.GET("/api/admin/instances/{id}/keys", {
-        params: { path: { id: props.instance.id } },
+      const { data, error } = await api.GET("/api/admin/services/{id}/keys", {
+        params: { path: { id: props.service.id } },
       });
       if (error !== undefined) throw new Error("Failed to load keys");
       return data;
@@ -197,16 +204,17 @@ function InstanceCard(props: {
     mutationFn: async (keyId: string) => {
       await api.DELETE("/api/admin/keys/{id}", { params: { path: { id: keyId } } });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "keys", props.instance.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "keys", props.service.id] }),
   });
 
   const activeKeys = (keys.data ?? []).filter(k => k.revokedAt == null);
-  const retention = props.instance.retentionDays;
+  const retention = props.service.retentionDays;
+  const label = serviceLabel(props.service);
 
   return (
     <div className="flex flex-col gap-3 rounded-[11px] border border-[#1E344C] bg-card p-4">
       <div className="flex items-center gap-2.5">
-        <span className="font-mono text-[13px] font-medium text-foreground">{props.instance.name}</span>
+        <span className="font-mono text-[13px] font-medium text-foreground">{label}</span>
         <span
           className={`rounded-[5px] bg-[#16283C] px-[7px] py-0.5 font-mono text-[10.5px] ${
             retention != null ? "text-[#A9BDD1]" : "text-[#8CA1B8]"
@@ -222,7 +230,7 @@ function InstanceCard(props: {
       {props.issuedPlaintext !== null && (
         <div className="flex flex-col gap-2 rounded-[9px] border border-[rgba(233,164,60,0.55)] bg-[rgba(233,164,60,0.10)] p-3.5">
           <p className="text-[12.5px] font-semibold text-[#F6E3C4]">
-            New key for {props.instance.name}{" "}
+            New key for {label}{" "}
             <span className="font-normal text-[#D9A45E]">— shown once, copy it now</span>
           </p>
           <code
@@ -271,63 +279,91 @@ function InstanceCard(props: {
         </div>
       ) : (
         <p className="rounded-lg border border-dashed border-input p-3 text-xs text-[#8CA1B8]">
-          No API key yet — this instance cannot send telemetry until you issue one.
+          No API key yet — this service cannot send telemetry until you issue one.
         </p>
       )}
     </div>
   );
 }
 
-function AddInstanceForm(props: { applicationId: string }) {
+function AddServiceForm(props: { applicationId: string }) {
   const queryClient = useQueryClient();
+  const [namespace, setNamespace] = useState("");
+  const [environment, setEnvironment] = useState("");
   const [name, setName] = useState("");
   const [retention, setRetention] = useState("");
 
-  const createInstance = useMutation({
+  const createService = useMutation({
     mutationFn: async () => {
-      const { data, error } = await api.POST("/api/admin/instances", {
+      const { data, error } = await api.POST("/api/admin/services", {
         body: {
           applicationId: props.applicationId,
+          namespace,
+          environment,
           name,
           retentionDays: retention === "" ? null : Number(retention),
         },
       });
-      if (error !== undefined || data === undefined) throw new Error("Failed to create instance");
+      if (error !== undefined || data === undefined) throw new Error("Failed to create service");
       return data;
     },
     onSuccess: () => {
+      setNamespace("");
+      setEnvironment("");
       setName("");
       setRetention("");
-      queryClient.invalidateQueries({ queryKey: ["admin", "instances", props.applicationId] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "services", props.applicationId] });
       queryClient.invalidateQueries({ queryKey: ["catalog"] });
     },
   });
+
+  const complete = namespace.trim() !== "" && environment.trim() !== "" && name.trim() !== "";
 
   return (
     <form
       className="flex flex-col gap-[11px] rounded-[11px] border border-dashed border-input p-4"
       onSubmit={event => {
         event.preventDefault();
-        if (name.trim()) createInstance.mutate();
+        if (complete) createService.mutate();
       }}
     >
-      <span className={CAPTION}>ADD INSTANCE</span>
+      <span className={CAPTION}>ADD SERVICE</span>
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="new-instance-name">Name (client)</Label>
+          <Label htmlFor="new-service-namespace">Namespace (deployment)</Label>
           <Input
-            id="new-instance-name"
-            className="w-[232px]"
-            placeholder="e.g. eu-west-1a"
+            id="new-service-namespace"
+            className="w-[176px]"
+            placeholder="e.g. demo"
+            value={namespace}
+            onChange={event => setNamespace(event.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="new-service-environment">Environment</Label>
+          <Input
+            id="new-service-environment"
+            className="w-[136px]"
+            placeholder="e.g. prod"
+            value={environment}
+            onChange={event => setEnvironment(event.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="new-service-name">Service name</Label>
+          <Input
+            id="new-service-name"
+            className="w-[176px]"
+            placeholder="e.g. backend"
             value={name}
             onChange={event => setName(event.target.value)}
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="new-instance-retention">Retention (days)</Label>
+          <Label htmlFor="new-service-retention">Retention (days)</Label>
           <Input
-            id="new-instance-retention"
-            className="w-[176px]"
+            id="new-service-retention"
+            className="w-[136px]"
             type="number"
             min={1}
             placeholder="30"
@@ -335,11 +371,14 @@ function AddInstanceForm(props: { applicationId: string }) {
             onChange={event => setRetention(event.target.value)}
           />
         </div>
-        <Button type="submit" size="sm" disabled={createInstance.isPending}>
-          Add instance
+        <Button type="submit" size="sm" disabled={!complete || createService.isPending}>
+          Add service
         </Button>
       </div>
-      <p className="text-[11.5px] text-[#7D93AA]">Leave retention empty to follow the server default.</p>
+      <p className="text-[11.5px] text-[#7D93AA]">
+        One process, one registration: a backend and a mobile client of the same deployment are two
+        services with their own keys. Leave retention empty to follow the server default.
+      </p>
     </form>
   );
 }

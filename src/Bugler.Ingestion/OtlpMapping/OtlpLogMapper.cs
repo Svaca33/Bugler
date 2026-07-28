@@ -5,19 +5,21 @@ using OpenTelemetry.Proto.Common.V1;
 
 namespace Bugler.Ingestion.OtlpMapping;
 
-/// <summary>Flattens an OTLP Export Request into storage rows stamped with the Source's instance.</summary>
+/// <summary>
+/// Flattens an OTLP Export Request into storage rows stamped with the Source's Service.
+/// The request's Declared Identity is left inside the resource attributes — it never
+/// competes with the Service the API key proved (ADR 0006).
+/// </summary>
 public static class OtlpLogMapper
 {
-    public static List<LogRecordRow> Map(ExportLogsServiceRequest request, InstanceId instanceId)
+    public static List<LogRecordRow> Map(ExportLogsServiceRequest request, ServiceId serviceId)
     {
         var rows = new List<LogRecordRow>();
         var receivedAt = DateTime.UtcNow;
 
         foreach (var resourceLogs in request.ResourceLogs)
         {
-            var resourceAttributes = resourceLogs.Resource?.Attributes;
-            var resourceJson = OtlpJson.AttributesToJson(resourceAttributes);
-            var serviceName = OtlpJson.FindString(resourceAttributes, "service.name");
+            var resourceJson = OtlpJson.AttributesToJson(resourceLogs.Resource?.Attributes);
 
             foreach (var scopeLogs in resourceLogs.ScopeLogs)
             {
@@ -29,7 +31,7 @@ public static class OtlpLogMapper
                     var timestamp = OtlpJson.ToUtc(log.TimeUnixNano) ?? observed ?? receivedAt;
 
                     rows.Add(new LogRecordRow(
-                        instanceId.Value,
+                        serviceId.Value,
                         timestamp,
                         observed,
                         (short)log.SeverityNumber,
@@ -37,7 +39,6 @@ public static class OtlpLogMapper
                         BodyToString(log.Body),
                         OtlpJson.ToHex(log.TraceId, expectedLength: 16),
                         OtlpJson.ToHex(log.SpanId, expectedLength: 8),
-                        serviceName,
                         scopeName,
                         resourceJson,
                         OtlpJson.AttributesToJson(log.Attributes)));

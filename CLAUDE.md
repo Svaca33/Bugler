@@ -11,6 +11,7 @@ cd frontend && bun install && bun test && bun run typecheck
 cd frontend && bun dev             # UI on :3000, proxies /api + /openapi to :8080
 cd e2e && bun run test             # Playwright; needs `docker compose up -d postgres` first
 docker compose up -d --build bugler  # full stack on :8080; image bakes the frontend — rebuild after ANY change
+dotnet run --project tools/Bugler.SampleSource -- --api-key blgr_…  # stream sample telemetry into a running Bugler (tools/Bugler.SampleSource/README.md)
 ```
 
 ## Architecture
@@ -18,7 +19,7 @@ docker compose up -d --build bugler  # full stack on :8080; image bakes the fron
 Modular monolith of bounded contexts — see [CONTEXT-MAP.md](CONTEXT-MAP.md) and each module's `CONTEXT.md`:
 
 - `src/Bugler.Access` — local accounts, cookie sessions, per-app grants; **first user created becomes Admin** (no seeded credentials)
-- `src/Bugler.Registry` — applications, instances, API keys (`Authorization: Bearer blgr_…`)
+- `src/Bugler.Registry` — applications, services, API keys (`Authorization: Bearer blgr_…`)
 - `src/Bugler.Ingestion` — OTLP receivers (gRPC + HTTP), buffered writers, retention purge
 - `src/Bugler.Exploration` — read path for the UI (logs, traces, waterfall)
 - `src/Bugler.SharedKernel` — shared ids/primitives only

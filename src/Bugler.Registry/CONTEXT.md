@@ -1,6 +1,6 @@
 # Registry
 
-The source of truth for what sends telemetry into Bugler: the catalog of applications and their client deployments, the API keys that authenticate them, and how long their telemetry is kept.
+The source of truth for what sends telemetry into Bugler: the catalog of applications and the services reporting on their behalf, the API keys that authenticate them, and how long their telemetry is kept.
 
 ## Language
 
@@ -8,26 +8,38 @@ The source of truth for what sends telemetry into Bugler: the catalog of applica
 A product whose telemetry Bugler collects (e.g. an e-shop, a CRM). The unit at which users are granted read access.
 _Avoid_: project, app, system, product
 
-**Instance**:
-A single client deployment of an Application; belongs to exactly one Application. Owns its API Key and its retention.
-_Avoid_: deployment, environment, installation
+**Service**:
+A registered sender of telemetry — one role of one deployment of an Application, such as the backend of a customer's production or the mobile client talking to it. Identified by its Service Namespace, Environment and Service Name; owns its API Keys and its retention.
+_Avoid_: instance, deployment, process, source
+
+**Service Namespace**:
+Which deployment of an Application a Service belongs to, usually the customer it was installed for (OTel `service.namespace`). Registered, never taken from telemetry.
+_Avoid_: customer, tenant, group
+
+**Environment**:
+The stage a Service runs in — production, staging (OTel `deployment.environment.name`). Registered, never taken from telemetry.
+_Avoid_: stage, tier, ring
+
+**Service Name**:
+The role a Service plays inside its deployment, e.g. backend or mobile (OTel `service.name`). Registered; what a sender calls itself carries no weight.
+_Avoid_: component, module, process name
+
+**Replica**:
+One running process of a Service; several share a single registration and a single API Key. Exists only as an attribute value discovered from telemetry (OTel `service.instance.id`) — never registered.
+_Avoid_: instance, node, pod
 
 **Tenant**:
-A customer served within a multi-tenant Instance. Exists only as an attribute value discovered from telemetry — never registered, never granted to.
+A customer served within a multi-tenant Service. Exists only as an attribute value discovered from telemetry — never registered, never granted to.
 _Avoid_: project, client, organization
 
-**Service**:
-A process within an Instance as it reports itself via OTel `service.name` (e.g. web, worker). Self-declared, not registered.
-_Avoid_: component, module
-
 **API Key**:
-The credential proving an export comes from a specific Instance. Shown in full only once at issue; revocable but never restorable — a lost or revoked key is replaced by issuing a new one.
+The credential proving an export comes from a specific Service; it admits telemetry and reads nothing. Shown in full only once at issue and never restorable, but a Service may hold several at once, so a key can be replaced without a gap in ingest.
 _Avoid_: token, secret, ingest key
 
 **Retention Policy**:
-How long an Instance's telemetry is kept: the server-wide default unless the Instance overrides it.
+How long a Service's telemetry is kept: the server-wide default unless the Service overrides it.
 _Avoid_: TTL, expiration, lifetime
 
 **Catalog**:
-The browsable inventory of Applications and their Instances.
+The browsable inventory of Applications and their Services.
 _Avoid_: directory, inventory, list

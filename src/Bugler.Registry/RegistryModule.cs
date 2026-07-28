@@ -38,12 +38,12 @@ public static class RegistryModule
         admin.MapGet("/applications", AdminCatalogEndpoints.ListApplications);
         admin.MapPost("/applications", AdminCatalogEndpoints.CreateApplication)
             .Produces<ApplicationDto>();
-        admin.MapGet("/applications/{applicationId:guid}/instances", AdminCatalogEndpoints.ListInstances);
-        admin.MapPost("/instances", AdminCatalogEndpoints.CreateInstance).Produces<InstanceDto>();
-        admin.MapPut("/instances/{id:guid}/retention", AdminCatalogEndpoints.SetRetention);
-        admin.MapGet("/instances/{id:guid}/keys", AdminApiKeyEndpoints.ListKeys)
+        admin.MapGet("/applications/{applicationId:guid}/services", AdminCatalogEndpoints.ListServices);
+        admin.MapPost("/services", AdminCatalogEndpoints.CreateService).Produces<ServiceDto>();
+        admin.MapPut("/services/{id:guid}/retention", AdminCatalogEndpoints.SetRetention);
+        admin.MapGet("/services/{id:guid}/keys", AdminApiKeyEndpoints.ListKeys)
             .Produces<List<ApiKeyDto>>();
-        admin.MapPost("/instances/{id:guid}/keys", AdminApiKeyEndpoints.IssueKey)
+        admin.MapPost("/services/{id:guid}/keys", AdminApiKeyEndpoints.IssueKey)
             .Produces<IssuedApiKeyDto>();
         admin.MapDelete("/keys/{id:guid}", AdminApiKeyEndpoints.RevokeKey);
         return endpoints;

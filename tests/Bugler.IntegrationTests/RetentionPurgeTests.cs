@@ -2,7 +2,7 @@ using Bugler.Ingestion.PurgeExpiredTelemetry;
 
 namespace Bugler.IntegrationTests;
 
-/// <summary>Purge removes Signals older than the Instance's effective retention and nothing else.</summary>
+/// <summary>Purge removes Signals older than the Service's effective retention and nothing else.</summary>
 public sealed class RetentionPurgeTests : IAsyncLifetime
 {
     private BuglerHarness _harness = null!;
@@ -14,22 +14,22 @@ public sealed class RetentionPurgeTests : IAsyncLifetime
     [Fact]
     public async Task Purge_removes_only_expired_telemetry()
     {
-        var instance = _harness.InstanceId;
+        var service = _harness.ServiceId;
         await _harness.ExecuteSqlAsync($$"""
             INSERT INTO telemetry.log_records
-                (instance_id, timestamp, severity_number, body, resource_attributes, attributes)
+                (service_id, timestamp, severity_number, body, resource_attributes, attributes)
             VALUES
-                ('{{instance}}', now() - interval '40 days', 9, 'ancient', '{}', '{}'),
-                ('{{instance}}', now() - interval '1 hour', 9, 'fresh', '{}', '{}')
+                ('{{service}}', now() - interval '40 days', 9, 'ancient', '{}', '{}'),
+                ('{{service}}', now() - interval '1 hour', 9, 'fresh', '{}', '{}')
             """);
         await _harness.ExecuteSqlAsync($$"""
             INSERT INTO telemetry.spans
-                (instance_id, trace_id, span_id, name, kind, start_time, end_time, status_code,
+                (service_id, trace_id, span_id, name, kind, start_time, end_time, status_code,
                  resource_attributes, attributes, events, links)
             VALUES
-                ('{{instance}}', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'ancient-span', 0,
+                ('{{service}}', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'ancient-span', 0,
                  now() - interval '40 days', now() - interval '40 days', 0, '{}', '{}', '[]', '[]'),
-                ('{{instance}}', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbbbbbbb', 'fresh-span', 0,
+                ('{{service}}', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbbbbbbb', 'fresh-span', 0,
                  now() - interval '1 hour', now() - interval '1 hour', 0, '{}', '{}', '[]', '[]')
             """);
 

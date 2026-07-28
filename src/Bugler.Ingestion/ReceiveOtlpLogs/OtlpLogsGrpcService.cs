@@ -14,16 +14,16 @@ internal sealed class OtlpLogsGrpcService(TelemetryBuffer buffer, IApiKeyValidat
         ExportLogsServiceRequest request, ServerCallContext context)
     {
         var apiKey = BearerApiKey.Extract(context.RequestHeaders.GetValue("authorization"));
-        var instanceId = apiKey is null
+        var serviceId = apiKey is null
             ? null
             : await apiKeys.ValidateAsync(apiKey, context.CancellationToken);
 
-        if (instanceId is null)
+        if (serviceId is null)
         {
             throw new RpcException(new Status(StatusCode.Unauthenticated, "Missing or invalid API key."));
         }
 
-        var rows = OtlpLogMapper.Map(request, instanceId.Value);
+        var rows = OtlpLogMapper.Map(request, serviceId.Value);
         var rejected = rows.Count(row => !buffer.TryEnqueue(row));
 
         if (rejected == rows.Count && rows.Count > 0)

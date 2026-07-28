@@ -8,7 +8,7 @@ public sealed class RegistryDbContext(DbContextOptions<RegistryDbContext> option
     : DbContext(options)
 {
     public DbSet<Application> Applications => Set<Application>();
-    public DbSet<Instance> Instances => Set<Instance>();
+    public DbSet<Service> Services => Set<Service>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -23,25 +23,27 @@ public sealed class RegistryDbContext(DbContextOptions<RegistryDbContext> option
             application.HasIndex(a => a.Name).IsUnique();
         });
 
-        modelBuilder.Entity<Instance>(instance =>
+        modelBuilder.Entity<Service>(service =>
         {
-            instance.Property(i => i.Id)
-                .HasConversion(id => id.Value, value => new InstanceId(value));
-            instance.Property(i => i.ApplicationId)
+            service.Property(s => s.Id)
+                .HasConversion(id => id.Value, value => new ServiceId(value));
+            service.Property(s => s.ApplicationId)
                 .HasConversion(id => id.Value, value => new ApplicationId(value));
-            instance.Property(i => i.Name).HasMaxLength(200);
-            instance.HasIndex(i => new { i.ApplicationId, i.Name }).IsUnique();
-            instance.HasOne<Application>().WithMany()
-                .HasForeignKey(i => i.ApplicationId).OnDelete(DeleteBehavior.Cascade);
+            service.Property(s => s.Namespace).HasMaxLength(200);
+            service.Property(s => s.Environment).HasMaxLength(200);
+            service.Property(s => s.Name).HasMaxLength(200);
+            service.HasIndex(s => new { s.ApplicationId, s.Namespace, s.Environment, s.Name }).IsUnique();
+            service.HasOne<Application>().WithMany()
+                .HasForeignKey(s => s.ApplicationId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ApiKey>(apiKey =>
         {
-            apiKey.Property(k => k.InstanceId)
-                .HasConversion(id => id.Value, value => new InstanceId(value));
+            apiKey.Property(k => k.ServiceId)
+                .HasConversion(id => id.Value, value => new ServiceId(value));
             apiKey.HasIndex(k => k.KeyHash).IsUnique();
-            apiKey.HasOne<Instance>().WithMany()
-                .HasForeignKey(k => k.InstanceId).OnDelete(DeleteBehavior.Cascade);
+            apiKey.HasOne<Service>().WithMany()
+                .HasForeignKey(k => k.ServiceId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

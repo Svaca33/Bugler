@@ -19,11 +19,11 @@ internal static class IngestTracesHttpEndpoint
         CancellationToken cancellationToken)
     {
         var apiKey = BearerApiKey.Extract(request.Headers.Authorization.FirstOrDefault());
-        var instanceId = apiKey is null
+        var serviceId = apiKey is null
             ? null
             : await apiKeys.ValidateAsync(apiKey, cancellationToken);
 
-        if (instanceId is null)
+        if (serviceId is null)
         {
             return Results.Unauthorized();
         }
@@ -46,7 +46,7 @@ internal static class IngestTracesHttpEndpoint
             return Results.BadRequest();
         }
 
-        var (rows, dropped) = OtlpTraceMapper.Map(export, instanceId.Value);
+        var (rows, dropped) = OtlpTraceMapper.Map(export, serviceId.Value);
         var overflow = rows.Count(row => !buffer.TryEnqueue(row));
 
         if (overflow == rows.Count && rows.Count > 0)

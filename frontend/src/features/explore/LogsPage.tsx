@@ -6,23 +6,24 @@ import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { AttributeFilterBar } from "./AttributeFilterBar";
+import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterSelect } from "./FilterSelect";
 import { formatTime, tenantOf } from "./format";
 import { LogDetailPanel } from "./LogDetailPanel";
 import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "./severity";
+import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
 
-export interface LogFilters {
-  applicationId?: string;
-  instanceId?: string;
+export interface LogFilters extends SourceFilters {
   severityMin?: number;
   q?: string;
-  tenant?: string;
   traceId?: string;
+  filters?: AttributeFilter[];
 }
 
 const PAGE_SIZE = 100;
 
-const GRID = "grid grid-cols-[3px_172px_66px_148px_96px_1fr] items-center gap-3.5 px-5";
+const GRID = "grid grid-cols-[3px_172px_66px_196px_96px_1fr] items-center gap-3.5 px-5";
 
 export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFilters) => void }) {
   const { filters, onChange } = props;
@@ -38,11 +39,13 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
         params: {
           query: {
             applicationId: filters.applicationId,
-            instanceId: filters.instanceId,
+            namespace: filters.namespace,
+            environment: filters.environment,
+            service: filters.service,
             severityMin: filters.severityMin,
             q: filters.q,
-            tenant: filters.tenant,
             traceId: filters.traceId,
+            ...toQueryParams(filters.filters ?? []),
             limit: PAGE_SIZE,
             before: pageParam?.before,
             beforeId: pageParam?.beforeId,
@@ -64,9 +67,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
 
   const items = logs.data?.pages.flatMap(page => page.items) ?? [];
   const applications = catalog.data?.applications ?? [];
-  const instances =
-    applications.find(a => a.id === filters.applicationId)?.instances ??
-    applications.flatMap(a => a.instances);
+  const labels = serviceLabels(applications);
 
   return (
     <div className="flex h-full min-h-0">
@@ -83,14 +84,32 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
             value={filters.applicationId}
             options={applications.map(a => ({ value: a.id, label: a.name }))}
             onChange={applicationId =>
-              onChange({ ...filters, applicationId, instanceId: undefined })
+              onChange({
+                ...filters,
+                applicationId,
+                namespace: undefined,
+                environment: undefined,
+                service: undefined,
+              })
             }
           />
           <FilterSelect
-            placeholder="All instances"
-            value={filters.instanceId}
-            options={instances.map(i => ({ value: i.id, label: i.name }))}
-            onChange={instanceId => onChange({ ...filters, instanceId })}
+            placeholder="All namespaces"
+            value={filters.namespace}
+            options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
+            onChange={namespace => onChange({ ...filters, namespace })}
+          />
+          <FilterSelect
+            placeholder="All environments"
+            value={filters.environment}
+            options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
+            onChange={environment => onChange({ ...filters, environment })}
+          />
+          <FilterSelect
+            placeholder="All services"
+            value={filters.service}
+            options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
+            onChange={service => onChange({ ...filters, service })}
           />
           <FilterSelect
             placeholder="All severities"
@@ -108,15 +127,17 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
             value={search}
             onChange={event => setSearch(event.target.value)}
           />
-          <Input
-            className="w-36"
-            placeholder="Tenant"
-            value={filters.tenant ?? ""}
-            onChange={event => onChange({ ...filters, tenant: event.target.value || undefined })}
-          />
           <Button type="submit" variant="secondary" size="sm">
             Search
           </Button>
+          <AttributeFilterBar
+            signal="logs"
+            source={filters}
+            filters={filters.filters ?? []}
+            onChange={next =>
+              onChange({ ...filters, filters: next.length > 0 ? next : undefined })
+            }
+          />
           <Button
             type="button"
             variant={live ? "default" : "outline"}
@@ -191,7 +212,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
                   <span
                     className={`truncate font-mono text-[11.5px] ${isSelected ? "text-[#C6D6E6]" : "text-[#A9BDD1]"}`}
                   >
-                    {log.serviceName}
+                    {labels.get(log.serviceId) ?? "—"}
                   </span>
                   <span className="truncate font-mono text-[11.5px] text-[#7D93AA]">
                     {tenantOf(log) || "—"}
@@ -227,7 +248,16 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
         </div>
       </div>
 
-      {selected !== null && <LogDetailPanel log={selected} onClose={() => setSelected(null)} />}
+      {selected !== null && (
+        <LogDetailPanel
+          log={selected}
+          filters={filters.filters ?? []}
+          onFiltersChange={next =>
+            onChange({ ...filters, filters: next.length > 0 ? next : undefined })
+          }
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
