@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Bugler.Access.Authentication;
 using Bugler.Exploration.SearchLogs;
 using Google.Protobuf;
 using OpenTelemetry.Proto.Collector.Logs.V1;
@@ -12,7 +13,8 @@ namespace Bugler.IntegrationTests;
 /// <summary>
 /// Authentication and Visibility Scope end to end: anonymous callers are rejected, setup runs once,
 /// a non-admin only ever sees telemetry of granted Applications, and an issued Session keeps
-/// answering to the database — deactivation ends it and the Admin role is read back, not remembered.
+/// answering to the database — deactivation or deletion ends it and the Admin role is read back,
+/// not remembered. Deactivation and deletion are the two separate ways out of a User (ADR 0001).
 /// </summary>
 public sealed class AccessTests : IAsyncLifetime
 {
@@ -102,6 +104,70 @@ public sealed class AccessTests : IAsyncLifetime
 
         var afterDeactivation = await member.GetAsync("/api/logs");
         Assert.Equal(HttpStatusCode.Unauthorized, afterDeactivation.StatusCode);
+    }
+
+    /// <summary>
+    /// Deletion is the end, not a deeper pause: the Session goes, the grants go with the row, and
+    /// the e-mail is free for a new account — which is a different User, with nothing inherited.
+    /// </summary>
+    [Fact]
+    public async Task Deleting_a_user_ends_their_session_and_takes_their_grants()
+    {
+        const string email = "deleted@bugler.test";
+        var member = await _harness.CreateUserClientAsync(email, "DeletedPass123!", _harness.ApplicationId);
+        (await member.GetAsync("/api/logs")).EnsureSuccessStatusCode();
+        var userId = await _harness.FindUserIdAsync(email);
+
+        (await _harness.Client.DeleteAsync($"/api/users/{userId}")).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await member.GetAsync("/api/logs")).StatusCode);
+        Assert.Equal(0, await _harness.WaitForCountAsync(
+            $"SELECT count(*) FROM access.application_grants WHERE user_id = '{userId}'", expected: 0));
+
+        var recreated = await _harness.Client.PostAsJsonAsync(
+            "/api/users", new { email, password = "SecondPass123!", displayName = (string?)null, isAdmin = false });
+        recreated.EnsureSuccessStatusCode();
+        Assert.NotEqual(userId, await _harness.FindUserIdAsync(email));
+    }
+
+    /// <summary>Deactivation is a pause, and the grants it kept are still there on the way back.</summary>
+    [Fact]
+    public async Task Reactivating_a_user_lets_them_back_in_with_their_grants_intact()
+    {
+        const string email = "returning@bugler.test";
+        const string password = "ReturnPass123!";
+        await _harness.CreateUserClientAsync(email, password, _harness.ApplicationId);
+        var userId = await _harness.FindUserIdAsync(email);
+        await _harness.DeactivateUserAsync(email);
+
+        var whileDeactivated = await _harness.CreateAnonymousClient()
+            .PostAsJsonAsync("/api/auth/login", new { email, password });
+        Assert.Equal(HttpStatusCode.Unauthorized, whileDeactivated.StatusCode);
+
+        (await _harness.Client.PostAsync($"/api/users/{userId}/reactivate", content: null))
+            .EnsureSuccessStatusCode();
+
+        var returned = _harness.CreateAnonymousClient();
+        (await returned.PostAsJsonAsync("/api/auth/login", new { email, password })).EnsureSuccessStatusCode();
+        var me = await returned.GetFromJsonAsync<CurrentUserDto>("/api/auth/me");
+        Assert.Equal(_harness.ApplicationId, Assert.Single(me!.GrantedApplicationIds));
+    }
+
+    /// <summary>
+    /// The whole guard on a server keeping an Admin (ADR 0001): only an Admin reaches these
+    /// endpoints, so the last one could only be removed by themselves — and is not allowed to be.
+    /// </summary>
+    [Fact]
+    public async Task An_admin_can_remove_neither_themselves_nor_their_own_access()
+    {
+        var me = await _harness.Client.GetFromJsonAsync<CurrentUserDto>("/api/auth/me");
+
+        var deactivation = await _harness.Client.PostAsync($"/api/users/{me!.Id}/deactivate", content: null);
+        var deletion = await _harness.Client.DeleteAsync($"/api/users/{me.Id}");
+
+        Assert.Equal(HttpStatusCode.Conflict, deactivation.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, deletion.StatusCode);
+        (await _harness.Client.GetAsync("/api/users")).EnsureSuccessStatusCode();
     }
 
     [Fact]

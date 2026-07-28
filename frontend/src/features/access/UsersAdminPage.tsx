@@ -4,6 +4,14 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -20,6 +28,7 @@ export function UsersAdminPage() {
   const [password, setPassword] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [userFilter, setUserFilter] = useState("");
+  const [pendingDeletion, setPendingDeletion] = useState<{ id: string; email: string } | null>(null);
 
   const users = useQuery({
     queryKey: ["admin", "users"],
@@ -76,6 +85,24 @@ export function UsersAdminPage() {
     onSuccess: invalidate,
   });
 
+  const reactivate = useMutation({
+    mutationFn: async (userId: string) => {
+      await api.POST("/api/users/{id}/reactivate", { params: { path: { id: userId } } });
+    },
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await api.DELETE("/api/users/{id}", { params: { path: { id: userId } } });
+      if (error !== undefined) throw new Error("Failed to delete user");
+    },
+    onSuccess: () => {
+      setPendingDeletion(null);
+      invalidate();
+    },
+  });
+
   const applications = catalog.data?.applications ?? [];
   const allUsers = users.data ?? [];
   const visibleUsers = allUsers.filter(user =>
@@ -84,7 +111,7 @@ export function UsersAdminPage() {
   const deactivatedCount = allUsers.filter(user => user.isDeactivated).length;
 
   // One column per application, generated from the catalog length.
-  const gridTemplateColumns = `250px 92px 104px repeat(${Math.max(applications.length, 1)}, minmax(0,1fr)) 104px`;
+  const gridTemplateColumns = `250px 92px 104px repeat(${Math.max(applications.length, 1)}, minmax(0,1fr)) 172px`;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-[18px] overflow-auto px-6 py-5">
@@ -197,15 +224,30 @@ export function UsersAdminPage() {
                 <span />
               )}
 
-              <span className="justify-self-end">
-                {!user.isDeactivated && (
-                  <button
-                    type="button"
-                    className="rounded-[5px] px-2 py-1 text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
-                    onClick={() => deactivate.mutate(user.id)}
-                  >
-                    Deactivate
-                  </button>
+              {/* An admin removes neither their own access nor their own account (ADR 0001). */}
+              <span className="flex justify-self-end gap-1">
+                {!isSelf && (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-[5px] px-2 py-1 text-[11.5px] text-[#B6C8DA] hover:bg-[#12253A]"
+                      onClick={() =>
+                        (user.isDeactivated ? reactivate : deactivate).mutate(user.id)
+                      }
+                    >
+                      {user.isDeactivated ? "Reactivate" : "Deactivate"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-[5px] px-2 py-1 text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
+                      onClick={() => {
+                        remove.reset();
+                        setPendingDeletion({ id: user.id, email: user.email });
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
               </span>
             </div>
@@ -273,6 +315,46 @@ export function UsersAdminPage() {
           <p className="text-[12.5px] text-[#F0685A]">{createUser.error.message}</p>
         )}
       </form>
+
+      {/*
+        Deletion names the account and says it is final; deactivation needs no such dialog, since
+        reactivating undoes it. The typed confirmation stays reserved for telemetry (ADR 0007).
+      */}
+      <Dialog
+        open={pendingDeletion !== null}
+        onOpenChange={open => {
+          if (!open) setPendingDeletion(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this user?</DialogTitle>
+            <DialogDescription>
+              <code className="font-mono text-foreground">{pendingDeletion?.email}</code> loses their
+              account and every application grant it holds, and their e-mail becomes free for a new
+              account. This cannot be undone — to only take their access away, deactivate them instead.
+            </DialogDescription>
+          </DialogHeader>
+
+          {remove.error !== null && (
+            <p className="text-[11.5px] text-destructive">Deletion failed — nothing was removed.</p>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setPendingDeletion(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={remove.isPending}
+              onClick={() => pendingDeletion !== null && remove.mutate(pendingDeletion.id)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

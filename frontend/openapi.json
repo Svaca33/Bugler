@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:8099/"
+      "url": "http://127.0.0.1:18080/"
     }
   ],
   "paths": {
@@ -630,6 +630,52 @@
         }
       }
     },
+    "/api/users/{id}/reactivate": {
+      "post": {
+        "tags": [
+          "ManageUsersEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "delete": {
+        "tags": [
+          "ManageUsersEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/users/{id}/grants": {
       "post": {
         "tags": [
@@ -744,6 +790,29 @@
         }
       }
     },
+    "/api/admin/applications/{id}": {
+      "delete": {
+        "tags": [
+          "AdminCatalogEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/admin/applications/{applicationId}/services": {
       "get": {
         "tags": [
@@ -802,6 +871,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/admin/services/{id}": {
+      "delete": {
+        "tags": [
+          "AdminCatalogEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -1229,6 +1321,10 @@
           },
           "password": {
             "type": "string"
+          },
+          "staySignedIn": {
+            "type": "boolean",
+            "default": false
           }
         }
       },

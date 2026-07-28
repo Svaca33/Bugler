@@ -137,13 +137,18 @@ public sealed class BuglerHarness : IAsyncDisposable
 
     private sealed record CreatedUser(Guid Id);
 
+    /// <summary>Looks a User up the way an Admin does — through the list the admin UI renders.</summary>
+    public async Task<Guid> FindUserIdAsync(string email)
+    {
+        var users = await Client.GetFromJsonAsync<List<UserDto>>("/api/users");
+        return users!.Single(u => u.Email == email).Id;
+    }
+
     /// <summary>Deactivates a User through the admin API, the way an Admin would from the UI.</summary>
     public async Task DeactivateUserAsync(string email)
     {
-        var users = await Client.GetFromJsonAsync<List<UserDto>>("/api/users");
-        var user = users!.Single(u => u.Email == email);
-
-        var response = await Client.PostAsync($"/api/users/{user.Id}/deactivate", content: null);
+        var response = await Client.PostAsync(
+            $"/api/users/{await FindUserIdAsync(email)}/deactivate", content: null);
         response.EnsureSuccessStatusCode();
     }
 

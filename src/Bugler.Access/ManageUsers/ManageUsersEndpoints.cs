@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Bugler.Access.Authentication;
 using Bugler.Access.Users;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -69,8 +71,13 @@ internal static class ManageUsersEndpoints
     }
 
     public static async Task<IResult> Deactivate(
-        Guid id, AccessDbContext dbContext, CancellationToken cancellationToken)
+        Guid id, ClaimsPrincipal principal, AccessDbContext dbContext, CancellationToken cancellationToken)
     {
+        if (IsSelf(id, principal))
+        {
+            return Results.Conflict("An admin cannot deactivate their own account.");
+        }
+
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (user is null)
         {
@@ -81,6 +88,44 @@ internal static class ManageUsersEndpoints
         await dbContext.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
     }
+
+    /// <summary>Lets a deactivated User back in, with the grants deactivation left untouched.</summary>
+    public static async Task<IResult> Reactivate(
+        Guid id, AccessDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user is null)
+        {
+            return Results.NotFound();
+        }
+
+        user.DeactivatedAt = null;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Removes a User for good; the database cascades their grants away. No Deactivation has to
+    /// precede it — the two are separate answers, not two steps (ADR 0001).
+    /// </summary>
+    public static async Task<IResult> Delete(
+        Guid id, ClaimsPrincipal principal, AccessDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (IsSelf(id, principal))
+        {
+            return Results.Conflict("An admin cannot delete their own account.");
+        }
+
+        var deleted = await dbContext.Users.Where(u => u.Id == id).ExecuteDeleteAsync(cancellationToken);
+        return deleted == 0 ? Results.NotFound() : Results.NoContent();
+    }
+
+    /// <summary>
+    /// The whole guard on a server keeping an Admin: since only an Admin reaches these endpoints,
+    /// the last one can only be removed by themselves, and this is where that is refused (ADR 0001).
+    /// </summary>
+    private static bool IsSelf(Guid id, ClaimsPrincipal principal) =>
+        AuthEndpoints.GetUserId(principal) == id;
 
     public static async Task<IResult> Grant(
         Guid id, GrantRequest request, AccessDbContext dbContext, CancellationToken cancellationToken)
