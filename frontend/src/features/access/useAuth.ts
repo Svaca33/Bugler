@@ -31,7 +31,7 @@ export function useAuthStatus() {
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (credentials: { email: string; password: string }) => {
+    mutationFn: async (credentials: { email: string; password: string; staySignedIn: boolean }) => {
       const { data, response } = await api.POST("/api/auth/login", { body: credentials });
       if (response.status === 401) throw new Error("Invalid e-mail or password.");
       if (data === undefined) throw new Error("Login failed.");

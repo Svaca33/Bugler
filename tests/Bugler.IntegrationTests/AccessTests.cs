@@ -55,6 +55,21 @@ public sealed class AccessTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// "Stay signed in" is observable in exactly one place: whether the session cookie carries an
+    /// expiry — and so outlives the browser — or dies with it. Omitting the flag must keep the
+    /// browser-session behaviour, which is what every caller predating the flag relies on.
+    /// </summary>
+    [Fact]
+    public async Task Staying_signed_in_gives_the_session_cookie_an_expiry()
+    {
+        var plain = await SignInAndReadSessionCookieAsync(staySignedIn: null);
+        var remembered = await SignInAndReadSessionCookieAsync(staySignedIn: true);
+
+        Assert.False(HasExpiry(plain), $"Expected a browser-session cookie, got: {plain}");
+        Assert.True(HasExpiry(remembered), $"Expected a persistent cookie, got: {remembered}");
+    }
+
     [Fact]
     public async Task NonAdmin_sees_only_granted_applications_and_no_admin_api()
     {
@@ -74,6 +89,24 @@ public sealed class AccessTests : IAsyncLifetime
         var admin = await _harness.Client.GetFromJsonAsync<SearchLogsResponse>("/api/logs");
         Assert.Equal(2, admin!.Items.Count);
     }
+
+    /// <summary>Signs in on a fresh cookie jar and returns the raw Set-Cookie value of the session cookie.</summary>
+    private async Task<string> SignInAndReadSessionCookieAsync(bool? staySignedIn)
+    {
+        object credentials = staySignedIn is null
+            ? new { email = BuglerHarness.AdminEmail, password = BuglerHarness.AdminPassword }
+            : new { email = BuglerHarness.AdminEmail, password = BuglerHarness.AdminPassword, staySignedIn };
+
+        var response = await _harness.CreateAnonymousClient().PostAsJsonAsync("/api/auth/login", credentials);
+        response.EnsureSuccessStatusCode();
+
+        return Assert.Single(response.Headers.GetValues("Set-Cookie")
+            .Where(cookie => cookie.StartsWith("bugler.session=", StringComparison.Ordinal)));
+    }
+
+    private static bool HasExpiry(string setCookie) =>
+        setCookie.Contains("expires=", StringComparison.OrdinalIgnoreCase)
+        || setCookie.Contains("max-age=", StringComparison.OrdinalIgnoreCase);
 
     private async Task IngestLogAsync(string apiKey, string body)
     {

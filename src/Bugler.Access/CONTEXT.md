@@ -17,5 +17,6 @@ The permission for one User to read the telemetry of one Application. References
 _Avoid_: permission, role assignment, ACL entry
 
 **Session**:
-An authenticated sign-in of a User, from login to logout or expiry.
+An authenticated sign-in of a User, lasting until logout, expiry, or — unless the User chose to
+stay signed in — until they close the browser.
 _Avoid_: token, login state

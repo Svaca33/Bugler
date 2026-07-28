@@ -10,7 +10,7 @@ namespace Bugler.Access.Authentication;
 
 public sealed record SetupRequest(string Email, string Password, string? DisplayName);
 
-public sealed record LoginRequest(string Email, string Password);
+public sealed record LoginRequest(string Email, string Password, bool StaySignedIn = false);
 
 public sealed record CurrentUserDto(
     Guid Id, string Email, string? DisplayName, bool IsAdmin, IReadOnlyList<Guid> GrantedApplicationIds);
@@ -50,7 +50,7 @@ internal static class AuthEndpoints
         dbContext.Users.Add(admin);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await SignInAsync(httpContext, admin);
+        await SignInAsync(httpContext, admin, staySignedIn: false);
         return Results.Ok(await ToCurrentUserAsync(admin, dbContext, cancellationToken));
     }
 
@@ -74,7 +74,7 @@ internal static class AuthEndpoints
             return Results.Unauthorized();
         }
 
-        await SignInAsync(httpContext, user);
+        await SignInAsync(httpContext, user, request.StaySignedIn);
         return Results.Ok(await ToCurrentUserAsync(user, dbContext, cancellationToken));
     }
 
@@ -101,7 +101,7 @@ internal static class AuthEndpoints
     internal static Guid? GetUserId(ClaimsPrincipal principal) =>
         Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 
-    private static async Task SignInAsync(HttpContext httpContext, User user)
+    private static async Task SignInAsync(HttpContext httpContext, User user, bool staySignedIn)
     {
         var claims = new List<Claim>
         {
@@ -114,9 +114,13 @@ internal static class AuthEndpoints
         }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+        // Persisting the cookie is the whole of "stay signed in" — the ticket keeps its sliding
+        // lifetime either way; only surviving a browser restart is at stake.
         await httpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+            new ClaimsPrincipal(identity),
+            new AuthenticationProperties { IsPersistent = staySignedIn });
     }
 
     private static async Task<CurrentUserDto> ToCurrentUserAsync(

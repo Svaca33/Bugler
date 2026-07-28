@@ -1153,6 +1153,8 @@ export interface components {
         LoginRequest: {
             email: string;
             password: string;
+            /** @default false */
+            staySignedIn: boolean;
         };
         LogRecordDto: {
             /** Format: int64 */

@@ -4,6 +4,7 @@ import { useState } from "react";
 import markDark from "@/bugler-mark-dark.svg";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -24,6 +25,7 @@ function LoginForm() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [staySignedIn, setStaySignedIn] = useState(false);
 
   return (
     <AuthCard
@@ -32,7 +34,9 @@ function LoginForm() {
       error={login.error?.message}
       submitLabel={login.isPending ? "Signing in…" : "Sign in"}
       disabled={login.isPending}
-      onSubmit={() => login.mutate({ email, password }, { onSuccess: () => navigate({ to: "/" }) })}
+      onSubmit={() =>
+        login.mutate({ email, password, staySignedIn }, { onSuccess: () => navigate({ to: "/" }) })
+      }
     >
       <Field
         label="E-mail"
@@ -43,6 +47,16 @@ function LoginForm() {
         autoFocus
       />
       <Field label="Password" type="password" value={password} onChange={setPassword} />
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="stay-signed-in"
+          checked={staySignedIn}
+          onCheckedChange={checked => setStaySignedIn(checked === true)}
+        />
+        <Label htmlFor="stay-signed-in" className="font-normal">
+          Stay signed in
+        </Label>
+      </div>
     </AuthCard>
   );
 }
