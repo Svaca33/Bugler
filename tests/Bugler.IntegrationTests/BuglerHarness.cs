@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Bugler.Access.ManageUsers;
 using Bugler.Registry;
 using Bugler.Registry.Catalog;
 using Bugler.SharedKernel;
@@ -135,6 +136,16 @@ public sealed class BuglerHarness : IAsyncDisposable
     }
 
     private sealed record CreatedUser(Guid Id);
+
+    /// <summary>Deactivates a User through the admin API, the way an Admin would from the UI.</summary>
+    public async Task DeactivateUserAsync(string email)
+    {
+        var users = await Client.GetFromJsonAsync<List<UserDto>>("/api/users");
+        var user = users!.Single(u => u.Email == email);
+
+        var response = await Client.PostAsync($"/api/users/{user.Id}/deactivate", content: null);
+        response.EnsureSuccessStatusCode();
+    }
 
     /// <summary>Polls the given scalar-list query until it yields at least expectedCount rows.</summary>
     public async Task<List<string>> WaitForRowsAsync(string sql, int expectedCount)

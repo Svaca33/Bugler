@@ -10,8 +10,9 @@ using OpenTelemetry.Proto.Logs.V1;
 namespace Bugler.IntegrationTests;
 
 /// <summary>
-/// Authentication and Visibility Scope end to end: anonymous callers are rejected,
-/// setup runs once, and a non-admin only ever sees telemetry of granted Applications.
+/// Authentication and Visibility Scope end to end: anonymous callers are rejected, setup runs once,
+/// a non-admin only ever sees telemetry of granted Applications, and an issued Session keeps
+/// answering to the database — deactivation ends it and the Admin role is read back, not remembered.
 /// </summary>
 public sealed class AccessTests : IAsyncLifetime
 {
@@ -88,6 +89,33 @@ public sealed class AccessTests : IAsyncLifetime
 
         var admin = await _harness.Client.GetFromJsonAsync<SearchLogsResponse>("/api/logs");
         Assert.Equal(2, admin!.Items.Count);
+    }
+
+    [Fact]
+    public async Task Deactivating_a_user_ends_the_session_they_already_hold()
+    {
+        const string email = "leaver@bugler.test";
+        var member = await _harness.CreateUserClientAsync(email, "LeaverPass123!", _harness.ApplicationId);
+        (await member.GetAsync("/api/logs")).EnsureSuccessStatusCode();
+
+        await _harness.DeactivateUserAsync(email);
+
+        var afterDeactivation = await member.GetAsync("/api/logs");
+        Assert.Equal(HttpStatusCode.Unauthorized, afterDeactivation.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_role_follows_the_database_not_the_cookie_it_was_minted_into()
+    {
+        const string email = "promoted@bugler.test";
+        var member = await _harness.CreateUserClientAsync(email, "PromotedPass123!");
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync("/api/users")).StatusCode);
+
+        await _harness.ExecuteSqlAsync($"UPDATE access.users SET is_admin = true WHERE email = '{email}'");
+        Assert.Equal(HttpStatusCode.OK, (await member.GetAsync("/api/users")).StatusCode);
+
+        await _harness.ExecuteSqlAsync($"UPDATE access.users SET is_admin = false WHERE email = '{email}'");
+        Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync("/api/users")).StatusCode);
     }
 
     /// <summary>Signs in on a fresh cookie jar and returns the raw Set-Cookie value of the session cookie.</summary>

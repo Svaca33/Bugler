@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -19,8 +20,9 @@ namespace Bugler.Access;
 /// <summary>Composition entry point of the Access context (human identity and authorization).</summary>
 public static class AccessModule
 {
-    public static IServiceCollection AddAccess(this IServiceCollection services)
+    public static IServiceCollection AddAccess(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<AccessOptions>(configuration.GetSection(AccessOptions.SectionName));
         services.AddDbContext<AccessDbContext>((provider, options) => options
             .UseNpgsql(
                 provider.GetRequiredService<NpgsqlDataSource>(),
@@ -40,6 +42,8 @@ public static class AccessModule
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.SlidingExpiration = true;
                 options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                // A cookie outlives the state it was minted from — re-read the User behind it.
+                options.Events.OnValidatePrincipal = SessionRevalidation.ValidateAsync;
                 // An API returns status codes, never login-page redirects.
                 options.Events.OnRedirectToLogin = context =>
                 {
@@ -54,7 +58,7 @@ public static class AccessModule
             });
 
         services.AddAuthorizationBuilder()
-            .AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+            .AddPolicy("Admin", policy => policy.RequireRole(AuthEndpoints.AdminRole));
 
         return services;
     }

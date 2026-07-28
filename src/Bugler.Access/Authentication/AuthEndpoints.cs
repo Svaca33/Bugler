@@ -19,6 +19,9 @@ public sealed record AuthStatusDto(bool NeedsSetup);
 
 internal static class AuthEndpoints
 {
+    /// <summary>The role claim carried by an Admin's Session.</summary>
+    internal const string AdminRole = "Admin";
+
     /// <summary>First run: no users exist yet — whoever sets up the server becomes Admin.</summary>
     public static async Task<IResult> Setup(
         SetupRequest request,
@@ -110,7 +113,7 @@ internal static class AuthEndpoints
         };
         if (user.IsAdmin)
         {
-            claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+            claims.Add(new Claim(ClaimTypes.Role, AdminRole));
         }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

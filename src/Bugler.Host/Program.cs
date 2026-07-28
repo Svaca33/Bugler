@@ -22,7 +22,7 @@ builder.Services.AddHostedService<OutboxDispatcher>();
 
 builder.Services.AddRegistry(builder.Configuration);
 builder.Services.AddIngestion(builder.Configuration);
-builder.Services.AddAccess();
+builder.Services.AddAccess(builder.Configuration);
 builder.Services.AddExploration();
 builder.Services.AddOpenApi();
 
