@@ -17,6 +17,7 @@
   "componentSrcMap": {
     "Button": "src/components/ui/button.tsx",
     "Card": "src/components/ui/card.tsx",
+    "Checkbox": "src/components/ui/checkbox.tsx",
     "Combobox": "src/components/ui/combobox.tsx",
     "Dialog": "src/components/ui/dialog.tsx",
     "FilterChip": "src/components/ui/filter-chip.tsx",

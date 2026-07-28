@@ -1,6 +1,6 @@
 # Bugler UI — build conventions
 
-Bugler is a log/trace observability tool. Its UI kit is nine shadcn-style React primitives over Radix + Tailwind v4: `Button`, `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`), `Combobox` (searchable option picker), `Dialog` (+ `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`), `FilterChip` (removable filter tag), `Input`, `Label`, `Select` (+ `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectLabel`, `SelectItem`, `SelectSeparator`), `Textarea`.
+Bugler is a log/trace observability tool. Its UI kit is ten shadcn-style React primitives over Radix + Tailwind v4: `Button`, `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`), `Checkbox`, `Combobox` (searchable option picker), `Dialog` (+ `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`), `FilterChip` (removable filter tag), `Input`, `Label`, `Select` (+ `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectLabel`, `SelectItem`, `SelectSeparator`), `Textarea`.
 
 ## Setup
 
@@ -21,6 +21,7 @@ Need something outside this set? Use the CSS variables inline: `style={{ backgro
 ## Recurring compositions
 
 - **Form field**: `<div className="grid gap-2"><Label htmlFor="x">…</Label><Input id="x" … /></div>`; error state = `aria-invalid` on the control + `<p className="text-destructive text-sm">…`.
+- **Checkbox row**: `<div className="flex items-center gap-2"><Checkbox id="x" /><Label htmlFor="x" className="font-normal">…</Label></div>` — horizontal, unlike the field idiom above, and the label drops to `font-normal` because the caption is a sentence. Stack a set with `grid gap-2` under a group `Label`.
 - **Filter bar**: row of `flex items-center gap-2` with small selects — `<SelectTrigger className="w-44" size="sm">`; active criteria render as `FilterChip`s in the same row, added via a `Combobox` key picker.
 - **Dashboard**: cards in `grid gap-4 grid-cols-2`; stat tile = `CardDescription` label over a `CardTitle className="text-3xl"` value.
 - **Modal**: `<Dialog open onOpenChange={…}><DialogContent>` wrapping `DialogHeader` (title + description), the body, then `DialogFooter` with cancel first and the confirming `Button` last. `DialogContent` is `sm:max-w-lg`; narrow it with `sm:max-w-md`. Destructive confirmations name what is lost in `DialogDescription` and gate the `variant="destructive"` button behind a typed confirmation.
