@@ -76,6 +76,19 @@ export function describeDuration(iso: string): string {
   return parts.length > 0 ? `Last ${parts.join(" ")}` : iso;
 }
 
+/** A span measured in milliseconds, in words: "1 h 15 min", "42 min", "under a minute". */
+export function describeMillis(milliseconds: number): string {
+  if (milliseconds < MINUTE) return "under a minute";
+  const days = Math.floor(milliseconds / DAY);
+  const hours = Math.floor((milliseconds % DAY) / HOUR);
+  const minutes = Math.floor((milliseconds % HOUR) / MINUTE);
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} d`);
+  if (hours > 0) parts.push(`${hours} h`);
+  if (minutes > 0) parts.push(`${minutes} min`);
+  return parts.join(" ");
+}
+
 function count(value: string | undefined): number {
   return value === undefined ? 0 : Number(value);
 }

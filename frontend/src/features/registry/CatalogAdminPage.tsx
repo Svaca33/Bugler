@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { serviceLabel } from "@/lib/serviceLabel";
 
+import { ApplicationAlertingCard } from "./ApplicationAlertingCard";
 import { DeleteConfirmation } from "./DeleteConfirmation";
 import { serviceConfirmationPhrase } from "./deletionConfirmation";
+import { ServiceAlertingOverride } from "./ServiceAlertingOverride";
 
 const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
@@ -204,6 +206,8 @@ function TopologyDetail(props: {
         onConfirm={() => deleteApplication.mutate()}
       />
 
+      <ApplicationAlertingCard applicationId={props.applicationId} />
+
       {list.map(service => (
         <ServiceCard
           key={service.id}
@@ -305,6 +309,8 @@ function ServiceCard(props: {
         failed={deleteService.isError}
         onConfirm={() => deleteService.mutate()}
       />
+
+      <ServiceAlertingOverride applicationId={props.applicationId} serviceId={props.service.id} />
 
       {props.issuedPlaintext !== null && (
         <div className="flex flex-col gap-2 rounded-[9px] border border-[rgba(233,164,60,0.55)] bg-[rgba(233,164,60,0.10)] p-3.5">

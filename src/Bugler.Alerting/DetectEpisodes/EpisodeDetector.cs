@@ -60,6 +60,7 @@ public sealed class EpisodeDetector(
                 {
                     Id = PollCursor.SingletonId,
                     LastLogId = newHighWaterMark,
+                    WatchFloor = newHighWaterMark,
                     UpdatedAt = DateTimeOffset.UtcNow,
                 });
                 await dbContext.SaveChangesAsync(cancellationToken);
@@ -75,11 +76,14 @@ public sealed class EpisodeDetector(
                     .Where(s => s.ChatWebhookUrl is not null)
                     .Select(s => s.ApplicationId)
                     .ToHashSet(),
-                cursor.LastLogId);
+                cursor.LastLogId,
+                cursor.WatchFloor);
         }
 
         var overlap = options.Value.DetectionOverlapIds;
-        var readFrom = Math.Max(0, snapshot.CursorLastLogId - overlap);
+        // The overlap never reaches under the watch floor: what predates the watch is history.
+        var readFrom = Math.Max(
+            Math.Max(0, snapshot.CursorLastLogId - overlap), snapshot.WatchFloor);
         var highestProcessed = snapshot.CursorLastLogId;
 
         while (true)
@@ -292,5 +296,6 @@ public sealed class EpisodeDetector(
     private sealed record Snapshot(
         EffectiveSettings Effective,
         HashSet<ApplicationId> ApplicationsWithWebhook,
-        long CursorLastLogId);
+        long CursorLastLogId,
+        long WatchFloor);
 }

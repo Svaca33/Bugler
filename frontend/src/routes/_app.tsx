@@ -36,6 +36,7 @@ function AppShell() {
         <nav className="flex items-stretch gap-0.5">
           <NavTab to="/" label="Logs" />
           <NavTab to="/traces" label="Traces" />
+          <NavTab to="/alerts" label="Alerts" />
           {user.data.isAdmin && <NavTab to="/admin" label="Admin" />}
         </nav>
 

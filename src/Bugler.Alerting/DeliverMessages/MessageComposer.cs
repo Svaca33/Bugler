@@ -64,13 +64,17 @@ public static class MessageComposer
         }
 
         var origin = publicBaseUrl.TrimEnd('/');
+        // The window starts a little before the opening: the first log's own timestamp predates
+        // the detection that opened the Episode, and a link that hides its own subject is worse
+        // than a slightly wider one.
+        var windowStart = episode.OpenedAt - TimeSpan.FromMinutes(5);
         var filter =
             $"{origin}/?applicationId={identity.ApplicationId.Value}"
             + $"&namespace={Uri.EscapeDataString(identity.Namespace)}"
             + $"&environment={Uri.EscapeDataString(identity.Environment)}"
             + $"&service={Uri.EscapeDataString(identity.Name)}"
             + "&severityMin=13"
-            + $"&from={Uri.EscapeDataString(episode.OpenedAt.UtcDateTime.ToString("o"))}";
+            + $"&from={Uri.EscapeDataString(windowStart.UtcDateTime.ToString("o"))}";
 
         lines.Add("");
         lines.Add($"Logs: {filter}");

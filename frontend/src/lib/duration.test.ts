@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { describeDuration, durationMs, toDuration } from "./duration";
+import { describeDuration, describeMillis, durationMs, toDuration } from "./duration";
 
 test("a week is seven days and a month thirty, matching the server", () => {
   expect(toDuration(2, "minutes")).toBe("PT2M");
@@ -34,4 +34,11 @@ test("a custom duration is phrased like the presets", () => {
   expect(describeDuration("PT1H")).toBe("Last 1 h");
   expect(describeDuration("PT45M")).toBe("Last 45 min");
   expect(describeDuration("P90D")).toBe("Last 90 d");
+});
+
+test("a millisecond span reads in words and never as zero", () => {
+  expect(describeMillis(30_000)).toBe("under a minute");
+  expect(describeMillis(42 * 60_000)).toBe("42 min");
+  expect(describeMillis(75 * 60_000)).toBe("1 h 15 min");
+  expect(describeMillis(26 * 3_600_000)).toBe("1 d 2 h");
 });

@@ -3,6 +3,7 @@ using Bugler.Alerting.DeliverMessages;
 using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.DropDeletedTargets;
 using Bugler.Alerting.DropDeletedUserSubscriptions;
+using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.ManageAlertingSettings;
 using Bugler.Alerting.ManageSubscriptions;
 using Bugler.SharedKernel;
@@ -61,6 +62,7 @@ public static class AlertingModule
         var user = endpoints.MapGroup("/api/alerting").RequireAuthorization();
         user.MapGet("/subscriptions", SubscriptionEndpoints.GetOwn).Produces<SubscriptionsDto>();
         user.MapPut("/subscriptions", SubscriptionEndpoints.SetOwn);
+        user.MapGet("/episodes", EpisodesEndpoint.Handle).Produces<ListEpisodesResponse>();
 
         return endpoints;
     }

@@ -839,6 +839,241 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/{applicationId}/alerting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    applicationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApplicationAlertingDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    applicationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetApplicationAlertingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/{applicationId}/alerting/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    applicationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetChatWebhookRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/services/{serviceId}/alerting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    serviceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetServiceAlertingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SubscriptionsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetSubscriptionsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    serviceId?: string;
+                    open?: boolean;
+                    beforeId?: string;
+                    limit?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListEpisodesResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications": {
         parameters: {
             query?: never;
@@ -1245,6 +1480,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AlertingDefaultsDto: {
+            sensitivity: components["schemas"]["Sensitivity"];
+            /** Format: int32 */
+            quietWindowMinutes: number | string;
+        };
         ApiKeyDto: {
             /** Format: uuid */
             id: string;
@@ -1252,6 +1492,16 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             revokedAt: null | string;
+        };
+        ApplicationAlertingDto: {
+            /** Format: uuid */
+            applicationId: string;
+            sensitivity: null | components["schemas"]["Sensitivity"];
+            /** Format: int32 */
+            quietWindowMinutes: null | number | string;
+            chatWebhook: null | components["schemas"]["ChatWebhookDto"];
+            serviceOverrides: components["schemas"]["ServiceAlertingOverrideDto"][];
+            defaults: components["schemas"]["AlertingDefaultsDto"];
         };
         ApplicationDto: {
             /** Format: uuid */
@@ -1305,9 +1555,40 @@ export interface components {
             isAdmin: boolean;
             grantedApplicationIds: string[];
         };
+        /** @enum {unknown} */
+        EpisodeCloseReason: "QuietWindow" | "SensitivityOff" | null;
+        EpisodeDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            applicationId: string;
+            /** Format: uuid */
+            serviceId: string;
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: null | string;
+            closeReason: null | components["schemas"]["EpisodeCloseReason"];
+            /** Format: date-time */
+            lastMatchAt: string;
+            /** Format: int32 */
+            errorCount: number | string;
+            /** Format: int32 */
+            warnCount: number | string;
+            /** Format: int64 */
+            firstLogId: number | string;
+            /** Format: date-time */
+            firstLogTimestamp: string;
+            /** Format: int16 */
+            firstLogSeverity: number | string;
+            firstLogBody: null | string;
+        };
         GrantRequest: {
             /** Format: uuid */
             applicationId: string;
+        };
+        ChatWebhookDto: {
+            domain: string;
         };
         IssuedApiKeyDto: {
             /** Format: uuid */
@@ -1315,6 +1596,9 @@ export interface components {
             plaintext: string;
         };
         JsonElement: unknown;
+        ListEpisodesResponse: {
+            items: components["schemas"]["EpisodeDto"][];
+        };
         ListTracesResponse: {
             items: components["schemas"]["TraceSummaryDto"][];
         };
@@ -1365,6 +1649,15 @@ export interface components {
         SearchLogsResponse: {
             items: components["schemas"]["LogRecordDto"][];
         };
+        /** @enum {unknown} */
+        Sensitivity: "Off" | "Errors" | "ErrorsAndWarnings" | null;
+        ServiceAlertingOverrideDto: {
+            /** Format: uuid */
+            serviceId: string;
+            sensitivity: null | components["schemas"]["Sensitivity"];
+            /** Format: int32 */
+            quietWindowMinutes: null | number | string;
+        };
         ServiceDto: {
             /** Format: uuid */
             id: string;
@@ -1378,14 +1671,35 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        SetApplicationAlertingRequest: {
+            sensitivity: null | components["schemas"]["Sensitivity"];
+            /** Format: int32 */
+            quietWindowMinutes: null | number | string;
+        };
+        SetChatWebhookRequest: {
+            url: null | string;
+        };
         SetRetentionRequest: {
             /** Format: int32 */
             retentionDays: null | number | string;
+        };
+        SetServiceAlertingRequest: {
+            sensitivity: null | components["schemas"]["Sensitivity"];
+            /** Format: int32 */
+            quietWindowMinutes: null | number | string;
+        };
+        SetSubscriptionsRequest: {
+            applicationIds: string[];
+            serviceIds: string[];
         };
         SetupRequest: {
             email: string;
             password: string;
             displayName: null | string;
+        };
+        SubscriptionsDto: {
+            applicationIds: string[];
+            serviceIds: string[];
         };
         TraceDetailResponse: {
             traceId: string;

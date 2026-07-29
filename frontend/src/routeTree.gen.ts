@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
+import { Route as AppAlertsRouteImport } from './routes/_app.alerts'
 import { Route as AppTracesIndexRouteImport } from './routes/_app.traces.index'
 import { Route as AppTracesTraceIdRouteImport } from './routes/_app.traces.$traceId'
 
@@ -35,6 +36,11 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAlertsRoute = AppAlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTracesIndexRoute = AppTracesIndexRouteImport.update({
   id: '/traces/',
   path: '/traces/',
@@ -50,12 +56,14 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
+  '/alerts': typeof AppAlertsRoute
   '/traces/$traceId': typeof AppTracesTraceIdRoute
   '/traces/': typeof AppTracesIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
+  '/alerts': typeof AppAlertsRoute
   '/': typeof AppIndexRoute
   '/traces/$traceId': typeof AppTracesTraceIdRoute
   '/traces': typeof AppTracesIndexRoute
@@ -65,20 +73,23 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/admin': typeof AppAdminRoute
+  '/_app/alerts': typeof AppAlertsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/traces/$traceId': typeof AppTracesTraceIdRoute
   '/_app/traces/': typeof AppTracesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/admin' | '/traces/$traceId' | '/traces/'
+  fullPaths:
+    '/' | '/login' | '/admin' | '/alerts' | '/traces/$traceId' | '/traces/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/admin' | '/' | '/traces/$traceId' | '/traces'
+  to: '/login' | '/admin' | '/alerts' | '/' | '/traces/$traceId' | '/traces'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/_app/admin'
+    | '/_app/alerts'
     | '/_app/'
     | '/_app/traces/$traceId'
     | '/_app/traces/'
@@ -119,6 +130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/alerts': {
+      id: '/_app/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AppAlertsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/traces/': {
       id: '/_app/traces/'
       path: '/traces'
@@ -138,6 +156,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
+  AppAlertsRoute: typeof AppAlertsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppTracesTraceIdRoute: typeof AppTracesTraceIdRoute
   AppTracesIndexRoute: typeof AppTracesIndexRoute
@@ -145,6 +164,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
+  AppAlertsRoute: AppAlertsRoute,
   AppIndexRoute: AppIndexRoute,
   AppTracesTraceIdRoute: AppTracesTraceIdRoute,
   AppTracesIndexRoute: AppTracesIndexRoute,

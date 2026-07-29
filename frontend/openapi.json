@@ -985,6 +985,236 @@
         }
       }
     },
+    "/api/admin/applications/{applicationId}/alerting": {
+      "get": {
+        "tags": [
+          "AdminAlertingEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationAlertingDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AdminAlertingEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetApplicationAlertingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/applications/{applicationId}/alerting/webhook": {
+      "put": {
+        "tags": [
+          "AdminAlertingEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetChatWebhookRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/services/{serviceId}/alerting": {
+      "put": {
+        "tags": [
+          "AdminAlertingEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "serviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetServiceAlertingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/subscriptions": {
+      "get": {
+        "tags": [
+          "SubscriptionEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SubscriptionEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSubscriptionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes": {
+      "get": {
+        "tags": [
+          "EpisodesEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "serviceId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "open",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "beforeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListEpisodesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/applications": {
       "get": {
         "tags": [
@@ -1286,6 +1516,26 @@
   },
   "components": {
     "schemas": {
+      "AlertingDefaultsDto": {
+        "required": [
+          "sensitivity",
+          "quietWindowMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "sensitivity": {
+            "$ref": "#/components/schemas/Sensitivity"
+          },
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ApiKeyDto": {
         "required": [
           "id",
@@ -1308,6 +1558,61 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "ApplicationAlertingDto": {
+        "required": [
+          "applicationId",
+          "sensitivity",
+          "quietWindowMinutes",
+          "chatWebhook",
+          "serviceOverrides",
+          "defaults"
+        ],
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sensitivity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Sensitivity"
+              }
+            ]
+          },
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "chatWebhook": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ChatWebhookDto"
+              }
+            ]
+          },
+          "serviceOverrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceAlertingOverrideDto"
+            }
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/AlertingDefaultsDto"
           }
         }
       },
@@ -1510,6 +1815,112 @@
           }
         }
       },
+      "EpisodeCloseReason": {
+        "enum": [
+          "QuietWindow",
+          "SensitivityOff",
+          null
+        ]
+      },
+      "EpisodeDto": {
+        "required": [
+          "id",
+          "applicationId",
+          "serviceId",
+          "openedAt",
+          "closedAt",
+          "closeReason",
+          "lastMatchAt",
+          "errorCount",
+          "warnCount",
+          "firstLogId",
+          "firstLogTimestamp",
+          "firstLogSeverity",
+          "firstLogBody"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "closeReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EpisodeCloseReason"
+              }
+            ]
+          },
+          "lastMatchAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "warnCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "firstLogId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "firstLogTimestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "firstLogSeverity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int16"
+          },
+          "firstLogBody": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "GrantRequest": {
         "required": [
           "applicationId"
@@ -1519,6 +1930,17 @@
           "applicationId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
           }
         }
       },
@@ -1539,6 +1961,20 @@
         }
       },
       "JsonElement": { },
+      "ListEpisodesResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EpisodeDto"
+            }
+          }
+        }
+      },
       "ListTracesResponse": {
         "required": [
           "items"
@@ -1748,6 +2184,47 @@
           }
         }
       },
+      "Sensitivity": {
+        "enum": [
+          "Off",
+          "Errors",
+          "ErrorsAndWarnings",
+          null
+        ]
+      },
+      "ServiceAlertingOverrideDto": {
+        "required": [
+          "serviceId",
+          "sensitivity",
+          "quietWindowMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sensitivity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Sensitivity"
+              }
+            ]
+          },
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ServiceDto": {
         "required": [
           "id",
@@ -1792,6 +2269,48 @@
           }
         }
       },
+      "SetApplicationAlertingRequest": {
+        "required": [
+          "sensitivity",
+          "quietWindowMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "sensitivity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Sensitivity"
+              }
+            ]
+          },
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SetChatWebhookRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "SetRetentionRequest": {
         "required": [
           "retentionDays"
@@ -1806,6 +2325,57 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "SetServiceAlertingRequest": {
+        "required": [
+          "sensitivity",
+          "quietWindowMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "sensitivity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Sensitivity"
+              }
+            ]
+          },
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SetSubscriptionsRequest": {
+        "required": [
+          "applicationIds",
+          "serviceIds"
+        ],
+        "type": "object",
+        "properties": {
+          "applicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -1828,6 +2398,29 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SubscriptionsDto": {
+        "required": [
+          "applicationIds",
+          "serviceIds"
+        ],
+        "type": "object",
+        "properties": {
+          "applicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         }
       },
@@ -2112,6 +2705,15 @@
     },
     {
       "name": "ManageUsersEndpoints"
+    },
+    {
+      "name": "AdminAlertingEndpoints"
+    },
+    {
+      "name": "SubscriptionEndpoints"
+    },
+    {
+      "name": "EpisodesEndpoint"
     },
     {
       "name": "AdminCatalogEndpoints"

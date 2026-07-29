@@ -10,5 +10,13 @@ public sealed class PollCursor
 
     public required int Id { get; init; }
     public long LastLogId { get; set; }
+
+    /// <summary>
+    /// The high-water mark of the seeding run. Ids at or below it existed — or were in flight —
+    /// before the watch began, so the overlap re-read never reaches under it: alerting on
+    /// pre-install history is the flood the seed exists to prevent.
+    /// </summary>
+    public long WatchFloor { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; }
 }

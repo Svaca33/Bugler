@@ -31,12 +31,17 @@ const PAGE_SIZE = 100;
 
 const GRID = "grid grid-cols-[3px_172px_66px_196px_96px_1fr] items-center gap-3.5 px-5";
 
-export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFilters) => void }) {
-  const { filters, onChange } = props;
+export function LogsPage(props: {
+  filters: LogFilters;
+  onChange: (filters: LogFilters) => void;
+  /** The open Log Record rides in the URL, so a mailed alert can point at one record. */
+  selectedLogId?: number;
+  onSelectLog: (id: number | undefined) => void;
+}) {
+  const { filters, onChange, selectedLogId, onSelectLog } = props;
   const catalog = useCatalog();
   const [live, setLive] = useState(false);
   const [search, setSearch] = useState(filters.q ?? "");
-  const [selected, setSelected] = useState<LogRecord | null>(null);
 
   const logs = useInfiniteQuery({
     queryKey: ["logs", filters],
@@ -106,6 +111,24 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
   const applications = catalog.data?.applications ?? [];
   const labels = serviceLabels(applications);
 
+  // The selected record usually sits in the loaded pages; a deep-linked one may not — the
+  // current Filter can exclude it — so it is fetched alone rather than clipped away.
+  const selectedFromList =
+    selectedLogId === undefined ? undefined : items.find(log => Number(log.id) === selectedLogId);
+  const selectedFetch = useQuery({
+    queryKey: ["log", selectedLogId],
+    queryFn: async () => {
+      const { data, response } = await api.GET("/api/logs/{id}", {
+        params: { path: { id: selectedLogId! } },
+      });
+      if (response.status === 404) return null;
+      if (data === undefined) throw new Error("Failed to load the log record");
+      return data;
+    },
+    enabled: selectedLogId !== undefined && selectedFromList === undefined,
+  });
+  const selected = selectedFromList ?? selectedFetch.data ?? null;
+
   // Never "N records": that reads as the total while it only ever counts what has been paged in.
   const counted = live
     ? `${items.length} loaded`
@@ -115,6 +138,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
 
   return (
     <div className="flex h-full min-h-0">
+      {/* `filters` never carries the `log` key, so an open record alone does not light Clear all. */}
       <FilterRail
         canClear={Object.values(filters).some(value => value !== undefined)}
         onClear={() => {
@@ -274,7 +298,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
           <div data-testid="log-rows">
             {items.map(log => {
               const severity = Number(log.severityNumber);
-              const isSelected = selected?.id === log.id;
+              const isSelected = selectedLogId !== undefined && Number(log.id) === selectedLogId;
               const isError = severity >= 17;
               const rowBackground = isSelected
                 ? "bg-[rgba(233,164,60,0.09)] shadow-[inset_2px_0_0_#E9A43C] hover:bg-[rgba(233,164,60,0.14)]"
@@ -285,7 +309,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
                 <div
                   key={log.id}
                   className={`${GRID} h-[37px] cursor-pointer border-b border-[#101F31] ${rowBackground}`}
-                  onClick={() => setSelected(log)}
+                  onClick={() => onSelectLog(Number(log.id))}
                 >
                   <span className={`h-[15px] w-[3px] rounded-[2px] ${severityRailClass(severity)}`} />
                   <span
@@ -359,7 +383,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
           onFiltersChange={next =>
             onChange({ ...filters, filters: next.length > 0 ? next : undefined })
           }
-          onClose={() => setSelected(null)}
+          onClose={() => onSelectLog(undefined)}
         />
       )}
     </div>

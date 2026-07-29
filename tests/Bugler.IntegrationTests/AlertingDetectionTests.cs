@@ -97,6 +97,39 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task History_from_before_the_watch_began_never_alerts()
+    {
+        // Errors already in the store when alerting first runs are pre-install history: the
+        // seeding run must not let the overlap re-read judge them afterwards. The scheduler's
+        // startup tick has already seeded on an empty store, so simulate the install by
+        // resetting the alerting state after the history exists.
+        await _harness.ExecuteSqlAsync($$"""
+            INSERT INTO telemetry.log_records
+                (service_id, timestamp, severity_number, body, resource_attributes, attributes)
+            VALUES ('{{_harness.ServiceId}}', now(), 21, 'ancient trouble', '{}', '{}');
+            DELETE FROM alerting.episodes;
+            DELETE FROM alerting.seen_log_ids;
+            DELETE FROM alerting.poll_cursor;
+            """);
+
+        await _detector.DetectOnceAsync(CancellationToken.None); // Seeds at the existing log.
+        await _detector.DetectOnceAsync(CancellationToken.None);
+
+        Assert.Equal(0, await _harness.WaitForCountAsync("SELECT COUNT(*) FROM alerting.episodes", 0));
+
+        // The watch is live from the seed forward: the next error still opens an episode.
+        await _harness.ExecuteSqlAsync($$"""
+            INSERT INTO telemetry.log_records
+                (service_id, timestamp, severity_number, body, resource_attributes, attributes)
+            VALUES ('{{_harness.ServiceId}}', now(), 17, 'fresh trouble', '{}', '{}')
+            """);
+        await _detector.DetectOnceAsync(CancellationToken.None);
+
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes WHERE first_log_body = 'fresh trouble'", 1));
+    }
+
+    [Fact]
     public async Task Sensitivity_off_turns_detection_into_a_cursor_advance()
     {
         await _harness.Client.PutAsJsonAsync(

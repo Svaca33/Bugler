@@ -26,3 +26,18 @@ export type Catalog =
 
 export type CurrentUser =
   NonNullable<paths["/api/auth/me"]["get"]["responses"]["200"]["content"]["application/json"]>;
+
+export type EpisodesResponse =
+  NonNullable<paths["/api/alerting/episodes"]["get"]["responses"]["200"]["content"]["application/json"]>;
+
+export type Episode = EpisodesResponse["items"][number];
+
+export type Subscriptions =
+  NonNullable<paths["/api/alerting/subscriptions"]["get"]["responses"]["200"]["content"]["application/json"]>;
+
+export type ApplicationAlerting =
+  NonNullable<
+    paths["/api/admin/applications/{applicationId}/alerting"]["get"]["responses"]["200"]["content"]["application/json"]
+  >;
+
+export type Sensitivity = NonNullable<ApplicationAlerting["sensitivity"]>;
