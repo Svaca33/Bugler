@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Bugler.Access/Bugler.Access.csproj" />
+    <Project Path="src/Bugler.Alerting/Bugler.Alerting.csproj" />
     <Project Path="src/Bugler.Exploration/Bugler.Exploration.csproj" />
     <Project Path="src/Bugler.Host/Bugler.Host.csproj" />
     <Project Path="src/Bugler.Ingestion/Bugler.Ingestion.csproj" />
@@ -9,6 +10,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Bugler.Access.Tests/Bugler.Access.Tests.csproj" />
+    <Project Path="tests/Bugler.Alerting.Tests/Bugler.Alerting.Tests.csproj" />
     <Project Path="tests/Bugler.ArchitectureTests/Bugler.ArchitectureTests.csproj" />
     <Project Path="tests/Bugler.Exploration.Tests/Bugler.Exploration.Tests.csproj" />
     <Project Path="tests/Bugler.Host.Tests/Bugler.Host.Tests.csproj" />

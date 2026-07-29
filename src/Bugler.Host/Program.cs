@@ -1,4 +1,5 @@
 using Bugler.Access;
+using Bugler.Alerting;
 using Bugler.Exploration;
 using Bugler.Host;
 using Bugler.Host.IntegrationEvents;
@@ -23,6 +24,7 @@ builder.Services.AddHostedService<OutboxDispatcher>();
 builder.Services.AddRegistry(builder.Configuration);
 builder.Services.AddIngestion(builder.Configuration);
 builder.Services.AddAccess(builder.Configuration);
+builder.Services.AddAlerting(builder.Configuration);
 builder.Services.AddExploration();
 builder.Services.AddOpenApi();
 
@@ -31,6 +33,7 @@ var app = builder.Build();
 await RegistryModule.MigrateAsync(app.Services);
 await IngestionModule.MigrateAsync(app.Services);
 await AccessModule.MigrateAsync(app.Services);
+await AlertingModule.MigrateAsync(app.Services);
 
 // The static UI belongs to the app surface only.
 bool OnAppSurface(HttpContext context) =>
@@ -52,6 +55,7 @@ var appSurface = app.MapGroup("").ServedOn(Surface.App);
 appSurface.MapOpenApi();
 appSurface.MapExploration();
 appSurface.MapAccess();
+appSurface.MapAlerting();
 appSurface.MapRegistry();
 
 app.MapGroup("").ServedOn(Surface.OtlpGrpc).MapOtlpGrpcIngestion();

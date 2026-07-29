@@ -19,6 +19,7 @@ public class ContextBoundaryTests
             typeof(Exploration.ExplorationModule).Assembly,
             typeof(Registry.RegistryModule).Assembly,
             typeof(Access.AccessModule).Assembly,
+            typeof(Alerting.AlertingModule).Assembly,
             typeof(SharedKernel.ApplicationId).Assembly,
             typeof(Host.HostMarker).Assembly)
         .Build();
@@ -42,6 +43,7 @@ public class ContextBoundaryTests
             .NotDependOnAny(InternalsOf("Registry"))
             .AndShould().NotDependOnAny(AnythingIn("Exploration"))
             .AndShould().NotDependOnAny(AnythingIn("Access"))
+            .AndShould().NotDependOnAny(AnythingIn("Alerting"))
             .Check(Architecture);
 
     [Fact]
@@ -50,6 +52,17 @@ public class ContextBoundaryTests
             .NotDependOnAny(InternalsOf("Registry"))
             .AndShould().NotDependOnAny(InternalsOf("Access"))
             .AndShould().NotDependOnAny(AnythingIn("Ingestion"))
+            .AndShould().NotDependOnAny(AnythingIn("Alerting"))
+            .Check(Architecture);
+
+    [Fact]
+    public void Alerting_DependsOnRegistryAndAccessOnlyThroughContracts_AndNotOnIngestionOrExploration() =>
+        TypesIn("Alerting").Should()
+            .NotDependOnAny(InternalsOf("Registry"))
+            .AndShould().NotDependOnAny(InternalsOf("Access"))
+            // ADR 0010: Alerting reads telemetry via SQL, never through Ingestion's assembly.
+            .AndShould().NotDependOnAny(AnythingIn("Ingestion"))
+            .AndShould().NotDependOnAny(AnythingIn("Exploration"))
             .Check(Architecture);
 
     [Fact]
@@ -58,6 +71,7 @@ public class ContextBoundaryTests
             .NotDependOnAny(AnythingIn("Ingestion"))
             .AndShould().NotDependOnAny(AnythingIn("Exploration"))
             .AndShould().NotDependOnAny(AnythingIn("Access"))
+            .AndShould().NotDependOnAny(AnythingIn("Alerting"))
             .Check(Architecture);
 
     [Fact]
@@ -66,6 +80,7 @@ public class ContextBoundaryTests
             .NotDependOnAny(AnythingIn("Ingestion"))
             .AndShould().NotDependOnAny(AnythingIn("Exploration"))
             .AndShould().NotDependOnAny(AnythingIn("Registry"))
+            .AndShould().NotDependOnAny(AnythingIn("Alerting"))
             .Check(Architecture);
 
     [Fact]
@@ -75,6 +90,7 @@ public class ContextBoundaryTests
             .AndShould().NotDependOnAny(AnythingIn("Exploration"))
             .AndShould().NotDependOnAny(AnythingIn("Registry"))
             .AndShould().NotDependOnAny(AnythingIn("Access"))
+            .AndShould().NotDependOnAny(AnythingIn("Alerting"))
             .AndShould().NotDependOnAny(AnythingIn("Host"))
             .Check(Architecture);
 
