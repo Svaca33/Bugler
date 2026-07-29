@@ -12,11 +12,13 @@
   "overrides": {
     "Select": { "cardMode": "single", "primaryStory": "OpenWithGroups" },
     "Combobox": { "cardMode": "single", "primaryStory": "OpenWithKeys" },
-    "Dialog": { "cardMode": "single", "primaryStory": "Destructive", "viewport": "720x520" }
+    "Dialog": { "cardMode": "single", "primaryStory": "Destructive", "viewport": "720x520" },
+    "Chart": { "cardMode": "single", "primaryStory": "LogVolume", "viewport": "720x400" }
   },
   "componentSrcMap": {
     "Button": "src/components/ui/button.tsx",
     "Card": "src/components/ui/card.tsx",
+    "Chart": "src/components/ui/chart.tsx",
     "Checkbox": "src/components/ui/checkbox.tsx",
     "Combobox": "src/components/ui/combobox.tsx",
     "Dialog": "src/components/ui/dialog.tsx",

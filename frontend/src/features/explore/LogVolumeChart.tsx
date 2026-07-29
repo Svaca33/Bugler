@@ -1,12 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, ReferenceArea, XAxis, YAxis } from "recharts";
 
 import { api } from "@/api/client";
 import {
-  ChartContainer,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Chart,
   ChartTooltip,
   ChartTooltipContent,
+  ReferenceArea,
+  XAxis,
+  YAxis,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -119,7 +125,7 @@ export function LogVolumeChart(props: {
       label={`${formatBoundary(from)} → ${formatBoundary(to)} · ${describeWidth(resolved.widthMs)} buckets`}
       legend={bands}
     >
-      <ChartContainer config={CHART_CONFIG} className={`${BAR_AREA} w-full cursor-crosshair`}>
+      <Chart config={CHART_CONFIG} className={`${BAR_AREA} w-full cursor-crosshair`}>
         <BarChart
           data={buckets}
           margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
@@ -188,7 +194,7 @@ export function LogVolumeChart(props: {
             <ReferenceArea x1={drag.from} x2={drag.to} fill="var(--primary)" fillOpacity={0.18} />
           )}
         </BarChart>
-      </ChartContainer>
+      </Chart>
     </Frame>
   );
 }

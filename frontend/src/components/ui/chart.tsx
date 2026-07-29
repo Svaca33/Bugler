@@ -35,12 +35,17 @@ const ChartContext = React.createContext<{ config: ChartConfig } | null>(null);
 function useChart() {
   const context = React.useContext(ChartContext);
   if (context === null) {
-    throw new Error("useChart must be used within a <ChartContainer />");
+    throw new Error("useChart must be used within a <Chart />");
   }
   return context;
 }
 
-function ChartContainer({
+/**
+ * The root of a chart. Named `Chart` because that is the primitive the design system documents —
+ * `ChartContainer` is exported alongside it as the name shadcn generates, so regenerating this file
+ * from upstream keeps working code working.
+ */
+function Chart({
   id,
   className,
   children,
@@ -207,4 +212,20 @@ function ChartLegendContent({
   );
 }
 
-export { ChartContainer, ChartLegend, ChartLegendContent, ChartStyle, ChartTooltip, ChartTooltipContent };
+/**
+ * The Recharts marks a Bugler chart is built from, re-exported so a chart composes from one import
+ * surface. Callers never reach for `recharts` directly: the kit is what the design system documents
+ * and what its previews can import, and a mark that arrived from somewhere else would be neither.
+ * Add to this list as charts need marks — it is deliberately not the whole library.
+ */
+export { Bar, BarChart, CartesianGrid, Cell, ReferenceArea, XAxis, YAxis } from "recharts";
+
+export {
+  Chart,
+  Chart as ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartStyle,
+  ChartTooltip,
+  ChartTooltipContent,
+};
