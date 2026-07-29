@@ -1,0 +1,71 @@
+using Bugler.Alerting.DeliverMessages;
+
+namespace Bugler.IntegrationTests;
+
+/// <summary>Records what would have left over SMTP; flips to failing to exercise the backoff.</summary>
+internal sealed class RecordingMailSender : IMailSender
+{
+    private readonly List<MailMessage> _sent = [];
+
+    public bool Fail { get; set; }
+
+    public IReadOnlyList<MailMessage> Sent
+    {
+        get
+        {
+            lock (_sent)
+            {
+                return _sent.ToList();
+            }
+        }
+    }
+
+    public Task SendAsync(MailMessage message, CancellationToken cancellationToken)
+    {
+        if (Fail)
+        {
+            throw new InvalidOperationException("The SMTP server is down.");
+        }
+
+        lock (_sent)
+        {
+            _sent.Add(message);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Records what would have been posted to a Google Chat webhook.</summary>
+internal sealed class RecordingChatSender : IChatSender
+{
+    private readonly List<(string WebhookUrl, string Text)> _sent = [];
+
+    public bool Fail { get; set; }
+
+    public IReadOnlyList<(string WebhookUrl, string Text)> Sent
+    {
+        get
+        {
+            lock (_sent)
+            {
+                return _sent.ToList();
+            }
+        }
+    }
+
+    public Task SendAsync(string webhookUrl, string text, CancellationToken cancellationToken)
+    {
+        if (Fail)
+        {
+            throw new InvalidOperationException("The webhook refused the message.");
+        }
+
+        lock (_sent)
+        {
+            _sent.Add((webhookUrl, text));
+        }
+
+        return Task.CompletedTask;
+    }
+}

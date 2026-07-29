@@ -1,3 +1,5 @@
+using Bugler.Alerting.CloseQuietEpisodes;
+using Bugler.Alerting.DeliverMessages;
 using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.DropDeletedTargets;
 using Bugler.Alerting.DropDeletedUserSubscriptions;
@@ -27,6 +29,15 @@ public static class AlertingModule
             .UseSnakeCaseNamingConvention());
 
         services.AddSingleton<EpisodeDetector>();
+        services.AddSingleton<EpisodeCloser>();
+        services.AddSingleton<DeliveryRunner>();
+        services.AddHostedService<AlertingScheduler>();
+
+        services.AddSingleton<IMailSender, MailKitMailSender>();
+        // The typed client stays transient so the factory can rotate its handlers; the runner
+        // resolves IChatSender from its per-run scope.
+        services.AddHttpClient<GoogleChatSender>();
+        services.AddTransient<IChatSender>(p => p.GetRequiredService<GoogleChatSender>());
 
         services.AddScoped<IIntegrationEventHandler<ServicesDeleted>, DeletedServicesHandler>();
         services.AddScoped<IIntegrationEventHandler<ApplicationDeleted>, DeletedApplicationHandler>();

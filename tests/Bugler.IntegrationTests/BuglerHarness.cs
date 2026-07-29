@@ -44,6 +44,9 @@ public sealed class BuglerHarness : IAsyncDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("ConnectionStrings:bugler", _postgres.GetConnectionString());
+            // Tests drive the alerting units directly; a live scheduler would race them. Its
+            // startup tick still runs once, harmlessly, before any test seeds telemetry.
+            builder.UseSetting("Alerting:PollIntervalSeconds", "3600");
             configure?.Invoke(builder);
         });
         Client = _factory.CreateClient();
