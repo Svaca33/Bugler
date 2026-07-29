@@ -1,7 +1,9 @@
 using Bugler.Access.Authentication;
 using Bugler.Access.Contracts;
 using Bugler.Access.ManageUsers;
+using Bugler.Access.Outbox;
 using Bugler.Access.ReadVisibility;
+using Bugler.Access.ResolveMailRecipients;
 using Bugler.Access.RevokeDeletedApplicationGrants;
 using Bugler.Access.Users;
 using Bugler.SharedKernel;
@@ -32,7 +34,14 @@ public static class AccessModule
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddHttpContextAccessor();
         services.AddScoped<IReadVisibility, GrantedVisibility>();
+        services.AddScoped<IMailRecipients, MailRecipientResolver>();
         services.AddScoped<IIntegrationEventHandler<ApplicationDeleted>, DeletedApplicationGrantRevoker>();
+
+        // The dispatcher drains every IIntegrationEventOutbox; publishing stays on the concrete
+        // AccessOutbox, because a second IIntegrationEventPublisher registration would silently
+        // shadow Registry's wherever the interface is injected.
+        services.AddScoped<AccessOutbox>();
+        services.AddScoped<IIntegrationEventOutbox>(p => p.GetRequiredService<AccessOutbox>());
 
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options =>

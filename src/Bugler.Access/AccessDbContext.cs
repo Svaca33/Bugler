@@ -1,3 +1,4 @@
+using Bugler.Access.Outbox;
 using Bugler.Access.Users;
 using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<ApplicationGrant> ApplicationGrants => Set<ApplicationGrant>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +30,14 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
             grant.HasIndex(g => new { g.UserId, g.ApplicationId }).IsUnique();
             grant.HasOne<User>().WithMany()
                 .HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(message =>
+        {
+            message.Property(m => m.EventType).HasMaxLength(200);
+            message.Property(m => m.LastError).HasMaxLength(2000);
+            // The dispatcher's only query: unparked messages that have come due.
+            message.HasIndex(m => new { m.ParkedAt, m.NextAttemptAt });
         });
     }
 }

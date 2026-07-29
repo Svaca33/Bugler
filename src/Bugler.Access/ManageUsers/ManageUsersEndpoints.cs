@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Bugler.Access.Authentication;
+using Bugler.Access.Outbox;
 using Bugler.Access.Users;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -105,19 +107,36 @@ internal static class ManageUsersEndpoints
     }
 
     /// <summary>
-    /// Removes a User for good; the database cascades their grants away. No Deactivation has to
-    /// precede it — the two are separate answers, not two steps (ADR 0001).
+    /// Removes a User for good; the database cascades their grants away and the recorded event
+    /// lets Alerting drop their Subscriptions. No Deactivation has to precede it — the two are
+    /// separate answers, not two steps (ADR 0001).
     /// </summary>
     public static async Task<IResult> Delete(
-        Guid id, ClaimsPrincipal principal, AccessDbContext dbContext, CancellationToken cancellationToken)
+        Guid id,
+        ClaimsPrincipal principal,
+        AccessDbContext dbContext,
+        AccessOutbox outbox,
+        IOutboxSignal signal,
+        CancellationToken cancellationToken)
     {
         if (IsSelf(id, principal))
         {
             return Results.Conflict("An admin cannot delete their own account.");
         }
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
         var deleted = await dbContext.Users.Where(u => u.Id == id).ExecuteDeleteAsync(cancellationToken);
-        return deleted == 0 ? Results.NotFound() : Results.NoContent();
+        if (deleted == 0)
+        {
+            return Results.NotFound();
+        }
+
+        await outbox.EnqueueAsync(new UserDeleted(id), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        signal.Nudge(); // Only now — before the commit the dispatcher would find nothing.
+        return Results.NoContent();
     }
 
     /// <summary>

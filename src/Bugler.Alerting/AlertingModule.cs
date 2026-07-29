@@ -1,3 +1,10 @@
+using Bugler.Alerting.DropDeletedTargets;
+using Bugler.Alerting.DropDeletedUserSubscriptions;
+using Bugler.Alerting.ManageAlertingSettings;
+using Bugler.Alerting.ManageSubscriptions;
+using Bugler.SharedKernel;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,11 +25,29 @@ public static class AlertingModule
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "alerting"))
             .UseSnakeCaseNamingConvention());
 
+        services.AddScoped<IIntegrationEventHandler<ServicesDeleted>, DeletedServicesHandler>();
+        services.AddScoped<IIntegrationEventHandler<ApplicationDeleted>, DeletedApplicationHandler>();
+        services.AddScoped<IIntegrationEventHandler<UserDeleted>, DeletedUserHandler>();
+
         return services;
     }
 
     public static IEndpointRouteBuilder MapAlerting(this IEndpointRouteBuilder endpoints)
     {
+        var admin = endpoints.MapGroup("/api/admin").RequireAuthorization("Admin");
+        admin.MapGet("/applications/{applicationId:guid}/alerting",
+            AdminAlertingEndpoints.GetApplicationAlerting);
+        admin.MapPut("/applications/{applicationId:guid}/alerting",
+            AdminAlertingEndpoints.SetApplicationAlerting);
+        admin.MapPut("/applications/{applicationId:guid}/alerting/webhook",
+            AdminAlertingEndpoints.SetChatWebhook);
+        admin.MapPut("/services/{serviceId:guid}/alerting",
+            AdminAlertingEndpoints.SetServiceAlerting);
+
+        var user = endpoints.MapGroup("/api/alerting").RequireAuthorization();
+        user.MapGet("/subscriptions", SubscriptionEndpoints.GetOwn).Produces<SubscriptionsDto>();
+        user.MapPut("/subscriptions", SubscriptionEndpoints.SetOwn);
+
         return endpoints;
     }
 

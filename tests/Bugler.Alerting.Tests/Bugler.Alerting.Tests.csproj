@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Bugler.SharedKernel.ApplicationId" Alias="ApplicationId" />
   </ItemGroup>
 
   <ItemGroup>

@@ -66,3 +66,9 @@ public sealed record ServicesDeleted(IReadOnlyList<ServiceId> ServiceIds) : IInt
 /// Read access granted to it no longer refers to anything.
 /// </summary>
 public sealed record ApplicationDeleted(ApplicationId ApplicationId) : IIntegrationEvent;
+
+/// <summary>
+/// A User was deleted for good. Everything standing in their name elsewhere — their alerting
+/// Subscriptions — dies with them, as their grants already do inside Access.
+/// </summary>
+public sealed record UserDeleted(Guid UserId) : IIntegrationEvent;
