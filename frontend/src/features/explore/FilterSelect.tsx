@@ -14,13 +14,15 @@ export function FilterSelect(props: {
   value: string | undefined;
   options: { value: string; label: string }[];
   onChange: (value: string | undefined) => void;
+  /** Width is the caller's: a filter bar sizes its controls, the filter rail fills itself. */
+  className?: string;
 }) {
   return (
     <Select
       value={props.value ?? ALL}
       onValueChange={value => props.onChange(value === ALL ? undefined : value)}
     >
-      <SelectTrigger className="w-44" size="sm">
+      <SelectTrigger className={props.className ?? "w-44"} size="sm">
         <SelectValue placeholder={props.placeholder} />
       </SelectTrigger>
       <SelectContent>

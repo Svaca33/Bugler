@@ -269,6 +269,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/logs/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
+                    severityMin?: number | string;
+                    range?: string;
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                    traceId?: string;
+                    attr?: string[];
+                    res?: string[];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LogCountResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/logs/volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
+                    severityMin?: number | string;
+                    range?: string;
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                    traceId?: string;
+                    attr?: string[];
+                    res?: string[];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LogVolumeResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/logs/keys": {
         parameters: {
             query?: never;
@@ -1222,6 +1318,10 @@ export interface components {
         ListTracesResponse: {
             items: components["schemas"]["TraceSummaryDto"][];
         };
+        LogCountResponse: {
+            /** Format: int32 */
+            total: number | string;
+        };
         LoginRequest: {
             email: string;
             password: string;
@@ -1246,6 +1346,14 @@ export interface components {
             scopeName: null | string;
             resourceAttributes: components["schemas"]["JsonElement"];
             attributes: components["schemas"]["JsonElement"];
+        };
+        LogVolumeResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            bucket: string;
+            buckets: components["schemas"]["VolumeBucketDto"][];
         };
         ObservedKeyDto: {
             scope: string;
@@ -1327,6 +1435,18 @@ export interface components {
             isAdmin: boolean;
             isDeactivated: boolean;
             grantedApplicationIds: string[];
+        };
+        VolumeBucketDto: {
+            /** Format: date-time */
+            start: string;
+            /** Format: int32 */
+            error: number | string;
+            /** Format: int32 */
+            warn: number | string;
+            /** Format: int32 */
+            info: number | string;
+            /** Format: int32 */
+            debug: number | string;
         };
     };
     responses: never;

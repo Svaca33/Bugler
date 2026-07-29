@@ -1,16 +1,19 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, type LogRecord } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { FilterChip } from "@/components/ui/filter-chip";
 import { Input } from "@/components/ui/input";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
+import { FilterGroup, FilterRail } from "./FilterRail";
 import { FilterSelect } from "./FilterSelect";
 import { formatTime, tenantOf } from "./format";
 import { LogDetailPanel } from "./LogDetailPanel";
+import { LogVolumeChart } from "./LogVolumeChart";
 import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "./severity";
 import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
@@ -70,21 +73,69 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
     refetchInterval: live ? 5000 : false,
   });
 
+  // The total belongs to the Filter, not to how far the reader has paged, so it is asked once per
+  // Filter rather than once per page — and not at all while Live keeps moving the answer.
+  const total = useQuery({
+    queryKey: ["logs-count", filters],
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/logs/count", {
+        params: {
+          query: {
+            applicationId: filters.applicationId,
+            namespace: filters.namespace,
+            environment: filters.environment,
+            service: filters.service,
+            severityMin: filters.severityMin,
+            range: filters.range,
+            from: filters.from,
+            to: filters.to,
+            q: filters.q,
+            traceId: filters.traceId,
+            ...toQueryParams(filters.filters ?? []),
+          },
+        },
+      });
+      if (error !== undefined) throw new Error("Failed to count log records");
+      return data.total;
+    },
+    enabled: !live,
+  });
+
   const items = logs.data?.pages.flatMap(page => page.items) ?? [];
   const applications = catalog.data?.applications ?? [];
   const labels = serviceLabels(applications);
 
+  // Never "N records": that reads as the total while it only ever counts what has been paged in.
+  const counted = live
+    ? `${items.length} loaded`
+    : total.data === undefined
+      ? `${items.length} loaded`
+      : `${items.length} of ${total.data} records`;
+
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <form
-          className="flex flex-wrap items-center gap-2 border-b border-[#17293D] bg-[#0B1826] px-[22px] py-3.5"
-          onSubmit={event => {
-            event.preventDefault();
-            onChange({ ...filters, q: search || undefined });
-          }}
-        >
+      <FilterRail
+        canClear={Object.values(filters).some(value => value !== undefined)}
+        onClear={() => {
+          setSearch("");
+          onChange({});
+        }}
+      >
+        {filters.traceId !== undefined && (
+          <FilterGroup label="SCOPE">
+            <FilterChip
+              className="w-full"
+              removeLabel="Leave the trace"
+              onRemove={() => onChange({ ...filters, traceId: undefined })}
+            >
+              Trace: {filters.traceId.slice(0, 8)}…
+            </FilterChip>
+          </FilterGroup>
+        )}
+
+        <FilterGroup label="SOURCE">
           <FilterSelect
+            className="w-full"
             placeholder="All applications"
             value={filters.applicationId}
             options={applications.map(a => ({ value: a.id, label: a.name }))}
@@ -99,28 +150,39 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
             }
           />
           <FilterSelect
+            className="w-full"
             placeholder="All namespaces"
             value={filters.namespace}
             options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
             onChange={namespace => onChange({ ...filters, namespace })}
           />
           <FilterSelect
+            className="w-full"
             placeholder="All environments"
             value={filters.environment}
             options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
             onChange={environment => onChange({ ...filters, environment })}
           />
           <FilterSelect
+            className="w-full"
             placeholder="All services"
             value={filters.service}
             options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
             onChange={service => onChange({ ...filters, service })}
           />
+        </FilterGroup>
+
+        <FilterGroup label="TIME">
           <TimeFilterControl
+            layout="column"
             value={filters}
             onChange={time => onChange({ ...filters, ...EMPTY_TIME, ...time })}
           />
+        </FilterGroup>
+
+        <FilterGroup label="SEVERITY">
           <FilterSelect
+            className="w-full"
             placeholder="All severities"
             value={filters.severityMin?.toString()}
             options={severityFilterOptions
@@ -130,43 +192,39 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
               onChange({ ...filters, severityMin: value === undefined ? undefined : Number(value) })
             }
           />
-          <Input
-            className="w-56"
-            placeholder="Search in message…"
-            value={search}
-            onChange={event => setSearch(event.target.value)}
-          />
-          <Button type="submit" variant="secondary" size="sm">
-            Search
-          </Button>
+        </FilterGroup>
+
+        <FilterGroup label="MESSAGE">
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={event => {
+              event.preventDefault();
+              onChange({ ...filters, q: search || undefined });
+            }}
+          >
+            <Input
+              placeholder="Search in message…"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+            />
+            <Button type="submit" variant="secondary" size="sm" className="w-full">
+              Search
+            </Button>
+          </form>
+        </FilterGroup>
+
+        <FilterGroup label="ATTRIBUTES">
           <AttributeFilterBar
+            layout="column"
             signal="logs"
             source={filters}
             filters={filters.filters ?? []}
-            onChange={next =>
-              onChange({ ...filters, filters: next.length > 0 ? next : undefined })
-            }
+            onChange={next => onChange({ ...filters, filters: next.length > 0 ? next : undefined })}
           />
-          <Button
-            type="button"
-            variant={live ? "default" : "outline"}
-            size="sm"
-            onClick={() => setLive(!live)}
-          >
-            {live ? "Live ●" : "Live"}
-          </Button>
-          {filters.traceId !== undefined && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onChange({ ...filters, traceId: undefined })}
-            >
-              Trace: {filters.traceId.slice(0, 8)}… ✕
-            </Button>
-          )}
-        </form>
+        </FilterGroup>
+      </FilterRail>
 
+      <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3.5 px-5 py-3">
           <h1 className="text-sm font-semibold tracking-[-0.1px]">Log records</h1>
           {live && (
@@ -175,10 +233,31 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
               refreshing every 5 s
             </span>
           )}
-          <span className="ml-auto font-mono text-[11.5px] text-[#6E86A0]">
-            {items.length} records
-          </span>
+          {/* Live is not a filter — it is how often this list refetches, so it lives on the list. */}
+          <div className="ml-auto flex items-center gap-3">
+            <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>
+            <Button
+              type="button"
+              variant={live ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLive(!live)}
+            >
+              {live ? "Live ●" : "Live"}
+            </Button>
+          </div>
         </div>
+
+        {/* Pinned above the scroll, never inside it: the Volume is the frame of reference for
+            where in time you are, and it is needed most while paging back through older records. */}
+        <LogVolumeChart
+          filters={filters}
+          live={live}
+          onNarrow={time => {
+            // Narrowing to a stretch of the past is the opposite of watching what arrives.
+            setLive(false);
+            onChange({ ...filters, ...time });
+          }}
+        />
 
         <div className="min-h-0 flex-1 overflow-auto">
           <div
@@ -268,7 +347,7 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
           >
             {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
           </Button>
-          <span className="font-mono text-[11px] text-[#6E86A0]">{items.length} records</span>
+          <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
         </div>
       </div>
 

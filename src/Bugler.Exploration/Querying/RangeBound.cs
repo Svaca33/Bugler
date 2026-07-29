@@ -13,6 +13,9 @@ public readonly record struct RangeBound : IParsable<RangeBound>
     /// <summary>The instant the text denotes, normalized to UTC.</summary>
     public DateTimeOffset Instant { get; }
 
+    /// <summary>A bound at an instant the server worked out itself, rather than one a caller wrote.</summary>
+    public static RangeBound At(DateTimeOffset instant) => new(instant.ToUniversalTime());
+
     public static RangeBound Parse(string s, IFormatProvider? provider) =>
         TryParse(s, provider, out var result)
             ? result

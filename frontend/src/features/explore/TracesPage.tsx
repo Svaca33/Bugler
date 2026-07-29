@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
+import { FilterGroup, FilterRail } from "./FilterRail";
 import { FilterSelect } from "./FilterSelect";
 import { formatTime } from "./format";
 import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
@@ -53,152 +54,175 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
   const items = traces.data?.items ?? [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#17293D] bg-[#0B1826] px-[22px] py-3.5">
-        <FilterSelect
-          placeholder="All applications"
-          value={filters.applicationId}
-          options={applications.map(a => ({ value: a.id, label: a.name }))}
-          onChange={applicationId =>
-            onChange({
-              ...filters,
-              applicationId,
-              namespace: undefined,
-              environment: undefined,
-              service: undefined,
-            })
-          }
-        />
-        <FilterSelect
-          placeholder="All namespaces"
-          value={filters.namespace}
-          options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
-          onChange={namespace => onChange({ ...filters, namespace })}
-        />
-        <FilterSelect
-          placeholder="All environments"
-          value={filters.environment}
-          options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
-          onChange={environment => onChange({ ...filters, environment })}
-        />
-        <FilterSelect
-          placeholder="All services"
-          value={filters.service}
-          options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
-          onChange={service => onChange({ ...filters, service })}
-        />
-        <TimeFilterControl
-          value={filters}
-          onChange={time => onChange({ ...filters, ...EMPTY_TIME, ...time })}
-        />
-        <Button
-          variant={filters.errorsOnly ? "default" : "outline"}
-          size="sm"
-          onClick={() => onChange({ ...filters, errorsOnly: filters.errorsOnly ? undefined : true })}
-        >
-          Errors only
-        </Button>
-        <AttributeFilterBar
-          signal="traces"
-          source={filters}
-          filters={filters.filters ?? []}
-          onChange={next => onChange({ ...filters, filters: next.length > 0 ? next : undefined })}
-        />
-      </div>
+    <div className="flex h-full min-h-0">
+      <FilterRail
+        canClear={Object.values(filters).some(value => value !== undefined)}
+        onClear={() => onChange({})}
+      >
+        <FilterGroup label="SOURCE">
+          <FilterSelect
+            className="w-full"
+            placeholder="All applications"
+            value={filters.applicationId}
+            options={applications.map(a => ({ value: a.id, label: a.name }))}
+            onChange={applicationId =>
+              onChange({
+                ...filters,
+                applicationId,
+                namespace: undefined,
+                environment: undefined,
+                service: undefined,
+              })
+            }
+          />
+          <FilterSelect
+            className="w-full"
+            placeholder="All namespaces"
+            value={filters.namespace}
+            options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
+            onChange={namespace => onChange({ ...filters, namespace })}
+          />
+          <FilterSelect
+            className="w-full"
+            placeholder="All environments"
+            value={filters.environment}
+            options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
+            onChange={environment => onChange({ ...filters, environment })}
+          />
+          <FilterSelect
+            className="w-full"
+            placeholder="All services"
+            value={filters.service}
+            options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
+            onChange={service => onChange({ ...filters, service })}
+          />
+        </FilterGroup>
 
-      <div className="flex items-center gap-3.5 px-5 py-3">
-        <h1 className="text-sm font-semibold tracking-[-0.1px]">Traces</h1>
-        <span className="ml-auto font-mono text-[11.5px] text-[#6E86A0]">{items.length} traces</span>
-      </div>
+        <FilterGroup label="TIME">
+          <TimeFilterControl
+            layout="column"
+            value={filters}
+            onChange={time => onChange({ ...filters, ...EMPTY_TIME, ...time })}
+          />
+        </FilterGroup>
 
-      <div className="min-h-0 flex-1 overflow-auto">
-        <div
-          className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
-        >
-          <span>ROOT SPAN</span>
-          <span>SERVICE</span>
-          <span>STARTED</span>
-          <span className="text-right">DURATION</span>
-          <span className="text-right">SPANS</span>
-          <span>STATUS</span>
+        <FilterGroup label="STATUS">
+          <Button
+            variant={filters.errorsOnly ? "default" : "outline"}
+            size="sm"
+            className="w-full"
+            onClick={() => onChange({ ...filters, errorsOnly: filters.errorsOnly ? undefined : true })}
+          >
+            Errors only
+          </Button>
+        </FilterGroup>
+
+        <FilterGroup label="ATTRIBUTES">
+          <AttributeFilterBar
+            layout="column"
+            signal="traces"
+            source={filters}
+            filters={filters.filters ?? []}
+            onChange={next => onChange({ ...filters, filters: next.length > 0 ? next : undefined })}
+          />
+        </FilterGroup>
+      </FilterRail>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-3.5 px-5 py-3">
+          <h1 className="text-sm font-semibold tracking-[-0.1px]">Traces</h1>
+          <span className="ml-auto font-mono text-[11.5px] text-[#6E86A0]">{items.length} traces</span>
         </div>
-        <div data-testid="trace-rows">
-          {items.map(trace => {
-            const slow = Number(trace.durationMs) >= 500;
-            return (
-              <div
-                key={trace.traceId}
-                className={`${GRID} h-[38px] border-b border-[#101F31] hover:bg-[#12243A] ${
-                  trace.hasError ? "bg-[rgba(229,84,74,0.07)]" : ""
-                }`}
-              >
-                <span className="min-w-0 truncate">
-                  {trace.rootName != null ? (
-                    <Link
-                      to="/traces/$traceId"
-                      params={{ traceId: trace.traceId }}
-                      search={filters}
-                      className={`text-[13px] font-medium underline-offset-2 hover:underline ${
-                        trace.hasError ? "text-[#F6C170]" : "text-foreground"
-                      }`}
-                    >
-                      {trace.rootName}
-                    </Link>
-                  ) : (
-                    <Link
-                      to="/traces/$traceId"
-                      params={{ traceId: trace.traceId }}
-                      search={filters}
-                      className="font-mono text-xs text-[#B6C8DA] underline-offset-2 hover:underline"
-                    >
-                      {trace.traceId}
-                    </Link>
-                  )}
-                </span>
-                <span className="truncate font-mono text-[11.5px] text-[#A9BDD1]">
-                  {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "—"}
-                </span>
-                <span className="whitespace-nowrap font-mono text-[11.5px] text-[#7D93AA]">
-                  {formatTime(trace.startTime)}
-                </span>
-                <span
-                  className={`text-right font-mono text-[11.5px] ${slow ? "text-primary" : "text-[#B6C8DA]"}`}
+
+        <div className="min-h-0 flex-1 overflow-auto">
+          <div
+            className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
+          >
+            <span>ROOT SPAN</span>
+            <span>SERVICE</span>
+            <span>STARTED</span>
+            <span className="text-right">DURATION</span>
+            <span className="text-right">SPANS</span>
+            <span>STATUS</span>
+          </div>
+          <div data-testid="trace-rows">
+            {items.map(trace => {
+              const slow = Number(trace.durationMs) >= 500;
+              return (
+                <div
+                  key={trace.traceId}
+                  className={`${GRID} h-[38px] border-b border-[#101F31] hover:bg-[#12243A] ${
+                    trace.hasError ? "bg-[rgba(229,84,74,0.07)]" : ""
+                  }`}
                 >
-                  {Number(trace.durationMs).toFixed(0)} ms
-                </span>
-                <span className="text-right font-mono text-xs text-[#B6C8DA]">{trace.spanCount}</span>
-                <span>
-                  {trace.hasError ? (
-                    <span className="rounded-[5px] bg-[rgba(229,84,74,0.15)] px-[7px] py-0.5 font-mono text-[10.5px] font-medium text-[#F0685A]">
-                      ERROR
-                    </span>
-                  ) : (
-                    <span className="font-mono text-[11px] text-[#6E86A0]">OK</span>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-          {items.length === 0 && !traces.isPending && (
-            <div className="flex flex-col items-center gap-3 py-16">
-              <p className="text-[#8CA1B8]">{emptyStateMessage("traces", filters)}</p>
-              {widerPresets(filters).length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[#6E86A0] text-xs">Widen to</span>
-                  {widerPresets(filters).map(preset => (
-                    <Button
-                      key={preset.value}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onChange({ ...filters, ...EMPTY_TIME, range: preset.value })}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
+                  <span className="min-w-0 truncate">
+                    {trace.rootName != null ? (
+                      <Link
+                        to="/traces/$traceId"
+                        params={{ traceId: trace.traceId }}
+                        search={filters}
+                        className={`text-[13px] font-medium underline-offset-2 hover:underline ${
+                          trace.hasError ? "text-[#F6C170]" : "text-foreground"
+                        }`}
+                      >
+                        {trace.rootName}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/traces/$traceId"
+                        params={{ traceId: trace.traceId }}
+                        search={filters}
+                        className="font-mono text-xs text-[#B6C8DA] underline-offset-2 hover:underline"
+                      >
+                        {trace.traceId}
+                      </Link>
+                    )}
+                  </span>
+                  <span className="truncate font-mono text-[11.5px] text-[#A9BDD1]">
+                    {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "—"}
+                  </span>
+                  <span className="whitespace-nowrap font-mono text-[11.5px] text-[#7D93AA]">
+                    {formatTime(trace.startTime)}
+                  </span>
+                  <span
+                    className={`text-right font-mono text-[11.5px] ${slow ? "text-primary" : "text-[#B6C8DA]"}`}
+                  >
+                    {Number(trace.durationMs).toFixed(0)} ms
+                  </span>
+                  <span className="text-right font-mono text-xs text-[#B6C8DA]">{trace.spanCount}</span>
+                  <span>
+                    {trace.hasError ? (
+                      <span className="rounded-[5px] bg-[rgba(229,84,74,0.15)] px-[7px] py-0.5 font-mono text-[10.5px] font-medium text-[#F0685A]">
+                        ERROR
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[11px] text-[#6E86A0]">OK</span>
+                    )}
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
+              );
+            })}
+            {items.length === 0 && !traces.isPending && (
+              <div className="flex flex-col items-center gap-3 py-16">
+                <p className="text-[#8CA1B8]">{emptyStateMessage("traces", filters)}</p>
+                {widerPresets(filters).length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#6E86A0] text-xs">Widen to</span>
+                    {widerPresets(filters).map(preset => (
+                      <Button
+                        key={preset.value}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onChange({ ...filters, ...EMPTY_TIME, range: preset.value })}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

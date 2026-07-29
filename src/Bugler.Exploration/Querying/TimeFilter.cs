@@ -49,6 +49,23 @@ public sealed class TimeFilter
         return true;
     }
 
+    /// <summary>
+    /// The lower bound as an instant, with a Relative Range resolved against <paramref name="now"/>.
+    /// Null when the filter leaves the bottom open, which only the caller can fill (ADR 0003).
+    /// </summary>
+    public DateTimeOffset? LowerBound(DateTimeOffset now) =>
+        _range is { } relative ? now - relative.Duration : _from?.Instant;
+
+    /// <summary>The upper bound as an instant, or null — a Relative Range never sets one (ADR 0002).</summary>
+    public DateTimeOffset? UpperBound => _to?.Instant;
+
+    /// <summary>
+    /// Restates the filter with its Relative Range already resolved, so a query and the Resolved
+    /// Window reported alongside it are the same window rather than two readings of the clock.
+    /// </summary>
+    public TimeFilter Pin(DateTimeOffset now) =>
+        _range is null ? this : new TimeFilter(null, RangeBound.At(now - _range.Value.Duration), _to);
+
     /// <summary>Appends the bounds to a query over <paramref name="column"/> and binds their values.</summary>
     public void AddConditions(List<string> conditions, NpgsqlCommand command, string column)
     {

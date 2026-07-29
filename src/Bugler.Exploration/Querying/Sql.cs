@@ -4,6 +4,12 @@ namespace Bugler.Exploration.Querying;
 
 internal static class Sql
 {
+    /// <summary>
+    /// How long a query that aggregates over a whole window may run. Aggregating is far dearer than
+    /// reading a page of the same rows, so the aggregate gives up while the page still answers.
+    /// </summary>
+    public const int AggregateTimeoutSeconds = 5;
+
     /// <summary>Npgsql rejects non-UTC DateTimes for timestamptz; query-string values arrive Unspecified.</summary>
     public static DateTime EnsureUtc(DateTime value) => value.Kind switch
     {

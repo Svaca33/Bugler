@@ -23,6 +23,9 @@ public sealed record LogRecordDto(
 
 public sealed record SearchLogsResponse(IReadOnlyList<LogRecordDto> Items);
 
+/// <summary>How many Log Records the Filter matches in total, whatever the list has paged in so far.</summary>
+public sealed record LogCountResponse(int Total);
+
 internal static class SearchLogsEndpoint
 {
     private const string Columns =
@@ -49,20 +52,14 @@ internal static class SearchLogsEndpoint
         NpgsqlDataSource dataSource,
         CancellationToken cancellationToken)
     {
-        if (!AttributeFilters.TryParse(attr, out var attributeFilters) ||
-            !AttributeFilters.TryParse(res, out var resourceFilters))
+        if (!LogCriteria.TryCreate(
+                applicationId, serviceNamespace, environment, service, severityMin,
+                range, from, to, q, traceId, attr, res, out var criteria, out var error))
         {
-            return TypedResults.BadRequest("Invalid attribute filter.");
+            return TypedResults.BadRequest(error);
         }
 
-        if (!TimeFilter.TryCreate(range, from, to, out var timeFilter, out var timeError))
-        {
-            return TypedResults.BadRequest(timeError);
-        }
-
-        var serviceIds = await scope.ResolveServiceIdsAsync(
-            SourceFilter.FromQuery(applicationId, serviceNamespace, environment, service),
-            cancellationToken);
+        var serviceIds = await scope.ResolveServiceIdsAsync(criteria.Source, cancellationToken);
 
         if (serviceIds is { Length: 0 })
         {
@@ -71,35 +68,7 @@ internal static class SearchLogsEndpoint
 
         await using var command = dataSource.CreateCommand();
         var conditions = new List<string>();
-
-        if (serviceIds is not null)
-        {
-            conditions.Add("service_id = ANY(@services)");
-            command.Parameters.AddWithValue("services", serviceIds);
-        }
-
-        timeFilter.AddConditions(conditions, command, "timestamp");
-
-        if (severityMin is > 0)
-        {
-            conditions.Add("severity_number >= @severityMin");
-            command.Parameters.AddWithValue("severityMin", severityMin.Value);
-        }
-
-        AttributeFilters.AddConditions(conditions, command, attributeFilters, "attributes", "attr");
-        AttributeFilters.AddConditions(conditions, command, resourceFilters, "resource_attributes", "res");
-
-        if (!string.IsNullOrEmpty(q))
-        {
-            conditions.Add(@"body ILIKE @q ESCAPE '\'");
-            command.Parameters.AddWithValue("q", $"%{Sql.EscapeLike(q)}%");
-        }
-
-        if (!string.IsNullOrEmpty(traceId))
-        {
-            conditions.Add("trace_id = @traceId");
-            command.Parameters.AddWithValue("traceId", traceId.ToLowerInvariant());
-        }
+        criteria.AddConditions(conditions, command, serviceIds);
 
         if (before is { } beforeTime && beforeId is { } beforeIdValue)
         {
@@ -121,6 +90,60 @@ internal static class SearchLogsEndpoint
         }
 
         return TypedResults.Ok(new SearchLogsResponse(items));
+    }
+
+    /// <summary>
+    /// The total behind the page. It belongs to the list rather than to the list's Volume even though
+    /// the Volume's Buckets would sum to it: a total read off the chart would have nowhere to come
+    /// from whenever the chart is not on screen. It depends on the Filter and not on how far the
+    /// reader has paged, so it is asked once per Filter and not once per page.
+    /// </summary>
+    public static async Task<IResult> HandleCount(
+        Guid? applicationId,
+        [FromQuery(Name = "namespace")] string? serviceNamespace,
+        string? environment,
+        string? service,
+        short? severityMin,
+        RelativeRange? range,
+        RangeBound? from,
+        RangeBound? to,
+        string? q,
+        string? traceId,
+        string[]? attr,
+        string[]? res,
+        ScopeResolver scope,
+        NpgsqlDataSource dataSource,
+        CancellationToken cancellationToken)
+    {
+        if (!LogCriteria.TryCreate(
+                applicationId, serviceNamespace, environment, service, severityMin,
+                range, from, to, q, traceId, attr, res, out var criteria, out var error))
+        {
+            return TypedResults.BadRequest(error);
+        }
+
+        var serviceIds = await scope.ResolveServiceIdsAsync(criteria.Source, cancellationToken);
+        if (serviceIds is { Length: 0 })
+        {
+            return TypedResults.Ok(new LogCountResponse(0));
+        }
+
+        try
+        {
+            await using var command = dataSource.CreateCommand();
+            command.CommandTimeout = Sql.AggregateTimeoutSeconds;
+            var where = criteria.Where(command, serviceIds);
+            command.CommandText = $"SELECT count(*)::int FROM telemetry.log_records{where}";
+
+            return TypedResults.Ok(new LogCountResponse((int)(await command.ExecuteScalarAsync(cancellationToken))!));
+        }
+        catch (NpgsqlException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The page itself is unaffected, so the list falls back to naming what it has loaded.
+            return TypedResults.Problem(
+                title: "The total could not be counted in time.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
     }
 
     public static async Task<IResult> HandleDetail(

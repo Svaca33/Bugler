@@ -40,6 +40,23 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Severity Bands wear their own semantic steps, never --chart-N: that ramp is the generic
+     categorical palette for future dashboards, and pointing severity at it would repaint the
+     logs UI the day the ramp is retuned. Three roles, because a colour that reads as a label
+     and a colour that reads as a filled area are not the same colour on a navy surface. */
+  --color-severity-error: var(--severity-error);
+  --color-severity-error-rail: var(--severity-error-rail);
+  --color-severity-error-fill: var(--severity-error-fill);
+  --color-severity-warn: var(--severity-warn);
+  --color-severity-warn-rail: var(--severity-warn-rail);
+  --color-severity-warn-fill: var(--severity-warn-fill);
+  --color-severity-info: var(--severity-info);
+  --color-severity-info-rail: var(--severity-info-rail);
+  --color-severity-info-fill: var(--severity-info-fill);
+  --color-severity-debug: var(--severity-debug);
+  --color-severity-debug-rail: var(--severity-debug-rail);
+  --color-severity-debug-fill: var(--severity-debug-fill);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -89,6 +106,23 @@
   --chart-4: #C4392C;
   --chart-5: #8A6BB0;
 
+  /* Severity Bands. UNTESTED: the app pins itself to .dark in index.html, so these steps have
+     never been rendered — validated on paper against the #FBF9F6 surface (worst adjacent pair
+     ΔE 16.3 normal vision, all four >= 3:1), never looked at. Grade them when light ships. */
+  --severity-error: #B8332A;
+  --severity-error-rail: #C4392C;
+  --severity-error-fill: #C4392C;
+  --severity-warn: #8A5A08;
+  --severity-warn-rail: #C97B12;
+  /* Not the brand #C97B12: against --severity-error it lands at ΔE 14.6, under the 15 floor. */
+  --severity-warn-fill: #B8860B;
+  --severity-info: #47607A;
+  --severity-info-rail: #8FA6BC;
+  --severity-info-fill: #2F5875;
+  --severity-debug: #6C7C8D;
+  --severity-debug-rail: #C3CCD5;
+  --severity-debug-fill: #78818A;
+
   --sidebar: #F7F3EC;
   --sidebar-foreground: #14202E;
   --sidebar-primary: #B26E0E;
@@ -129,6 +163,25 @@
   --chart-3: #4FBF9F;
   --chart-4: #F0685A;
   --chart-5: #A78BD0;
+
+  /* Severity Bands. The plain step is the label, -rail the 3px sliver on a log row, -fill the
+     area in a Volume chart: the rail steps are tuned to read as a sliver and vanish into the
+     navy the moment they are asked to fill anything. Fills validated against the #0A1522
+     surface — worst adjacent pair ΔE 18.5 normal vision / 13.2 deuteranopia, all four >= 3:1. */
+  --severity-error: #F0685A;
+  --severity-error-rail: #E5544A;
+  --severity-error-fill: #E5544A;
+  --severity-warn: #E9A43C;
+  --severity-warn-rail: #C97B12;
+  --severity-warn-fill: #E9A43C;
+  --severity-info: #9FB5CA;
+  --severity-info-rail: #274563;
+  --severity-info-fill: #6BA8E5;
+  --severity-debug: #6E86A0;
+  --severity-debug-rail: #1E344C;
+  /* Deliberately neutral: "no severity declared" is not a hue. It also opens the gap to
+     -info-fill to ΔE 18.5 — a blue step there sat at 10.9, indistinguishable in a stack. */
+  --severity-debug-fill: #5E6B78;
 
   --sidebar: #0C1A29;
   --sidebar-foreground: #EAF1F8;

@@ -1,10 +1,12 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Xml;
 using Bugler.Exploration.GetTraceWaterfall;
 using Bugler.Exploration.ListTraces;
 using Bugler.Exploration.ObservedKeys;
 using Bugler.Exploration.SearchLogs;
+using Bugler.Exploration.SummarizeLogVolume;
 using Google.Protobuf;
 using OpenTelemetry.Proto.Collector.Logs.V1;
 using OpenTelemetry.Proto.Collector.Trace.V1;
@@ -126,8 +128,89 @@ public sealed class ExplorationApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Volume_counts_the_same_records_the_list_shows_split_by_severity_band()
+    {
+        var volume = await GetAsync<LogVolumeResponse>("/api/logs/volume?range=PT1H");
+
+        // The sample is 2 Info and 1 Warn, so the bands have to add up to what the list returns.
+        Assert.Equal(2, volume.Buckets.Sum(b => b.Info));
+        Assert.Equal(1, volume.Buckets.Sum(b => b.Warn));
+        Assert.Equal(0, volume.Buckets.Sum(b => b.Error));
+        Assert.Equal(0, volume.Buckets.Sum(b => b.Debug));
+
+        var list = await GetAsync<SearchLogsResponse>("/api/logs?range=PT1H");
+        Assert.Equal(list.Items.Count, volume.Buckets.Sum(b => b.Error + b.Warn + b.Info + b.Debug));
+    }
+
+    [Fact]
+    public async Task Volume_reports_the_window_it_resolved_and_fills_every_bucket_in_it()
+    {
+        var volume = await GetAsync<LogVolumeResponse>("/api/logs/volume?range=PT1H");
+        var width = XmlConvert.ToTimeSpan(volume.Bucket);
+
+        Assert.Equal(TimeSpan.FromSeconds(30), width);
+        Assert.InRange(volume.To - volume.From, TimeSpan.FromMinutes(59), TimeSpan.FromMinutes(61));
+
+        // Dense: no gap anywhere, so silence cannot collapse into a shorter stretch of time.
+        Assert.All(
+            volume.Buckets.Zip(volume.Buckets.Skip(1)),
+            pair => Assert.Equal(width, pair.Second.Start - pair.First.Start));
+
+        // The Bucket holding `From` opens on or before it — edges sit on multiples of the width.
+        Assert.True(volume.Buckets[0].Start <= volume.From);
+        Assert.True(volume.Buckets[0].Start > volume.From - width);
+    }
+
+    [Fact]
+    public async Task Volume_stretches_past_now_for_a_sender_whose_clock_ran_ahead()
+    {
+        var now = DateTime.UtcNow;
+        await IngestOneLogAsync(_harness.ApiKey, "Clock ran ahead", now.AddHours(1));
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 4);
+
+        var volume = await GetAsync<LogVolumeResponse>("/api/logs/volume?range=PT1H");
+
+        // A window capped at now would hide the anomaly the list deliberately shows (ADR 0002).
+        Assert.True(volume.To > now.AddMinutes(30), $"window ended at {volume.To:O}, before the future record");
+        Assert.Equal(4, volume.Buckets.Sum(b => b.Error + b.Warn + b.Info + b.Debug));
+    }
+
+    [Fact]
+    public async Task Volume_of_an_unbounded_filter_opens_at_the_oldest_matching_record()
+    {
+        var now = DateTime.UtcNow;
+        await IngestOneLogAsync(_harness.ApiKey, "Ancient history", now.AddDays(-2));
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 4);
+
+        var volume = await GetAsync<LogVolumeResponse>("/api/logs/volume");
+
+        Assert.True(volume.From <= now.AddDays(-2), $"window opened at {volume.From:O}, after the oldest record");
+        Assert.Equal(4, volume.Buckets.Sum(b => b.Error + b.Warn + b.Info + b.Debug));
+    }
+
+    [Fact]
+    public async Task Volume_and_the_total_narrow_by_everything_the_list_narrows_by()
+    {
+        var warnOnly = await GetAsync<LogVolumeResponse>("/api/logs/volume?range=PT1H&severityMin=13");
+        Assert.Equal(1, warnOnly.Buckets.Sum(b => b.Warn));
+        Assert.Equal(0, warnOnly.Buckets.Sum(b => b.Info));
+
+        var byTenant = await GetAsync<LogVolumeResponse>($"/api/logs/volume?attr={FilterJson("acme", "tenant.id")}");
+        Assert.Equal(2, byTenant.Buckets.Sum(b => b.Error + b.Warn + b.Info + b.Debug));
+
+        Assert.Equal(3, (await GetAsync<LogCountResponse>("/api/logs/count")).Total);
+        Assert.Equal(1, (await GetAsync<LogCountResponse>("/api/logs/count?severityMin=13")).Total);
+        Assert.Equal(2, (await GetAsync<LogCountResponse>($"/api/logs/count?attr={FilterJson("acme", "tenant.id")}")).Total);
+        Assert.Equal(0, (await GetAsync<LogCountResponse>("/api/logs/count?namespace=vysocina")).Total);
+    }
+
+    [Fact]
     public async Task Impossible_time_filters_are_refused_instead_of_returning_nothing()
     {
+        await AssertBadRequestAsync("/api/logs/volume?range=PT1H&from=2026-07-28T09:00:00Z");
+        await AssertBadRequestAsync("/api/logs/volume?from=2026-07-28T18:00:00Z&to=2026-07-28T09:00:00Z");
+        await AssertBadRequestAsync("/api/logs/count?range=15m");
+
         await AssertBadRequestAsync("/api/logs?range=PT1H&from=2026-07-28T09:00:00Z");
         await AssertBadRequestAsync("/api/logs?from=2026-07-28T18:00:00Z&to=2026-07-28T09:00:00Z");
         await AssertBadRequestAsync("/api/logs?from=2026-07-28T18:00:00");

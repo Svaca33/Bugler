@@ -30,8 +30,11 @@ const CUSTOM = "__custom__";
 export function TimeFilterControl(props: {
   value: TimeFilterValue;
   onChange: (value: TimeFilterValue) => void;
+  /** `row` flows into a wrapping filter bar; `column` stacks full-width inside the filter rail. */
+  layout?: "row" | "column";
 }) {
-  const { value, onChange } = props;
+  const { value, onChange, layout = "row" } = props;
+  const column = layout === "column";
   const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState("45");
   const [unit, setUnit] = useState<RangeUnit>("minutes");
@@ -60,6 +63,10 @@ export function TimeFilterControl(props: {
     setEditing(false);
   };
 
+  // Stacked, a label sits above its field; inline it is a gutter the fields line up against.
+  // The `contents` wrappers below are boxes the browser skips, so the row layout stays flat.
+  const endLabel = column ? "text-muted-foreground text-xs" : "text-muted-foreground w-10 text-xs";
+
   return (
     <>
       <Select
@@ -72,7 +79,7 @@ export function TimeFilterControl(props: {
           }
         }}
       >
-        <SelectTrigger className="w-48" size="sm" aria-label="Time range">
+        <SelectTrigger className={column ? "w-full" : "w-48"} size="sm" aria-label="Time range">
           <span className="truncate">{timeFilterLabel(value)}</span>
         </SelectTrigger>
         <SelectContent>
@@ -87,39 +94,42 @@ export function TimeFilterControl(props: {
       </Select>
 
       {isCustom && !editing && (
-        <Button type="button" variant="ghost" size="sm" onClick={openEditor}>
+        <Button type="button" variant="ghost" size="sm" className={column ? "w-full" : undefined} onClick={openEditor}>
           Edit
         </Button>
       )}
 
       {editing && (
         <div className="bg-popover flex flex-col gap-2 rounded-md border p-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground w-10 text-xs">Last</span>
-            <Input
-              type="number"
-              min={1}
-              className="h-8 w-20"
-              aria-label="Amount"
-              value={amount}
-              onChange={event => setAmount(event.target.value)}
-            />
-            <Select value={unit} onValueChange={selected => setUnit(selected as RangeUnit)}>
-              <SelectTrigger className="w-28" size="sm" aria-label="Unit">
-                <span>{RANGE_UNITS.find(option => option.value === unit)?.label}</span>
-              </SelectTrigger>
-              <SelectContent>
-                {RANGE_UNITS.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className={column ? "flex flex-col gap-1.5" : "flex items-center gap-1.5"}>
+            <span className={endLabel}>Last</span>
+            <span className={column ? "flex gap-1.5" : "contents"}>
+              <Input
+                type="number"
+                min={1}
+                className={column ? "h-8 w-16" : "h-8 w-20"}
+                aria-label="Amount"
+                value={amount}
+                onChange={event => setAmount(event.target.value)}
+              />
+              <Select value={unit} onValueChange={selected => setUnit(selected as RangeUnit)}>
+                <SelectTrigger className={column ? "flex-1" : "w-28"} size="sm" aria-label="Unit">
+                  <span>{RANGE_UNITS.find(option => option.value === unit)?.label}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {RANGE_UNITS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </span>
             <Button
               type="button"
               variant="secondary"
               size="sm"
+              className={column ? "w-full" : undefined}
               aria-label="Apply relative range"
               disabled={duration === undefined}
               onClick={() => duration !== undefined && apply({ range: duration })}
@@ -128,45 +138,49 @@ export function TimeFilterControl(props: {
             </Button>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground w-10 text-xs">From</span>
+          <div className={column ? "flex flex-col gap-1.5" : "flex items-center gap-1.5"}>
+            <span className={endLabel}>From</span>
             {/* Local wall clock in, UTC on the wire — the same time the list shows you. */}
             <Input
               type="datetime-local"
               step={1}
-              className="h-8 w-52"
+              className={column ? "h-8 w-full" : "h-8 w-52"}
               aria-label="From"
               value={from}
               onChange={event => setFrom(event.target.value)}
             />
-            <span className="text-muted-foreground text-xs">to</span>
+            {/* Inline the ends read "From … to …"; stacked they are two labelled fields. */}
+            <span className="text-muted-foreground text-xs">{column ? "To" : "to"}</span>
             <Input
               type="datetime-local"
               step={1}
-              className="h-8 w-52"
+              className={column ? "h-8 w-full" : "h-8 w-52"}
               aria-label="To"
               value={to}
               onChange={event => setTo(event.target.value)}
             />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              aria-label="Apply absolute range"
-              disabled={endsBeforeItStarts}
-              onClick={() => apply({ from: fromInstant, to: toInstant })}
-            >
-              Apply
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label="Cancel time range"
-              onClick={() => setEditing(false)}
-            >
-              ✕
-            </Button>
+            <span className={column ? "flex gap-1.5" : "contents"}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className={column ? "flex-1" : undefined}
+                aria-label="Apply absolute range"
+                disabled={endsBeforeItStarts}
+                onClick={() => apply({ from: fromInstant, to: toInstant })}
+              >
+                Apply
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Cancel time range"
+                onClick={() => setEditing(false)}
+              >
+                ✕
+              </Button>
+            </span>
           </div>
 
           {endsBeforeItStarts && (

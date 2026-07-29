@@ -13,4 +13,5 @@
 - **Exploration → Access**: Exploration asks Access for the set of applications the current user may read; every query is constrained by that set.
 - **Exploration → Registry**: Exploration reads the catalog (application and service names, and the facets a Source Filter offers) for display and filter suggestions.
 - **Registry → Ingestion, Registry → Access**: on Deletion, Registry publishes `ServicesDeleted` and `ApplicationDeleted` through its outbox; Ingestion erases the Signals of the deleted Services and Access revokes the grants pointing at the deleted Application. Registry does not know who listens (ADR 0008).
-- **Shared identifiers**: `ApplicationId`, `ServiceId` and the integration event contracts are the only types shared across contexts; no context reads another context's data store.
+- **Shared identifiers**: `ApplicationId`, `ServiceId` and the integration event contracts are the only types shared across contexts.
+- **Telemetry storage is shared for reading**: Ingestion alone writes and migrates the `telemetry` schema; Exploration reads it directly and never writes (ADR 0009). Every other context keeps its store to itself.

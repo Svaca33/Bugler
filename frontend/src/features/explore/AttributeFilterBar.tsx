@@ -28,8 +28,11 @@ export function AttributeFilterBar(props: {
   source: SourceFilters;
   filters: AttributeFilter[];
   onChange: (filters: AttributeFilter[]) => void;
+  /** `row` flows into a wrapping filter bar; `column` stacks full-width inside the filter rail. */
+  layout?: "row" | "column";
 }) {
-  const { signal, source, filters, onChange } = props;
+  const { signal, source, filters, onChange, layout = "row" } = props;
+  const column = layout === "column";
   const [picking, setPicking] = useState(false);
   const [pendingKey, setPendingKey] = useState<ObservedKey | null>(null);
   const [value, setValue] = useState("");
@@ -76,11 +79,16 @@ export function AttributeFilterBar(props: {
     cancel();
   };
 
+  // `contents` keeps the row layout exactly as it was: the wrapper is a box the browser skips,
+  // so the chips and buttons stay direct children of the caller's flex-wrap bar.
+  const full = column ? "w-full" : undefined;
+
   return (
-    <>
+    <div className={column ? "flex min-w-0 flex-col gap-1.5" : "contents"}>
       {filters.map(filter => (
         <FilterChip
           key={`${filter.scope}:${JSON.stringify(filter.path)}`}
+          className={full}
           onRemove={() => onChange(removeFilter(filters, filter))}
         >
           {filter.scope === "resource" && <span className="text-muted-foreground">res:&thinsp;</span>}
@@ -88,13 +96,19 @@ export function AttributeFilterBar(props: {
         </FilterChip>
       ))}
       {!picking && (
-        <Button type="button" variant="outline" size="sm" onClick={() => setPicking(true)}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={full}
+          onClick={() => setPicking(true)}
+        >
           + Filter
         </Button>
       )}
       {picking && pendingKey === null && (
         <Combobox
-          className="w-64"
+          className={column ? "w-full" : "w-64"}
           autoFocus
           options={options}
           placeholder="Filter by key…"
@@ -104,14 +118,14 @@ export function AttributeFilterBar(props: {
         />
       )}
       {picking && pendingKey !== null && (
-        <span className="flex items-center gap-1">
-          <FilterChip>
+        <span className={column ? "flex min-w-0 flex-col gap-1.5" : "flex items-center gap-1"}>
+          <FilterChip className={full}>
             {pendingKey.scope === "resource" && <span className="text-muted-foreground">res:&thinsp;</span>}
             {displayPath(pendingKey.path)} =
           </FilterChip>
           <Input
             autoFocus
-            className="h-8 w-44"
+            className={column ? "h-8 w-full" : "h-8 w-44"}
             placeholder="Value"
             value={value}
             onChange={event => setValue(event.target.value)}
@@ -124,14 +138,22 @@ export function AttributeFilterBar(props: {
               }
             }}
           />
-          <Button type="button" variant="secondary" size="sm" onClick={add}>
-            Add
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={cancel} aria-label="Cancel filter">
-            ✕
-          </Button>
+          <span className={column ? "flex gap-1.5" : "contents"}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className={column ? "flex-1" : undefined}
+              onClick={add}
+            >
+              Add
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={cancel} aria-label="Cancel filter">
+              ✕
+            </Button>
+          </span>
         </span>
       )}
-    </>
+    </div>
   );
 }
