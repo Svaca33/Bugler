@@ -30,19 +30,22 @@ public sealed class BuglerHarness : IAsyncDisposable
     public Guid ApplicationId { get; private set; }
     public Guid ServiceId { get; private set; }
 
-    public static async Task<BuglerHarness> StartAsync()
+    public static async Task<BuglerHarness> StartAsync(Action<IWebHostBuilder>? configure = null)
     {
         var harness = new BuglerHarness();
-        await harness.InitializeAsync();
+        await harness.InitializeAsync(configure);
         return harness;
     }
 
-    private async Task InitializeAsync()
+    private async Task InitializeAsync(Action<IWebHostBuilder>? configure)
     {
         await _postgres.StartAsync();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.UseSetting("ConnectionStrings:bugler", _postgres.GetConnectionString()));
+        {
+            builder.UseSetting("ConnectionStrings:bugler", _postgres.GetConnectionString());
+            configure?.Invoke(builder);
+        });
         Client = _factory.CreateClient();
 
         var setup = await Client.PostAsJsonAsync(

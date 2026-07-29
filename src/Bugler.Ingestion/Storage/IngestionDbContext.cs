@@ -23,6 +23,10 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             log.HasIndex(l => new { l.ServiceId, l.Timestamp }).IsDescending(false, true);
             log.HasIndex(l => l.TraceId);
             log.HasIndex(l => l.Attributes).HasMethod("gin");
+            // Serves the Alerting detection poll (ADR 0010): `WHERE id > @from AND
+            // severity_number >= 17|13 ORDER BY id` — both floors imply this predicate.
+            log.HasIndex(l => l.Id).HasFilter("severity_number >= 13")
+                .HasDatabaseName("ix_log_records_alerting_poll");
         });
 
         modelBuilder.Entity<StoredSpan>(span =>

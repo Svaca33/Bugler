@@ -20,7 +20,6 @@ public class EffectiveSettingsTests
 
         Assert.Equal(Sensitivity.Errors, effective.SensitivityOf(Web));
         Assert.Equal(TimeSpan.FromMinutes(15), effective.QuietWindowOf(Web));
-        Assert.Equal((short)17, effective.GlobalSeverityFloor);
     }
 
     [Fact]
@@ -38,7 +37,6 @@ public class EffectiveSettingsTests
 
         Assert.Equal(Sensitivity.ErrorsAndWarnings, effective.SensitivityOf(Worker));
         Assert.Equal(TimeSpan.FromMinutes(30), effective.QuietWindowOf(Worker));
-        Assert.Equal((short)13, effective.GlobalSeverityFloor);
     }
 
     [Fact]
@@ -57,33 +55,6 @@ public class EffectiveSettingsTests
 
         Assert.Equal(Sensitivity.Off, effective.SensitivityOf(Web));
         Assert.Equal(TimeSpan.FromMinutes(45), effective.QuietWindowOf(Web));
-    }
-
-    [Fact]
-    public void The_global_floor_is_the_lowest_any_watched_service_wants()
-    {
-        var effective = EffectiveSettings.Build(
-            [Registered(Web, App), Registered(Worker, App, "worker")],
-            [],
-            [new ServiceAlertingSettings
-            {
-                ServiceId = Worker,
-                ApplicationId = App,
-                Sensitivity = Sensitivity.ErrorsAndWarnings,
-            }]);
-
-        Assert.Equal((short)13, effective.GlobalSeverityFloor);
-    }
-
-    [Fact]
-    public void When_every_service_is_off_there_is_nothing_to_poll_for()
-    {
-        var effective = EffectiveSettings.Build(
-            [Registered(Web, App)],
-            [new ApplicationAlertingSettings { ApplicationId = App, Sensitivity = Sensitivity.Off }],
-            []);
-
-        Assert.Null(effective.GlobalSeverityFloor);
     }
 
     [Fact]

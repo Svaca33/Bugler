@@ -1,3 +1,4 @@
+using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.DropDeletedTargets;
 using Bugler.Alerting.DropDeletedUserSubscriptions;
 using Bugler.Alerting.ManageAlertingSettings;
@@ -24,6 +25,8 @@ public static class AlertingModule
                 provider.GetRequiredService<NpgsqlDataSource>(),
                 npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "alerting"))
             .UseSnakeCaseNamingConvention());
+
+        services.AddSingleton<EpisodeDetector>();
 
         services.AddScoped<IIntegrationEventHandler<ServicesDeleted>, DeletedServicesHandler>();
         services.AddScoped<IIntegrationEventHandler<ApplicationDeleted>, DeletedApplicationHandler>();

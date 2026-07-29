@@ -47,28 +47,6 @@ public sealed class EffectiveSettings
     public ApplicationId? ApplicationOf(ServiceId serviceId) =>
         _services.GetValueOrDefault(serviceId)?.ApplicationId;
 
-    /// <summary>
-    /// The one severity floor the telemetry poll filters by: the lowest floor any watched Service
-    /// wants. Null when every Service is Off, which turns the poll into a cursor advance only.
-    /// </summary>
-    public short? GlobalSeverityFloor
-    {
-        get
-        {
-            short? floor = null;
-            foreach (var service in _services.Values)
-            {
-                var serviceFloor = service.Sensitivity.SeverityFloor();
-                if (serviceFloor is not null && (floor is null || serviceFloor < floor))
-                {
-                    floor = serviceFloor;
-                }
-            }
-
-            return floor;
-        }
-    }
-
     /// <summary>The Services of one Application whose effective Sensitivity is Off right now — the set a settings change must close silently.</summary>
     public IReadOnlyList<ServiceId> ServicesEffectivelyOff(ApplicationId applicationId) =>
         _services
