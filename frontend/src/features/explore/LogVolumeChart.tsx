@@ -15,6 +15,8 @@ import {
   YAxis,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { durationMs } from "@/lib/duration";
+import { bandsAdmittedBy, SEVERITY_BANDS } from "@/lib/severity";
 
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import {
@@ -25,9 +27,8 @@ import {
   describeWidth,
   type VolumeWindow,
 } from "./logVolume";
-import { bandsAdmittedBy, SEVERITY_BANDS } from "./severity";
 import type { SourceFilters } from "./sourceFilter";
-import { durationMs, EMPTY_TIME, type TimeFilterValue } from "./timeFilter";
+import { EMPTY_TIME, type TimeFilterValue } from "./timeFilter";
 
 /** Everything the chart narrows by — the very same criteria the list under it narrows by. */
 export interface VolumeFilters extends SourceFilters, TimeFilterValue {

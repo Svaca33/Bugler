@@ -9,14 +9,12 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 
+import { RANGE_PRESETS, RANGE_UNITS, toDuration, type RangeUnit } from "@/lib/duration";
+
 import {
   instantToLocalInput,
   localInputToInstant,
-  RANGE_PRESETS,
-  RANGE_UNITS,
   timeFilterLabel,
-  toDuration,
-  type RangeUnit,
   type TimeFilterValue,
 } from "./timeFilter";
 

@@ -4,12 +4,12 @@ import { Link } from "@tanstack/react-router";
 import { api } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { formatTime } from "@/lib/format";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterGroup, FilterRail } from "./FilterRail";
 import { FilterSelect } from "./FilterSelect";
-import { formatTime } from "./format";
 import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
 import { TimeFilterControl } from "./TimeFilterControl";

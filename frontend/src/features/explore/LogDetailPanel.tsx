@@ -3,11 +3,11 @@ import { Link } from "@tanstack/react-router";
 import type { LogRecord } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { formatTime } from "@/lib/format";
+import { severityClass, severityLabel } from "@/lib/severity";
 
 import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
 import { AttributeLeafList } from "./AttributeLeafList";
-import { formatTime } from "./format";
-import { severityClass, severityLabel } from "./severity";
 import { serviceLabels } from "./sourceFilter";
 
 export function LogDetailPanel(props: {

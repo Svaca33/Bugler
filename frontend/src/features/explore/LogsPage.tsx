@@ -6,15 +6,16 @@ import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Input } from "@/components/ui/input";
+import { formatTime } from "@/lib/format";
+import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "@/lib/severity";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterGroup, FilterRail } from "./FilterRail";
 import { FilterSelect } from "./FilterSelect";
-import { formatTime, tenantOf } from "./format";
+import { tenantOf } from "./format";
 import { LogDetailPanel } from "./LogDetailPanel";
 import { LogVolumeChart } from "./LogVolumeChart";
-import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "./severity";
 import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
 import { TimeFilterControl } from "./TimeFilterControl";
