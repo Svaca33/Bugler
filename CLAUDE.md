@@ -11,6 +11,7 @@ cd frontend && bun install && bun test && bun run typecheck
 cd frontend && bun dev             # UI on :3000, proxies /api + /openapi to :8080
 cd e2e && bun run test             # Playwright; needs `docker compose up -d postgres` first
 docker compose up -d --build bugler  # full stack on :8080; image bakes the frontend — rebuild after ANY change
+powershell -File scripts/redeploy.ps1  # finish a change: build+typecheck gate → stop dev servers → rebuild the bugler container → wait for /health
 dotnet run --project tools/Bugler.SampleSource -- --api-key blgr_…  # stream sample telemetry into a running Bugler (tools/Bugler.SampleSource/README.md)
 ```
 
@@ -33,6 +34,8 @@ Module boundaries are enforced by `tests/Bugler.ArchitectureTests` (backend) and
 - **Ports are surfaces** (enforced in [src/Bugler.Host/ListenerSurfaces.cs](src/Bugler.Host/ListenerSurfaces.cs)): 8080 = app (UI + REST + OpenAPI), 4317 = OTLP/gRPC, 4318 = OTLP/HTTP, `/health` everywhere. Kestrel listener names in appsettings must match a `Surface`; modules stay port-agnostic. UI and REST API intentionally share one origin (cookie auth, no CORS).
 - No `X-` prefixed headers (RFC 6648) — API keys travel as `Authorization: Bearer`.
 - Repo docs, comments, and commit messages are English — but talk to the user in Czech (chat replies, questions, summaries).
+- **Library work goes through Context7 MCP.** The first time a session touches a given library or framework, call `resolve-library-id` and `query-docs` before writing code — and again whenever you reach for an API the repo does not already use, change its configuration, depend on version-specific behaviour, or debug it. Copying a pattern that demonstrably already exists in the repo is the only exception. If Context7 does not know the library or the server is unavailable, say so in the reply instead of guessing. A `PreToolUse` hook ([scripts/context7-guard.ps1](scripts/context7-guard.ps1)) denies the first library-facing edit of a session once, then stands down.
+- **Finish a change with a redeploy.** When the work touched `src/`, `frontend/`, `Dockerfile` or `docker-compose.yml`, run [scripts/redeploy.ps1](scripts/redeploy.ps1) (or `/redeploy`) *before* declaring it done: it stops the dev servers and rebuilds the `bugler` container, so manual testing happens on http://localhost:8080 — the production build that actually ships, not the hot-reloaded sources on :3000. postgres stays up. Commit only after the user has clicked through it. Changes confined to `tests/`, `e2e/` or docs do not reach the image and need no redeploy.
 
 ## Frontend
 

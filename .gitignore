@@ -43,3 +43,4 @@ Thumbs.db
 # Claude
 .claude/*
 !.claude/settings.json
+!.claude/commands/
