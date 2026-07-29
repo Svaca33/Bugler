@@ -24,8 +24,9 @@ internal static class ListTracesEndpoint
         [FromQuery(Name = "namespace")] string? serviceNamespace,
         string? environment,
         string? service,
-        DateTime? from,
-        DateTime? to,
+        RelativeRange? range,
+        RangeBound? from,
+        RangeBound? to,
         bool? errorsOnly,
         string[]? attr,
         string[]? res,
@@ -38,6 +39,11 @@ internal static class ListTracesEndpoint
             !AttributeFilters.TryParse(res, out var resourceFilters))
         {
             return TypedResults.BadRequest("Invalid attribute filter.");
+        }
+
+        if (!TimeFilter.TryCreate(range, from, to, out var timeFilter, out var timeError))
+        {
+            return TypedResults.BadRequest(timeError);
         }
 
         var serviceIds = await scope.ResolveServiceIdsAsync(
@@ -58,17 +64,7 @@ internal static class ListTracesEndpoint
             command.Parameters.AddWithValue("services", serviceIds);
         }
 
-        if (from is { } fromTime)
-        {
-            conditions.Add("start_time >= @from");
-            command.Parameters.AddWithValue("from", Sql.EnsureUtc(fromTime));
-        }
-
-        if (to is { } toTime)
-        {
-            conditions.Add("start_time <= @to");
-            command.Parameters.AddWithValue("to", Sql.EnsureUtc(toTime));
-        }
+        timeFilter.AddConditions(conditions, command, "start_time");
 
         if (attributeFilters.Length > 0 || resourceFilters.Length > 0)
         {

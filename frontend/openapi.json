@@ -178,19 +178,24 @@
             }
           },
           {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "from",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           },
           {
             "name": "to",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           },
           {
@@ -391,19 +396,24 @@
             }
           },
           {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "from",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           },
           {
             "name": "to",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           },
           {

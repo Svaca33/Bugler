@@ -13,8 +13,10 @@ import { formatTime, tenantOf } from "./format";
 import { LogDetailPanel } from "./LogDetailPanel";
 import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "./severity";
 import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
+import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
+import { TimeFilterControl } from "./TimeFilterControl";
 
-export interface LogFilters extends SourceFilters {
+export interface LogFilters extends SourceFilters, TimeFilterValue {
   severityMin?: number;
   q?: string;
   traceId?: string;
@@ -43,6 +45,9 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
             environment: filters.environment,
             service: filters.service,
             severityMin: filters.severityMin,
+            range: filters.range,
+            from: filters.from,
+            to: filters.to,
             q: filters.q,
             traceId: filters.traceId,
             ...toQueryParams(filters.filters ?? []),
@@ -110,6 +115,10 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
             value={filters.service}
             options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
             onChange={service => onChange({ ...filters, service })}
+          />
+          <TimeFilterControl
+            value={filters}
+            onChange={time => onChange({ ...filters, ...EMPTY_TIME, ...time })}
           />
           <FilterSelect
             placeholder="All severities"
@@ -228,9 +237,24 @@ export function LogsPage(props: { filters: LogFilters; onChange: (filters: LogFi
               );
             })}
             {items.length === 0 && !logs.isPending && (
-              <p className="py-16 text-center text-[#8CA1B8]">
-                No log records match the current filters.
-              </p>
+              <div className="flex flex-col items-center gap-3 py-16">
+                <p className="text-[#8CA1B8]">{emptyStateMessage("log records", filters)}</p>
+                {widerPresets(filters).length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#6E86A0] text-xs">Widen to</span>
+                    {widerPresets(filters).map(preset => (
+                      <Button
+                        key={preset.value}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onChange({ ...filters, ...EMPTY_TIME, range: preset.value })}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

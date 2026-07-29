@@ -10,8 +10,10 @@ import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterSelect } from "./FilterSelect";
 import { formatTime } from "./format";
 import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
+import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
+import { TimeFilterControl } from "./TimeFilterControl";
 
-export interface TraceFilters extends SourceFilters {
+export interface TraceFilters extends SourceFilters, TimeFilterValue {
   errorsOnly?: boolean;
   filters?: AttributeFilter[];
 }
@@ -32,6 +34,9 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
             namespace: filters.namespace,
             environment: filters.environment,
             service: filters.service,
+            range: filters.range,
+            from: filters.from,
+            to: filters.to,
             errorsOnly: filters.errorsOnly,
             ...toQueryParams(filters.filters ?? []),
             limit: 100,
@@ -81,6 +86,10 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
           value={filters.service}
           options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
           onChange={service => onChange({ ...filters, service })}
+        />
+        <TimeFilterControl
+          value={filters}
+          onChange={time => onChange({ ...filters, ...EMPTY_TIME, ...time })}
         />
         <Button
           variant={filters.errorsOnly ? "default" : "outline"}
@@ -171,7 +180,24 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
             );
           })}
           {items.length === 0 && !traces.isPending && (
-            <p className="py-16 text-center text-[#8CA1B8]">No traces match the current filters.</p>
+            <div className="flex flex-col items-center gap-3 py-16">
+              <p className="text-[#8CA1B8]">{emptyStateMessage("traces", filters)}</p>
+              {widerPresets(filters).length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[#6E86A0] text-xs">Widen to</span>
+                  {widerPresets(filters).map(preset => (
+                    <Button
+                      key={preset.value}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onChange({ ...filters, ...EMPTY_TIME, range: preset.value })}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

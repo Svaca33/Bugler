@@ -1,6 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 
 import { asFilters } from "@/features/explore/attributeFilters";
+import { asInstant, asRange, DEFAULT_RANGE } from "@/features/explore/timeFilter";
 import { TracesPage, type TraceFilters } from "@/features/explore/TracesPage";
 
 export const Route = createFileRoute("/_app/traces/")({
@@ -9,9 +10,18 @@ export const Route = createFileRoute("/_app/traces/")({
     namespace: asString(search.namespace),
     environment: asString(search.environment),
     service: asString(search.service),
+    range: asRange(search.range),
+    from: asInstant(search.from),
+    to: asInstant(search.to),
     errorsOnly: search.errorsOnly === true || search.errorsOnly === "true" ? true : undefined,
     filters: asFilters(search.filters),
   }),
+  // Same as Logs: the default window is spelled out in the URL, and clearing it stays cleared.
+  beforeLoad: ({ search, cause }) => {
+    if (cause === "enter" && !hasTimeFilter(search)) {
+      throw redirect({ to: "/traces", search: { ...search, range: DEFAULT_RANGE }, replace: true });
+    }
+  },
   component: TracesRoute,
 });
 
@@ -21,6 +31,10 @@ function TracesRoute() {
   return (
     <TracesPage filters={filters} onChange={next => navigate({ search: next, replace: true })} />
   );
+}
+
+function hasTimeFilter(search: TraceFilters): boolean {
+  return search.range !== undefined || search.from !== undefined || search.to !== undefined;
 }
 
 function asString(value: unknown): string | undefined {

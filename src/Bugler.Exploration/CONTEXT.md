@@ -21,12 +21,24 @@ The hierarchical timing view of a Trace's Spans.
 _Avoid_: flame graph, Gantt, timeline view
 
 **Filter**:
-The criteria narrowing displayed telemetry: Source Filters, severity, time range, full-text, and Attribute Filters. Tenant is not a first-class criterion — it is filtered via an Attribute Filter on `tenant.id`.
+The criteria narrowing displayed telemetry: Source Filters, the Time Filter, severity, full-text, and Attribute Filters. Tenant is not a first-class criterion — it is filtered via an Attribute Filter on `tenant.id`.
 _Avoid_: query, search criteria
 
 **Source Filter**:
 A Filter criterion narrowing which Services a query may touch — Application, Service Namespace, Environment or Service Name — each one left open meaning "all". Unlike an Attribute Filter it matches registered facts, so it cannot be fooled by what telemetry claims about itself.
 _Avoid_: scope filter, instance filter, source picker
+
+**Time Filter**:
+A Filter criterion bounding when the telemetry happened, by the timestamp its sender stamped on it. Either a Relative Range or an Absolute Range, never both; absent, it constrains nothing.
+_Avoid_: time window, period, interval, lookback
+
+**Relative Range**:
+The Time Filter expressed as a fixed-length duration back from "now", resolved against the server's clock rather than the viewer's. A week is 7 days and a month 30 — no calendar arithmetic, so no time zone. It only sets the lower bound: telemetry stamped in the future stays visible instead of vanishing.
+_Avoid_: last N, since, relative time
+
+**Absolute Range**:
+The Time Filter expressed as instants. Either end may be left open, and each end carries its own UTC offset so it cannot be read in the wrong zone.
+_Avoid_: custom range, fixed range, from/to
 
 **Attribute Filter**:
 A Filter criterion matching one attribute — identified by its scope (signal attribute vs Resource Attribute) and its path — against an exact value. Combined with AND across keys; one value per key at a time.

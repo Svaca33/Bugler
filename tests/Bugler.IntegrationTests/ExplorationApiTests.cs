@@ -99,6 +99,43 @@ public sealed class ExplorationApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_relative_range_cuts_the_bottom_off_and_leaves_the_top_open()
+    {
+        var now = DateTime.UtcNow;
+        await IngestOneLogAsync(_harness.ApiKey, "Ancient history", now.AddDays(-2));
+        await IngestOneLogAsync(_harness.ApiKey, "Clock ran ahead", now.AddHours(1));
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 5);
+
+        var lastDay = await GetAsync<SearchLogsResponse>("/api/logs?range=P1D");
+        Assert.DoesNotContain(lastDay.Items, item => item.Body == "Ancient history");
+        // The top stays open, so a sender whose clock ran ahead stays visible instead of vanishing.
+        Assert.Contains(lastDay.Items, item => item.Body == "Clock ran ahead");
+
+        var window = await GetAsync<SearchLogsResponse>(
+            $"/api/logs?from={Instant(now.AddDays(-3))}&to={Instant(now.AddDays(-1))}");
+        Assert.Equal("Ancient history", Assert.Single(window.Items).Body);
+
+        var openEnded = await GetAsync<SearchLogsResponse>($"/api/logs?from={Instant(now.AddMinutes(-5))}");
+        Assert.Equal(4, openEnded.Items.Count);
+
+        var recentTraces = await GetAsync<ListTracesResponse>("/api/traces?range=PT1H");
+        Assert.Single(recentTraces.Items);
+
+        var oldTraces = await GetAsync<ListTracesResponse>($"/api/traces?to={Instant(now.AddDays(-1))}");
+        Assert.Empty(oldTraces.Items);
+    }
+
+    [Fact]
+    public async Task Impossible_time_filters_are_refused_instead_of_returning_nothing()
+    {
+        await AssertBadRequestAsync("/api/logs?range=PT1H&from=2026-07-28T09:00:00Z");
+        await AssertBadRequestAsync("/api/logs?from=2026-07-28T18:00:00Z&to=2026-07-28T09:00:00Z");
+        await AssertBadRequestAsync("/api/logs?from=2026-07-28T18:00:00");
+        await AssertBadRequestAsync("/api/logs?range=15m");
+        await AssertBadRequestAsync("/api/traces?range=PT1H&to=2026-07-28T09:00:00Z");
+    }
+
+    [Fact]
     public async Task Observed_keys_list_scalar_leaf_paths_from_the_sample()
     {
         var logKeys = await GetAsync<ObservedKeysResponse>("/api/logs/keys");
@@ -163,14 +200,23 @@ public sealed class ExplorationApiTests : IAsyncLifetime
     private static string FilterJson(string value, params string[] path) =>
         Uri.EscapeDataString(JsonSerializer.Serialize(new { path, value }));
 
-    private async Task IngestOneLogAsync(string apiKey, string body)
+    private static string Instant(DateTime utc) =>
+        Uri.EscapeDataString(DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToString("O"));
+
+    private async Task AssertBadRequestAsync(string url)
+    {
+        var response = await _harness.Client.GetAsync(url);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private async Task IngestOneLogAsync(string apiKey, string body, DateTime? at = null)
     {
         var logs = new ExportLogsServiceRequest();
         var resourceLogs = new ResourceLogs();
         var scopeLogs = new ScopeLogs();
         scopeLogs.LogRecords.Add(new LogRecord
         {
-            TimeUnixNano = ToNano(DateTime.UtcNow),
+            TimeUnixNano = ToNano(at ?? DateTime.UtcNow),
             SeverityNumber = SeverityNumber.Info,
             Body = new AnyValue { StringValue = body },
         });

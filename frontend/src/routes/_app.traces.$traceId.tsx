@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { asFilters } from "@/features/explore/attributeFilters";
+import { asInstant, asRange } from "@/features/explore/timeFilter";
 import { TraceDetailPage } from "@/features/explore/TraceDetailPage";
 import type { TraceFilters } from "@/features/explore/TracesPage";
 
@@ -11,6 +12,9 @@ export const Route = createFileRoute("/_app/traces/$traceId")({
     namespace: asString(search.namespace),
     environment: asString(search.environment),
     service: asString(search.service),
+    range: asRange(search.range),
+    from: asInstant(search.from),
+    to: asInstant(search.to),
     errorsOnly: search.errorsOnly === true || search.errorsOnly === "true" ? true : undefined,
     filters: asFilters(search.filters),
   }),

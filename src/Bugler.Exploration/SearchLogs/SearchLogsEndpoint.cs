@@ -35,8 +35,9 @@ internal static class SearchLogsEndpoint
         string? environment,
         string? service,
         short? severityMin,
-        DateTime? from,
-        DateTime? to,
+        RelativeRange? range,
+        RangeBound? from,
+        RangeBound? to,
         string? q,
         string? traceId,
         string[]? attr,
@@ -52,6 +53,11 @@ internal static class SearchLogsEndpoint
             !AttributeFilters.TryParse(res, out var resourceFilters))
         {
             return TypedResults.BadRequest("Invalid attribute filter.");
+        }
+
+        if (!TimeFilter.TryCreate(range, from, to, out var timeFilter, out var timeError))
+        {
+            return TypedResults.BadRequest(timeError);
         }
 
         var serviceIds = await scope.ResolveServiceIdsAsync(
@@ -72,17 +78,7 @@ internal static class SearchLogsEndpoint
             command.Parameters.AddWithValue("services", serviceIds);
         }
 
-        if (from is { } fromTime)
-        {
-            conditions.Add("timestamp >= @from");
-            command.Parameters.AddWithValue("from", Sql.EnsureUtc(fromTime));
-        }
-
-        if (to is { } toTime)
-        {
-            conditions.Add("timestamp <= @to");
-            command.Parameters.AddWithValue("to", Sql.EnsureUtc(toTime));
-        }
+        timeFilter.AddConditions(conditions, command, "timestamp");
 
         if (severityMin is > 0)
         {

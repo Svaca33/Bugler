@@ -233,6 +233,7 @@ export interface paths {
                     environment?: string;
                     service?: string;
                     severityMin?: number | string;
+                    range?: string;
                     from?: string;
                     to?: string;
                     q?: string;
@@ -359,6 +360,7 @@ export interface paths {
                     namespace?: string;
                     environment?: string;
                     service?: string;
+                    range?: string;
                     from?: string;
                     to?: string;
                     errorsOnly?: boolean;
