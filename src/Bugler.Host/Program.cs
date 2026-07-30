@@ -17,6 +17,8 @@ builder.Services.AddNpgsqlDataSource(
     builder.Configuration.GetConnectionString("bugler")
     ?? throw new InvalidOperationException("Connection string 'bugler' is missing."));
 
+builder.Services.AddSingleton<HealthProbe>();
+
 // The only place that knows which context listens to another context's facts.
 builder.Services.AddSingleton<OutboxSignal>();
 builder.Services.AddSingleton<IOutboxSignal>(p => p.GetRequiredService<OutboxSignal>());
@@ -51,7 +53,12 @@ app.UseListenerSurfaces(surfaceByPort);
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/health", () => Results.Text("OK")); // untagged: probed on every surface
+// Untagged: probed on every surface. Answers for the database behind it, not just for the
+// process listening in front of it (see HealthProbe).
+app.MapGet("/health", async (HealthProbe probe, CancellationToken cancellationToken) =>
+    await probe.IsHealthyAsync(cancellationToken)
+        ? Results.Text("OK")
+        : Results.Text("Database unreachable", statusCode: StatusCodes.Status503ServiceUnavailable));
 
 var appSurface = app.MapGroup("").ServedOn(Surface.App);
 appSurface.MapOpenApi();
