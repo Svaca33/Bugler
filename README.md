@@ -27,6 +27,10 @@ The codebase is split into four bounded contexts — **Ingestion**, **Exploratio
 docker compose up --build -d
 ```
 
+This raises everything Bugler talks to — a PostgreSQL, and a mailpit that swallows every message
+so nothing reaches a real inbox. It is meant for a laptop. On a server both of those already exist
+and belong to somebody else: see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 Open http://localhost:8080 — the first account created becomes the server administrator.
 Register an application and a service in **Admin**, issue an API key, and point your
 services at the server:

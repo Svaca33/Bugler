@@ -1,0 +1,59 @@
+# Production topology: Bugler alone.
+#
+# Unlike docker-compose.yml, which raises a whole world for development, this file assumes the
+# machine already runs the two things Bugler leans on — a PostgreSQL and a mail relay — and wires
+# it to them. There is no postgres service here and no mailpit: mail sent from this file reaches
+# real inboxes.
+#
+# Everything that differs between installations comes from a .env file beside this one. See
+# DEPLOYMENT.md for what belongs in it and what to ask of whoever administers the database.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  bugler:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Maximum Pool Size is deliberate: the cluster's max_connections is shared with every other
+      # database on it, and Npgsql would otherwise help itself to a hundred.
+      ConnectionStrings__bugler: "Host=${BUGLER_DB_HOST};Port=${BUGLER_DB_PORT:-5432};Database=${BUGLER_DB_NAME};Username=${BUGLER_DB_USER};Password=${BUGLER_DB_PASSWORD};Maximum Pool Size=20"
+
+      # Where this Bugler is reachable from outside. Every link Bugler puts in a mail or a chat
+      # message is built from it, and password reset is offered only when it is set.
+      Server__PublicBaseUrl: "${BUGLER_PUBLIC_BASE_URL}"
+
+      Mail__Smtp__Host: "${BUGLER_SMTP_HOST}"
+      Mail__Smtp__Port: "${BUGLER_SMTP_PORT:-25}"
+      Mail__Smtp__From: "${BUGLER_SMTP_FROM}"
+      # Only where the relay asks to be authenticated; an internal relay usually does not.
+      # Mail__Smtp__Username: "${BUGLER_SMTP_USERNAME}"
+      # Mail__Smtp__Password: "${BUGLER_SMTP_PASSWORD}"
+
+    ports:
+      # UI and REST API. Bound to the loopback by default, so the only way in is the reverse proxy
+      # terminating TLS on this same machine. Set BUGLER_APP_BIND to 0.0.0.0 when the proxy runs
+      # elsewhere — and then let the firewall, not Bugler, decide who reaches it.
+      - "${BUGLER_APP_BIND:-127.0.0.1}:8080:8080"
+
+      # OTLP/HTTP. The one surface senders outside the network use, and the reason it must sit
+      # behind TLS: an API key travels in the Authorization header of every export.
+      - "4318:4318"
+
+      # OTLP/gRPC, for senders on the local network. Reaching it from outside would mean HTTP/2
+      # end to end through the proxy; OTLP/HTTP above is the simpler way in.
+      - "4317:4317"
+
+    # The database does not live in this compose file, so it is not a service Bugler can depend on
+    # — this is how the container finds it on the host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      # /health answers for the database behind it, so unhealthy here means Bugler cannot serve.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      # Long enough for the migrations every module runs before the first request is served.
+      start_period: 40s
