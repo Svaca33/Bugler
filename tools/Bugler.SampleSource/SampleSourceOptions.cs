@@ -1,3 +1,4 @@
+using System.Globalization;
 using OpenTelemetry.Exporter;
 
 namespace Bugler.SampleSource;
@@ -8,6 +9,8 @@ internal sealed record SampleSourceOptions(
     OtlpExportProtocol Protocol,
     double Rate,
     int Count,
+    int DeclineRate,
+    double RareErrorMinutes,
     string Namespace,
     string EnvironmentName,
     string ServiceName,
@@ -28,6 +31,12 @@ internal sealed record SampleSourceOptions(
                              http://localhost:4317 for grpc)
           --rate <ops/s>     target operations per second (default: 2)
           --count <n>        stop after N operations (default: run until Ctrl+C)
+          --decline-rate <p> percent of checkouts that fail with a payment decline
+                             (default: 15; 0 silences the steady error trickle)
+          --rare-error-minutes <m>
+                             at least this many minutes between the occasional
+                             inventory-sync failures (default: 5; 0 disables them) —
+                             an error rare enough to watch quiet windows close
           --quiet            suppress per-operation output
           --help             show this help
 
@@ -48,6 +57,8 @@ internal sealed record SampleSourceOptions(
         var protocol = OtlpExportProtocol.HttpProtobuf;
         var rate = 2.0;
         var count = 0;
+        var declineRate = 15;
+        var rareErrorMinutes = 5.0;
         var serviceNamespace = "demo";
         var environmentName = "sample";
         var serviceName = "sample-eshop";
@@ -76,7 +87,10 @@ internal sealed record SampleSourceOptions(
                     };
                     break;
                 case "--rate":
-                    if (!double.TryParse(Next(args, ref i), out rate) || rate <= 0)
+                    // Invariant culture: `0.5` must mean the same thing on a Czech machine.
+                    if (!double.TryParse(
+                            Next(args, ref i), NumberStyles.Float, CultureInfo.InvariantCulture, out rate)
+                        || rate <= 0)
                     {
                         throw new OptionsError("--rate must be a positive number of operations per second.");
                     }
@@ -86,6 +100,25 @@ internal sealed record SampleSourceOptions(
                     if (!int.TryParse(Next(args, ref i), out count) || count < 0)
                     {
                         throw new OptionsError("--count must be a non-negative integer.");
+                    }
+
+                    break;
+                case "--decline-rate":
+                    if (!int.TryParse(Next(args, ref i), out declineRate)
+                        || declineRate is < 0 or > 100)
+                    {
+                        throw new OptionsError("--decline-rate must be a percentage from 0 to 100.");
+                    }
+
+                    break;
+                case "--rare-error-minutes":
+                    if (!double.TryParse(
+                            Next(args, ref i), NumberStyles.Float, CultureInfo.InvariantCulture,
+                            out rareErrorMinutes)
+                        || rareErrorMinutes < 0)
+                    {
+                        throw new OptionsError(
+                            "--rare-error-minutes must be a non-negative number of minutes (0 disables).");
                     }
 
                     break;
@@ -122,7 +155,8 @@ internal sealed record SampleSourceOptions(
         }
 
         return new SampleSourceOptions(
-            apiKey, endpointUri, protocol, rate, count, serviceNamespace, environmentName, serviceName, replica, quiet);
+            apiKey, endpointUri, protocol, rate, count, declineRate, rareErrorMinutes,
+            serviceNamespace, environmentName, serviceName, replica, quiet);
     }
 
     /// <summary>The identity the payload declares about itself, in the shape the UI labels a Service.</summary>

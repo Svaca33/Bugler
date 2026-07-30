@@ -59,11 +59,18 @@ Console.CancelKeyPress += (_, e) =>
 Console.WriteLine("Streaming sample e-shop telemetry into Bugler");
 Console.WriteLine($"  endpoint: {options.Endpoint} ({(options.Protocol == OtlpExportProtocol.Grpc ? "grpc" : "http")})");
 Console.WriteLine($"  rate:     {options.Rate:0.##} ops/s, {(options.Count > 0 ? $"{options.Count} operations" : "until Ctrl+C")}");
+Console.WriteLine($"  errors:   {options.DeclineRate} % of checkouts decline, "
+    + (options.RareErrorMinutes > 0
+        ? $"inventory sync fails every {options.RareErrorMinutes:0.##}+ min"
+        : "inventory sync failures off"));
 Console.WriteLine($"  declared: {options.DeclaredIdentity}, replica {options.Replica}");
 Console.WriteLine("            (filed under whichever Service the API key belongs to)");
 Console.WriteLine();
 
-var simulation = new ShopSimulation(loggerFactory);
+var simulation = new ShopSimulation(
+    loggerFactory,
+    options.DeclineRate,
+    options.RareErrorMinutes > 0 ? TimeSpan.FromMinutes(options.RareErrorMinutes) : null);
 var sent = 0;
 using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1.0 / options.Rate));
 try

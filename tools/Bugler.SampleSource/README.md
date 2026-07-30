@@ -7,7 +7,9 @@ Each operation is a realistic little trace — an HTTP server span with nested
 db/cache/payment child spans — and the logs are emitted inside the active span, so
 they arrive trace-correlated. Roughly 15 % of checkouts fail (error span with an
 exception event + error log) and a few operations run slow (warning logs), which
-gives the Exploration UI something interesting to show.
+gives the Exploration UI something interesting to show. On top of that steady
+trickle, an inventory sync fails with a different error every five-plus minutes —
+rare enough for Alerting's quiet window to close the Episode in between.
 
 ## Usage
 
@@ -25,7 +27,19 @@ dotnet run --project tools/Bugler.SampleSource -- --api-key blgr_...
 | `--endpoint <url>` | `http://localhost:4318` / `:4317` | OTLP endpoint |
 | `--rate <ops/s>` | `2` | Target operations per second |
 | `--count <n>` | run until Ctrl+C | Stop after N operations |
+| `--decline-rate <p>` | `15` | Percent of checkouts that fail with a payment decline; `0` silences the steady error trickle |
+| `--rare-error-minutes <m>` | `5` | At least this many minutes between inventory-sync failures; `0` disables them |
 | `--quiet` | off | Suppress per-operation output |
+
+An Episode is per Service, so while the payment declines keep one Service's Episode
+open, a rarer error to the same Service only raises its counts. To watch quiet
+windows open and close Episodes, point a second copy at another Service with the
+trickle off:
+
+```bash
+dotnet run --project tools/Bugler.SampleSource -- \
+  --api-key blgr_other… --decline-rate 0 --rare-error-minutes 5
+```
 
 ## Declared identity
 

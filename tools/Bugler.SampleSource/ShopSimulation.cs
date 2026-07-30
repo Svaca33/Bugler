@@ -17,7 +17,8 @@ internal sealed record OperationResult(string Name, Outcome Outcome, string Deta
 /// logs emitted inside the active span so Bugler receives them trace-correlated.
 /// Latencies are real (Task.Delay) so span durations look plausible in the waterfall.
 /// </summary>
-internal sealed class ShopSimulation(ILoggerFactory loggerFactory)
+internal sealed class ShopSimulation(
+    ILoggerFactory loggerFactory, int declineRate, TimeSpan? rareErrorInterval)
 {
     public const string ActivitySourceName = "Sample.Eshop";
 
@@ -38,8 +39,19 @@ internal sealed class ShopSimulation(ILoggerFactory loggerFactory)
     private readonly Random random = new();
     private int nextOrderId = Random.Shared.Next(1000, 5000);
 
+    // The first sync failure comes one full interval after start, never sooner.
+    private DateTime nextRareErrorAt = DateTime.UtcNow + (rareErrorInterval ?? TimeSpan.Zero);
+
     public async Task<OperationResult> RunOperationAsync(CancellationToken ct)
     {
+        // A different, rarer kind of trouble than the payment declines: spaced at least the
+        // configured interval apart, so an episode it opens can outlive a quiet window.
+        if (rareErrorInterval is { } interval && DateTime.UtcNow >= nextRareErrorAt)
+        {
+            nextRareErrorAt = DateTime.UtcNow + interval + TimeSpan.FromSeconds(random.Next(0, 90));
+            return await SyncInventoryAsync(ct);
+        }
+
         var roll = random.Next(100);
         return roll switch
         {
@@ -150,7 +162,7 @@ internal sealed class ShopSimulation(ILoggerFactory loggerFactory)
                 checkoutLog.LogWarning("Payment gateway responded in {ElapsedMs} ms for order {OrderId}", elapsed, orderId);
             }
 
-            if (random.Next(100) < 15)
+            if (random.Next(100) < declineRate)
             {
                 var reason = Pick(DeclineReasons);
                 charge?.SetStatus(ActivityStatusCode.Error, "card declined");
@@ -179,6 +191,31 @@ internal sealed class ShopSimulation(ILoggerFactory loggerFactory)
         var purged = random.Next(0, 14);
         jobsLog.LogInformation("Purged {CartCount} abandoned carts", purged);
         return new("purge-abandoned-carts", Outcome.Ok, $"{purged} carts", TraceIdOf(job));
+    }
+
+    private async Task<OperationResult> SyncInventoryAsync(CancellationToken ct)
+    {
+        using var job = Source.StartActivity("sync-inventory");
+        await QueryAsync("SELECT stock deltas", "SELECT * FROM stock_deltas WHERE synced_at IS NULL", 8, 30, ct);
+
+        var elapsed = random.Next(1500, 2600);
+        using (var call = Source.StartActivity("warehouse.fetch", ActivityKind.Client))
+        {
+            call?.SetTag("peer.service", "warehouse-api");
+            call?.SetTag("http.request.method", "GET");
+            call?.SetTag("url.full", "https://warehouse.example.com/stock");
+            await Task.Delay(elapsed, ct);
+            call?.SetStatus(ActivityStatusCode.Error, "timeout");
+            call?.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection
+            {
+                ["exception.type"] = "TaskCanceledException",
+                ["exception.message"] = $"The request was canceled due to the configured timeout of {elapsed} ms.",
+            }));
+        }
+
+        jobsLog.LogError("Inventory sync failed: warehouse API timed out after {TimeoutMs} ms", elapsed);
+        job?.SetStatus(ActivityStatusCode.Error, "warehouse timeout");
+        return new("sync-inventory", Outcome.Error, $"warehouse timeout {elapsed} ms", TraceIdOf(job));
     }
 
     private static Activity? StartRequest(string name, string method, string route)
