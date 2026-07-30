@@ -16,5 +16,6 @@
 - **Alerting → Registry**: Alerting reads the catalog to name the Service an Episode belongs to and hangs its detection settings on Applications and Services.
 - **Alerting → Access**: at the moment a mail leaves, Alerting asks Access whether the subscribed User is active and may still read the Application — and for the account's address.
 - **Registry → Ingestion, Registry → Access, Registry → Alerting**: on Deletion, Registry publishes `ServicesDeleted` and `ApplicationDeleted` through its outbox; Ingestion erases the Signals of the deleted Services, Access revokes the grants pointing at the deleted Application, and Alerting drops the Episodes, Subscriptions, and settings pointing at what was deleted. Registry does not know who listens (ADR 0008).
+- **Access → Alerting**: on a User's Deletion, Access publishes `UserDeleted` through its own outbox; Alerting drops the Subscriptions standing in their name and lapses the Deliveries still owed to them.
 - **Shared identifiers**: `ApplicationId`, `ServiceId` and the integration event contracts are the only types shared across contexts.
 - **Telemetry storage is shared for reading**: Ingestion alone writes and migrates the `telemetry` schema; Exploration reads it directly (ADR 0009) and Alerting polls it for detection (ADR 0010) — neither ever writes. Every other context keeps its store to itself.

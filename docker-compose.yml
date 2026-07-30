@@ -19,6 +19,13 @@ services:
     build: .
     environment:
       ConnectionStrings__bugler: "Host=postgres;Port=5432;Database=bugler;Username=bugler;Password=bugler"
+      # Alerting: links in messages point at PublicBaseUrl; mail stays disabled until SMTP is set.
+      # Alerting__PublicBaseUrl: "https://bugler.example.com"
+      # Alerting__Smtp__Host: "smtp.example.com"
+      # Alerting__Smtp__Port: "587"
+      # Alerting__Smtp__Username: "bugler"
+      # Alerting__Smtp__Password: "…"
+      # Alerting__Smtp__From: "bugler@example.com"
     ports:
       - "8080:8080" # UI + REST API
       - "4317:4317" # OTLP/gRPC
