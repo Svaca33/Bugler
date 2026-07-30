@@ -23,11 +23,22 @@ public sealed record LogRecordDto(
 
 public sealed record SearchLogsResponse(IReadOnlyList<LogRecordDto> Items);
 
-/// <summary>How many Log Records the Filter matches in total, whatever the list has paged in so far.</summary>
-public sealed record LogCountResponse(int Total);
+/// <summary>
+/// How many Log Records the Filter matches, whatever the list has paged in so far. Counting stops
+/// at a cap: past it <see cref="Capped"/> is set and <see cref="Total"/> is the cap itself, so the
+/// answer reads "more than this". An exact total over a window of millions costs a full scan to
+/// say a number nobody reads to the digit.
+/// </summary>
+public sealed record LogCountResponse(int Total, bool Capped);
 
 internal static class SearchLogsEndpoint
 {
+    /// <summary>
+    /// The highest total the count reports. Beyond it the list says "1000+", which is what a
+    /// reader takes from any larger number anyway.
+    /// </summary>
+    private const int CountCap = 1000;
+
     private const string Columns =
         "id, service_id, timestamp, observed_timestamp, severity_number, severity_text, " +
         "body, trace_id, span_id, scope_name, resource_attributes::text, attributes::text";
@@ -125,7 +136,7 @@ internal static class SearchLogsEndpoint
         var serviceIds = await scope.ResolveServiceIdsAsync(criteria.Source, cancellationToken);
         if (serviceIds is { Length: 0 })
         {
-            return TypedResults.Ok(new LogCountResponse(0));
+            return TypedResults.Ok(new LogCountResponse(0, Capped: false));
         }
 
         try
@@ -133,9 +144,19 @@ internal static class SearchLogsEndpoint
             await using var command = dataSource.CreateCommand();
             command.CommandTimeout = Sql.AggregateTimeoutSeconds;
             var where = criteria.Where(command, serviceIds);
-            command.CommandText = $"SELECT count(*)::int FROM telemetry.log_records{where}";
+            // Counting one row past the cap is all it takes to know there are more. The subquery
+            // stops the scan there; without it this counts every match in the window, which at
+            // production volume is a full scan of millions of rows for a number the reader only
+            // ever reads as "a lot".
+            command.CommandText =
+                $"SELECT count(*)::int FROM (SELECT 1 FROM telemetry.log_records{where} LIMIT {CountCap + 1}) matched";
 
-            return TypedResults.Ok(new LogCountResponse((int)(await command.ExecuteScalarAsync(cancellationToken))!));
+            // A Filter that matches nothing still walks the whole window — the cap can only stop a
+            // scan that is finding rows — so the timeout above stays the backstop it always was.
+            var counted = (int)(await command.ExecuteScalarAsync(cancellationToken))!;
+            return TypedResults.Ok(counted > CountCap
+                ? new LogCountResponse(CountCap, Capped: true)
+                : new LogCountResponse(counted, Capped: false));
         }
         catch (NpgsqlException) when (!cancellationToken.IsCancellationRequested)
         {

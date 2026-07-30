@@ -1766,6 +1766,7 @@ export interface components {
         LogCountResponse: {
             /** Format: int32 */
             total: number | string;
+            capped: boolean;
         };
         LoginRequest: {
             email: string;

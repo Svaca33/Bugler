@@ -2130,7 +2130,8 @@
       },
       "LogCountResponse": {
         "required": [
-          "total"
+          "total",
+          "capped"
         ],
         "type": "object",
         "properties": {
@@ -2141,6 +2142,9 @@
               "string"
             ],
             "format": "int32"
+          },
+          "capped": {
+            "type": "boolean"
           }
         }
       },

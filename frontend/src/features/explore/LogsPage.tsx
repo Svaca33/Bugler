@@ -102,7 +102,7 @@ export function LogsPage(props: {
         },
       });
       if (error !== undefined) throw new Error("Failed to count log records");
-      return data.total;
+      return data;
     },
     enabled: !live,
   });
@@ -130,11 +130,13 @@ export function LogsPage(props: {
   const selected = selectedFromList ?? selectedFetch.data ?? null;
 
   // Never "N records": that reads as the total while it only ever counts what has been paged in.
+  // Past the cap the total reads "1000+" — the count stops there rather than scanning a window of
+  // millions to put an exact digit on the end of a number read as "a lot" either way.
   const counted = live
     ? `${items.length} loaded`
     : total.data === undefined
       ? `${items.length} loaded`
-      : `${items.length} of ${total.data} records`;
+      : `${items.length} of ${total.data.total}${total.data.capped ? "+" : ""} records`;
 
   return (
     <div className="flex h-full min-h-0">
