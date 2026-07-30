@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: bugler
       POSTGRES_USER: bugler
@@ -19,12 +20,18 @@ services:
   # instead of in somebody's inbox. Messages live in memory only and a restart forgets them.
   mailpit:
     image: axllent/mailpit
+    restart: unless-stopped
     ports:
       - "8025:8025" # web UI - read the mail here
       - "1025:1025" # SMTP
 
   bugler:
     build: .
+    # Docker starts containers again when the daemon does, but it does not honour depends_on then:
+    # Bugler can come up before PostgreSQL is listening, and migrating at startup is the first
+    # thing it tries. Without this the process exits and stays exited; with it the next attempt
+    # succeeds moments later.
+    restart: unless-stopped
     environment:
       ConnectionStrings__bugler: "Host=postgres;Port=5432;Database=bugler;Username=bugler;Password=bugler"
       # Mail goes to the local mailpit; point this at a real server to have it leave the machine.
@@ -39,6 +46,15 @@ services:
       - "8080:8080" # UI + REST API
       - "4317:4317" # OTLP/gRPC
       - "4318:4318" # OTLP/HTTP
+    healthcheck:
+      # /health answers for the database behind it, so an unhealthy container here means Bugler
+      # cannot serve — not merely that it has not finished starting.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      # Long enough for the migrations every module runs before the first request is served.
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
