@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleHelpIcon } from "lucide-react";
 import { useState } from "react";
 
 import { api, type ApplicationAlerting, type Sensitivity } from "@/api/client";
@@ -87,6 +88,11 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
           value={quietWindow}
           placeholder={`${data.defaults.quietWindowMinutes}`}
           disabled={save.isPending}
+          help={
+            "How an episode ends: once the service logs nothing the sensitivity matches for "
+            + "this many minutes, the episode closes and the all clear goes out. Every new "
+            + "matching log restarts the countdown. Leave empty to use the default."
+          }
           onCommit={quietWindowMinutes =>
             save.mutate({ sensitivity: data.sensitivity ?? null, quietWindowMinutes })}
         />
@@ -138,6 +144,7 @@ export function QuietWindowField(props: {
   value: number | null | undefined;
   placeholder: string;
   disabled: boolean;
+  help?: string;
   onCommit: (value: number | null) => void;
 }) {
   const commit = (raw: string) => {
@@ -154,7 +161,10 @@ export function QuietWindowField(props: {
 
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={props.id}>Quiet window (min)</Label>
+      <div className="flex items-center gap-1.5">
+        <Label htmlFor={props.id}>Quiet window (min)</Label>
+        {props.help !== undefined && <HelpTip text={props.help} />}
+      </div>
       <Input
         id={props.id}
         key={`${props.value ?? ""}`}
@@ -173,6 +183,21 @@ export function QuietWindowField(props: {
         }}
       />
     </div>
+  );
+}
+
+/** A ?-in-a-circle whose tooltip explains the field beside it; shows on hover and keyboard focus. */
+function HelpTip(props: { text: string }) {
+  return (
+    <span className="group relative inline-flex" tabIndex={0} aria-label={props.text}>
+      <CircleHelpIcon className="size-3.5 cursor-help text-[#5F7590] group-hover:text-[#8CA1B8]" />
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute top-full left-1/2 z-20 mt-1.5 hidden w-[264px] -translate-x-1/2 rounded-[7px] border border-[#1E344C] bg-[#0B1826] p-2.5 text-[11.5px] leading-relaxed font-normal text-[#A9BDD1] shadow-[0_8px_24px_rgba(0,0,0,0.45)] group-hover:block group-focus-visible:block"
+      >
+        {props.text}
+      </span>
+    </span>
   );
 }
 
