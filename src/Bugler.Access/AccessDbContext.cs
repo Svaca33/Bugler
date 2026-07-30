@@ -10,6 +10,7 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<ApplicationGrant> ApplicationGrants => Set<ApplicationGrant>();
+    public DbSet<ResetTicket> ResetTickets => Set<ResetTicket>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -30,6 +31,15 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
             grant.HasIndex(g => new { g.UserId, g.ApplicationId }).IsUnique();
             grant.HasOne<User>().WithMany()
                 .HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ResetTicket>(ticket =>
+        {
+            // Redemption knows nothing but the fingerprint it was handed; unique, because two
+            // tickets sharing one would mean the random secret was not random after all.
+            ticket.HasIndex(t => t.Fingerprint).IsUnique();
+            ticket.HasOne<User>().WithMany()
+                .HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<OutboxMessage>(message =>

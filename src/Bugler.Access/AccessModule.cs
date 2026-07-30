@@ -3,6 +3,7 @@ using Bugler.Access.Contracts;
 using Bugler.Access.ManageUsers;
 using Bugler.Access.Outbox;
 using Bugler.Access.ReadVisibility;
+using Bugler.Access.ResetPassword;
 using Bugler.Access.ResolveMailRecipients;
 using Bugler.Access.RevokeDeletedApplicationGrants;
 using Bugler.Access.Users;
@@ -25,6 +26,9 @@ public static class AccessModule
     public static IServiceCollection AddAccess(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<AccessOptions>(configuration.GetSection(AccessOptions.SectionName));
+        // Second bind onto the same options: PublicBaseUrl describes the server, so it is
+        // configured once and read by whoever puts links in messages (ADR 0011).
+        services.Configure<AccessOptions>(configuration.GetSection(AccessOptions.ServerSectionName));
         services.AddDbContext<AccessDbContext>((provider, options) => options
             .UseNpgsql(
                 provider.GetRequiredService<NpgsqlDataSource>(),
@@ -80,6 +84,8 @@ public static class AccessModule
         endpoints.MapPost("/api/auth/login", AuthEndpoints.Login).AllowAnonymous()
             .Produces<CurrentUserDto>();
         endpoints.MapPost("/api/auth/password/change", AuthEndpoints.ChangePassword).RequireAuthorization();
+        endpoints.MapPost("/api/auth/password/forgot", ResetPasswordEndpoints.Forgot).AllowAnonymous();
+        endpoints.MapPost("/api/auth/password/reset", ResetPasswordEndpoints.Reset).AllowAnonymous();
         endpoints.MapPost("/api/auth/logout", AuthEndpoints.Logout).RequireAuthorization();
         endpoints.MapGet("/api/auth/me", AuthEndpoints.Me).RequireAuthorization()
             .Produces<CurrentUserDto>();

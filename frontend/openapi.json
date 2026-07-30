@@ -121,6 +121,50 @@
         }
       }
     },
+    "/api/auth/password/forgot": {
+      "post": {
+        "tags": [
+          "ResetPasswordEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/password/reset": {
+      "post": {
+        "tags": [
+          "ResetPasswordEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/auth/logout": {
       "post": {
         "tags": [
@@ -1658,11 +1702,15 @@
       },
       "AuthStatusDto": {
         "required": [
-          "needsSetup"
+          "needsSetup",
+          "passwordResetAvailable"
         ],
         "type": "object",
         "properties": {
           "needsSetup": {
+            "type": "boolean"
+          },
+          "passwordResetAvailable": {
             "type": "boolean"
           }
         }
@@ -1966,6 +2014,17 @@
           }
         }
       },
+      "ForgotPasswordRequest": {
+        "required": [
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
       "GrantRequest": {
         "required": [
           "applicationId"
@@ -2201,6 +2260,21 @@
             "items": {
               "$ref": "#/components/schemas/ObservedKeyDto"
             }
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "required": [
+          "token",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
           }
         }
       },
@@ -2741,6 +2815,9 @@
     },
     {
       "name": "AuthEndpoints"
+    },
+    {
+      "name": "ResetPasswordEndpoints"
     },
     {
       "name": "SearchLogsEndpoint"

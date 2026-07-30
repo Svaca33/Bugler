@@ -75,6 +75,34 @@ export function useChangePassword() {
   });
 }
 
+/**
+ * Asking for a reset link. The answer never says whether the address belongs to an account, so
+ * neither does this: success means "taken", not "sent".
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (input: { email: string }) => {
+      const { error, response } = await api.POST("/api/auth/password/forgot", { body: input });
+      if (response.status === 404) {
+        throw new Error("This server cannot send mail, so passwords cannot be reset by link.");
+      }
+      if (error !== undefined) throw new Error("The request could not be sent.");
+    },
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: async (input: { token: string; newPassword: string }) => {
+      const { error, response } = await api.POST("/api/auth/password/reset", { body: input });
+      if (response.status === 400) {
+        throw new Error(typeof error === "string" ? error : "The password was not set.");
+      }
+      if (error !== undefined) throw new Error("The password was not set.");
+    },
+  });
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -187,6 +187,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ForgotPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -1549,6 +1623,7 @@ export interface components {
         };
         AuthStatusDto: {
             needsSetup: boolean;
+            passwordResetAvailable: boolean;
         };
         CatalogApplicationDto: {
             /** Format: uuid */
@@ -1627,6 +1702,9 @@ export interface components {
             firstLogSeverity: number | string;
             firstLogBody: null | string;
         };
+        ForgotPasswordRequest: {
+            email: string;
+        };
         GrantRequest: {
             /** Format: uuid */
             applicationId: string;
@@ -1686,6 +1764,10 @@ export interface components {
         };
         ObservedKeysResponse: {
             items: components["schemas"]["ObservedKeyDto"][];
+        };
+        ResetPasswordRequest: {
+            token: string;
+            newPassword: string;
         };
         SearchLogsResponse: {
             items: components["schemas"]["LogRecordDto"][];

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bugler.SharedKernel\Bugler.SharedKernel.csproj" />
+    <ProjectReference Include="..\Bugler.Mail\Bugler.Mail.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,6 +5,19 @@ public sealed class AccessOptions
     public const string SectionName = "Access";
 
     /// <summary>
+    /// The section holding facts about the server rather than about Access. Bound onto these same
+    /// options after <see cref="SectionName"/>, because <see cref="PublicBaseUrl"/> is one of them
+    /// and Alerting needs the very same value (ADR 0011).
+    /// </summary>
+    public const string ServerSectionName = "Server";
+
+    /// <summary>
+    /// Public origin of this Bugler (e.g. https://bugler.example.com). The reset link in a mail is
+    /// built from it; empty means Bugler does not know where it is reachable and offers no reset.
+    /// </summary>
+    public string PublicBaseUrl { get; set; } = "";
+
+    /// <summary>
     /// How long an issued Session is trusted before its User is read back from the database.
     /// Zero — the default — revalidates on every request, so deactivating a User ends their Session
     /// at once. That costs one indexed lookup per authenticated request, next to nothing against the

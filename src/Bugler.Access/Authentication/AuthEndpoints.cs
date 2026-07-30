@@ -1,10 +1,13 @@
 using System.Security.Claims;
+using Bugler.Access.ResetPassword;
 using Bugler.Access.Users;
+using Bugler.Mail;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Bugler.Access.Authentication;
 
@@ -17,7 +20,7 @@ public sealed record ChangePasswordRequest(string CurrentPassword, string NewPas
 public sealed record CurrentUserDto(
     Guid Id, string Email, string? DisplayName, bool IsAdmin, IReadOnlyList<Guid> GrantedApplicationIds);
 
-public sealed record AuthStatusDto(bool NeedsSetup);
+public sealed record AuthStatusDto(bool NeedsSetup, bool PasswordResetAvailable);
 
 internal static class AuthEndpoints
 {
@@ -68,8 +71,19 @@ internal static class AuthEndpoints
         return Results.Ok(await ToCurrentUserAsync(admin, dbContext, cancellationToken));
     }
 
-    public static async Task<AuthStatusDto> Status(AccessDbContext dbContext, CancellationToken cancellationToken) =>
-        new(NeedsSetup: !await dbContext.Users.AnyAsync(cancellationToken));
+    /// <summary>
+    /// What the sign-in page needs before it can render: whether this server is still unclaimed,
+    /// and whether it can offer a reset at all — a server without SMTP hides the link rather than
+    /// promising a mail that never comes.
+    /// </summary>
+    public static async Task<AuthStatusDto> Status(
+        AccessDbContext dbContext,
+        IOptions<AccessOptions> options,
+        IOptions<MailOptions> mailOptions,
+        CancellationToken cancellationToken) =>
+        new(
+            NeedsSetup: !await dbContext.Users.AnyAsync(cancellationToken),
+            PasswordResetAvailable: ResetPasswordEndpoints.IsAvailable(options.Value, mailOptions.Value));
 
     public static async Task<IResult> Login(
         LoginRequest request,

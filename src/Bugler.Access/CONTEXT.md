@@ -35,3 +35,16 @@ _Avoid_: token, login state
 **Password Change**:
 A User replacing their own password while signed in, proven by the password they are replacing.
 _Avoid_: reset, update
+
+**Password Reset**:
+Setting a new password without knowing the old one, proven by holding a Reset Ticket. Ends every
+Session of the User, because whoever asks for one is by their own account holding none.
+_Avoid_: recovery, forgotten password
+
+**Reset Ticket**:
+One User's single-use permission to set a new password, worth presenting for an hour. Its secret
+exists only in the mail that carried it — Bugler keeps a fingerprint, enough to recognise the ticket
+and not enough to forge one. Issuing one voids the User's previous ticket, so the newest mail is
+always the one that works. An Admin may hand a ticket over directly instead of mailing it, for a
+server that cannot send mail at all.
+_Avoid_: token, link, code, one-time password
