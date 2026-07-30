@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using Bugler.Access.Authentication;
 using Bugler.Access.Outbox;
+using Bugler.Access.ResetPassword;
 using Bugler.Access.Users;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Bugler.Access.ManageUsers;
 
@@ -20,6 +22,8 @@ public sealed record UserDto(
 public sealed record CreateUserRequest(string Email, string Password, string? DisplayName, bool IsAdmin);
 
 public sealed record GrantRequest(Guid ApplicationId);
+
+public sealed record IssuedResetTicketDto(string Link, DateTimeOffset ExpiresAt);
 
 internal static class ManageUsersEndpoints
 {
@@ -151,6 +155,45 @@ internal static class ManageUsersEndpoints
     /// </summary>
     private static bool IsSelf(Guid id, ClaimsPrincipal principal) =>
         AuthEndpoints.GetUserId(principal) == id;
+
+    /// <summary>
+    /// Hands an Admin a Reset Ticket to pass on themselves. It is the same ticket the mail would
+    /// have carried — an hour, once — and it is what a server without SMTP has instead of nothing.
+    /// Without it a forgotten password could only be answered by deleting the account, which would
+    /// take that person's grants and subscriptions with it (ADR 0002).
+    /// </summary>
+    public static async Task<IResult> IssueResetTicket(
+        Guid id,
+        AccessDbContext dbContext,
+        IOptions<AccessOptions> options,
+        CancellationToken cancellationToken)
+    {
+        var publicBaseUrl = options.Value.PublicBaseUrl;
+        if (publicBaseUrl.Length == 0)
+        {
+            return Results.Conflict(
+                "Set Server:PublicBaseUrl so Bugler knows what its own links look like.");
+        }
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+        if (user is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (user.DeactivatedAt is not null)
+        {
+            // A ticket would be honoured by nobody: redemption refuses a User who cannot sign in.
+            return Results.Conflict("Reactivate the account before handing out a reset link.");
+        }
+
+        // No throttle here: nothing is being mailed, and the Admin asking is looking at the answer.
+        var secret = await ResetPasswordEndpoints.IssueAsync(
+            user, dbContext, respectInterval: false, cancellationToken);
+
+        return Results.Ok(new IssuedResetTicketDto(
+            ResetMail.Link(secret!, publicBaseUrl), DateTimeOffset.UtcNow + ResetTickets.Lifetime));
+    }
 
     public static async Task<IResult> Grant(
         Guid id, GrantRequest request, AccessDbContext dbContext, CancellationToken cancellationToken)

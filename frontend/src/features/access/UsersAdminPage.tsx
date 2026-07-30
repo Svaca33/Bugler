@@ -29,6 +29,8 @@ export function UsersAdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userFilter, setUserFilter] = useState("");
   const [pendingDeletion, setPendingDeletion] = useState<{ id: string; email: string } | null>(null);
+  const [ticketFor, setTicketFor] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const users = useQuery({
     queryKey: ["admin", "users"],
@@ -92,6 +94,22 @@ export function UsersAdminPage() {
     onSuccess: invalidate,
   });
 
+  /**
+   * A Reset Ticket handed over by hand instead of mailed — the answer for a server without SMTP,
+   * where a forgotten password would otherwise cost the account and its grants.
+   */
+  const issueResetTicket = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await api.POST("/api/users/{id}/reset-ticket", {
+        params: { path: { id: userId } },
+      });
+      if (error !== undefined || data === undefined) {
+        throw new Error("No link was issued — the account may be deactivated.");
+      }
+      return data;
+    },
+  });
+
   const remove = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await api.DELETE("/api/users/{id}", { params: { path: { id: userId } } });
@@ -110,8 +128,9 @@ export function UsersAdminPage() {
   );
   const deactivatedCount = allUsers.filter(user => user.isDeactivated).length;
 
-  // One column per application, generated from the catalog length.
-  const gridTemplateColumns = `250px 92px 104px repeat(${Math.max(applications.length, 1)}, minmax(0,1fr)) 172px`;
+  // One column per application, generated from the catalog length. The last column holds three
+  // actions side by side and is sized so none of their labels has to break.
+  const gridTemplateColumns = `250px 92px 104px repeat(${Math.max(applications.length, 1)}, minmax(0,1fr)) 236px`;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-[18px] overflow-auto px-6 py-5">
@@ -228,9 +247,23 @@ export function UsersAdminPage() {
               <span className="flex justify-self-end gap-1">
                 {!isSelf && (
                   <>
+                    {!user.isDeactivated && (
+                      <button
+                        type="button"
+                        className="rounded-[5px] px-2 py-1 text-[11.5px] whitespace-nowrap text-[#B6C8DA] hover:bg-[#12253A]"
+                        onClick={() => {
+                          setCopied(false);
+                          issueResetTicket.reset();
+                          setTicketFor(user.email);
+                          issueResetTicket.mutate(user.id);
+                        }}
+                      >
+                        Reset link
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className="rounded-[5px] px-2 py-1 text-[11.5px] text-[#B6C8DA] hover:bg-[#12253A]"
+                      className="rounded-[5px] px-2 py-1 text-[11.5px] whitespace-nowrap text-[#B6C8DA] hover:bg-[#12253A]"
                       onClick={() =>
                         (user.isDeactivated ? reactivate : deactivate).mutate(user.id)
                       }
@@ -239,7 +272,7 @@ export function UsersAdminPage() {
                     </button>
                     <button
                       type="button"
-                      className="rounded-[5px] px-2 py-1 text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
+                      className="rounded-[5px] px-2 py-1 text-[11.5px] whitespace-nowrap text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
                       onClick={() => {
                         remove.reset();
                         setPendingDeletion({ id: user.id, email: user.email });
@@ -315,6 +348,57 @@ export function UsersAdminPage() {
           <p className="text-[12.5px] text-[#F0685A]">{createUser.error.message}</p>
         )}
       </form>
+
+      {/*
+        The link is shown once and never again: what is kept is a fingerprint, so Bugler could not
+        show it a second time even if asked (ADR 0002).
+      */}
+      <Dialog
+        open={ticketFor !== null}
+        onOpenChange={open => {
+          if (!open) setTicketFor(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset link for this user</DialogTitle>
+            <DialogDescription>
+              Hand <code className="font-mono text-foreground">{ticketFor}</code> this link
+              yourself. It works once, stops working in an hour, and replaces any link they were
+              sent before. Setting a password through it signs the account out everywhere.
+            </DialogDescription>
+          </DialogHeader>
+
+          {issueResetTicket.isPending && (
+            <p className="text-[12.5px] text-[#8CA1B8]">Issuing…</p>
+          )}
+          {issueResetTicket.error !== null && (
+            <p className="text-[12.5px] text-destructive">{issueResetTicket.error.message}</p>
+          )}
+          {issueResetTicket.data !== undefined && (
+            <p className="rounded-[7px] border border-[#1E344C] bg-[#0B1826] p-2.5 font-mono text-[11.5px] break-all text-[#DCE8F3]">
+              {issueResetTicket.data.link}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setTicketFor(null)}>
+              Close
+            </Button>
+            <Button
+              type="button"
+              disabled={issueResetTicket.data === undefined}
+              onClick={() => {
+                if (issueResetTicket.data === undefined) return;
+                void navigator.clipboard.writeText(issueResetTicket.data.link);
+                setCopied(true);
+              }}
+            >
+              {copied ? "Copied" : "Copy link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/*
         Deletion names the account and says it is final; deactivation needs no such dialog, since

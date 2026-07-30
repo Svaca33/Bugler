@@ -986,6 +986,36 @@
         }
       }
     },
+    "/api/users/{id}/reset-ticket": {
+      "post": {
+        "tags": [
+          "ManageUsersEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedResetTicketDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/users/{id}/grants": {
       "post": {
         "tags": [
@@ -2050,6 +2080,22 @@
           },
           "plaintext": {
             "type": "string"
+          }
+        }
+      },
+      "IssuedResetTicketDto": {
+        "required": [
+          "link",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

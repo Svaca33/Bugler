@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Bugler.Access.Authentication;
+using Bugler.Access.ManageUsers;
 using Bugler.Mail;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -189,6 +190,67 @@ public sealed class PasswordResetTests : IAsyncLifetime
         Assert.True(status!.PasswordResetAvailable);
     }
 
+    /// <summary>
+    /// The way out on a server that cannot mail at all — and the reason a forgotten password no
+    /// longer costs the account, its grants and its subscriptions.
+    /// </summary>
+    [Fact]
+    public async Task An_admin_hands_out_a_link_that_works()
+    {
+        var userId = await _harness.FindUserIdAsync(Email);
+
+        var issued = await _harness.Client.PostAsync($"/api/users/{userId}/reset-ticket", content: null);
+        issued.EnsureSuccessStatusCode();
+        var ticket = await issued.Content.ReadFromJsonAsync<IssuedResetTicketDto>();
+
+        // Nothing was mailed: the Admin is looking at the answer and passes it on themselves.
+        Assert.Empty(_mail.Queued);
+        (await ResetAsync(TokenIn(ticket!.Link), NewPassword)).EnsureSuccessStatusCode();
+        (await _harness.CreateAnonymousClient()
+                .PostAsJsonAsync("/api/auth/login", new { email = Email, password = NewPassword }))
+            .EnsureSuccessStatusCode();
+    }
+
+    /// <summary>The newest ticket wins whichever way it was handed over.</summary>
+    [Fact]
+    public async Task A_link_from_an_admin_voids_the_one_that_was_mailed()
+    {
+        await AskAsync(Email);
+        var mailed = RecordingMailQueue.TokenIn(Assert.Single(_mail.Queued));
+
+        var issued = await _harness.Client.PostAsync(
+            $"/api/users/{await _harness.FindUserIdAsync(Email)}/reset-ticket", content: null);
+        var ticket = await issued.Content.ReadFromJsonAsync<IssuedResetTicketDto>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await ResetAsync(mailed, NewPassword)).StatusCode);
+        (await ResetAsync(TokenIn(ticket!.Link), NewPassword)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task No_link_is_handed_out_for_an_account_that_cannot_sign_in()
+    {
+        var userId = await _harness.FindUserIdAsync(Email);
+        await _harness.DeactivateUserAsync(Email);
+
+        var issued = await _harness.Client.PostAsync($"/api/users/{userId}/reset-ticket", content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, issued.StatusCode);
+    }
+
+    [Fact]
+    public async Task Only_an_admin_hands_out_links()
+    {
+        var member = await _harness.CreateUserClientAsync("member@bugler.test", "MemberPass123!");
+
+        var issued = await member.PostAsync(
+            $"/api/users/{await _harness.FindUserIdAsync(Email)}/reset-ticket", content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, issued.StatusCode);
+    }
+
+    private static string TokenIn(string link) =>
+        Uri.UnescapeDataString(link[(link.IndexOf("?token=", StringComparison.Ordinal) + 7)..]);
+
     private Task<HttpResponseMessage> AskAsync(string email) =>
         _harness.CreateAnonymousClient().PostAsJsonAsync("/api/auth/password/forgot", new { email });
 
@@ -205,7 +267,14 @@ public sealed class PasswordResetWithoutMailTests : IAsyncLifetime
 {
     private BuglerHarness _harness = null!;
 
-    public async Task InitializeAsync() => _harness = await BuglerHarness.StartAsync();
+    public async Task InitializeAsync() =>
+        // Said out loud rather than left to the defaults: the harness runs in Development, where
+        // appsettings.Development.json points mail at the local mailpit.
+        _harness = await BuglerHarness.StartAsync(builder =>
+        {
+            builder.UseSetting("Mail:Smtp:Host", "");
+            builder.UseSetting("Mail:Smtp:From", "");
+        });
 
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 

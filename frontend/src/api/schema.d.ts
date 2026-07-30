@@ -875,6 +875,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/{id}/reset-ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IssuedResetTicketDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{id}/grants": {
         parameters: {
             query?: never;
@@ -1713,6 +1750,11 @@ export interface components {
             /** Format: uuid */
             id: string;
             plaintext: string;
+        };
+        IssuedResetTicketDto: {
+            link: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         JsonElement: unknown;
         ListEpisodesResponse: {

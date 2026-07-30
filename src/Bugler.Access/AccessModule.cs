@@ -96,6 +96,8 @@ public static class AccessModule
         admin.MapPost("/{id:guid}/deactivate", ManageUsersEndpoints.Deactivate);
         admin.MapPost("/{id:guid}/reactivate", ManageUsersEndpoints.Reactivate);
         admin.MapDelete("/{id:guid}", ManageUsersEndpoints.Delete);
+        admin.MapPost("/{id:guid}/reset-ticket", ManageUsersEndpoints.IssueResetTicket)
+            .Produces<IssuedResetTicketDto>();
         admin.MapPost("/{id:guid}/grants", ManageUsersEndpoints.Grant);
         admin.MapDelete("/{id:guid}/grants/{applicationId:guid}", ManageUsersEndpoints.Revoke);
 
