@@ -1,8 +1,7 @@
 import { execSync } from "node:child_process";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-const ADMIN_EMAIL = "admin@bugler.local";
-const ADMIN_PASSWORD = "LocalAdmin123!";
+import { registerApplication, selectFilter, signIn } from "./helpers";
 
 /**
  * The whole product in one pass: sign in (or first-run setup), register an
@@ -15,20 +14,7 @@ test("telemetry flows from an issued key to the log and trace viewers", async ({
 
   // Register a fresh application + service and issue its key.
   const appName = `E2E ${Date.now()}`;
-  await page.getByRole("link", { name: "Admin" }).click();
-  await page.getByLabel("Add application").fill(appName);
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByRole("button", { name: appName })).toBeVisible();
-
-  await page.getByLabel("Namespace (deployment)").fill("e2e");
-  await page.getByLabel("Environment").fill("prod");
-  await page.getByLabel("Service name").fill("backend");
-  await page.getByRole("button", { name: "Add service" }).click();
-  await expect(page.getByText("e2e/prod · backend", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "Issue key" }).click();
-  const apiKey = (await page.getByTestId("issued-key").textContent())?.trim();
-  expect(apiKey).toMatch(/^blgr_/);
+  const apiKey = await registerApplication(page, appName);
 
   // Export logs and a trace over OTLP/HTTP using the key issued through the UI.
   const output = execSync(`dotnet run tools/send-sample-telemetry.cs -- ${apiKey}`, {
@@ -58,28 +44,3 @@ test("telemetry flows from an issued key to the log and trace viewers", async ({
   await expect(traceRows.getByText("POST /checkout")).toBeVisible();
   await expect(traceRows.getByText("ERROR")).toBeVisible();
 });
-
-async function signIn(page: Page) {
-  await page.goto("/login");
-  const setupHeading = page.getByText("Welcome to Bugler");
-  const loginHeading = page.getByText("Sign in to Bugler");
-  await expect(setupHeading.or(loginHeading).first()).toBeVisible();
-
-  if (await setupHeading.isVisible()) {
-    await page.getByLabel("Name").fill("E2E Admin");
-    await page.getByLabel("E-mail").fill(ADMIN_EMAIL);
-    await page.getByLabel("Password (min 8 characters)").fill(ADMIN_PASSWORD);
-    await page.getByRole("button", { name: "Create admin account" }).click();
-  } else {
-    await page.getByLabel("E-mail").fill(ADMIN_EMAIL);
-    await page.getByLabel("Password").fill(ADMIN_PASSWORD);
-    await page.getByRole("button", { name: "Sign in" }).click();
-  }
-
-  await expect(page.getByRole("link", { name: "Logs" })).toBeVisible();
-}
-
-async function selectFilter(page: Page, placeholder: string, optionLabel: string) {
-  await page.getByRole("combobox").filter({ hasText: placeholder }).click();
-  await page.getByRole("option", { name: optionLabel }).click();
-}
