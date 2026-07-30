@@ -10,8 +10,9 @@ namespace Bugler.Access.Authentication;
 
 /// <summary>
 /// Holds an issued Session answerable to the database it was minted from. A User who is deactivated
-/// or deleted after signing in loses their Session on the next request, and the Admin role is read
-/// back rather than trusted from the cookie it was frozen into at sign-in.
+/// or deleted after signing in loses their Session on the next request, a Session minted before the
+/// password changed loses it too, and the Admin role is read back rather than trusted from the
+/// cookie it was frozen into at sign-in.
 /// </summary>
 internal static class SessionRevalidation
 {
@@ -36,15 +37,16 @@ internal static class SessionRevalidation
         }
 
         var userId = AuthEndpoints.GetUserId(context.Principal);
-        var isAdmin = userId is null
+        var current = userId is null
             ? null
             : await services.GetRequiredService<AccessDbContext>().Users
                 .AsNoTracking()
                 .Where(u => u.Id == userId && u.DeactivatedAt == null)
-                .Select(u => (bool?)u.IsAdmin)
+                .Select(u => new AccountState(u.IsAdmin, u.SecurityStamp))
                 .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
 
-        if (isAdmin is null)
+        // Gone, deactivated, or carrying the stamp of a password that has since been replaced.
+        if (current is null || !CarriesCurrentStamp(context.Principal, current.SecurityStamp))
         {
             context.RejectPrincipal();
             await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -52,12 +54,21 @@ internal static class SessionRevalidation
         }
 
         // Re-issue the cookie only when this request changed what it carries.
-        var roleRefreshed = RefreshAdminRole(identity, isAdmin.Value);
+        var roleRefreshed = RefreshAdminRole(identity, current.IsAdmin);
         if (Stamp(context.Properties, interval, now) || roleRefreshed)
         {
             context.ShouldRenew = true;
         }
     }
+
+    /// <summary>
+    /// A Session minted before the password changed carries the stamp from before it. A cookie
+    /// from before stamps existed carries none, and is refused for the same reason: there is no
+    /// way to tell which password it was issued against.
+    /// </summary>
+    private static bool CarriesCurrentStamp(ClaimsPrincipal principal, Guid stamp) =>
+        Guid.TryParse(principal.FindFirstValue(AuthEndpoints.SecurityStampClaim), out var carried)
+        && carried == stamp;
 
     private static bool IsDue(AuthenticationProperties properties, TimeSpan interval, DateTimeOffset now)
     {
@@ -83,6 +94,9 @@ internal static class SessionRevalidation
         properties.Items[ValidatedAtKey] = now.ToString("O", CultureInfo.InvariantCulture);
         return true;
     }
+
+    /// <summary>What the Session is answerable to, read back in the one query it already made.</summary>
+    private sealed record AccountState(bool IsAdmin, Guid SecurityStamp);
 
     private static bool RefreshAdminRole(ClaimsIdentity identity, bool isAdmin)
     {

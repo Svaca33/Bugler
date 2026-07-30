@@ -46,9 +46,14 @@ internal static class ManageUsersEndpoints
         CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || request.Password.Length < 8)
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
         {
-            return Results.BadRequest("A valid e-mail and a password of at least 8 characters are required.");
+            return Results.BadRequest("A valid e-mail address is required.");
+        }
+
+        if (!Passwords.IsAcceptable(request.Password))
+        {
+            return Results.BadRequest(Passwords.Requirement);
         }
 
         if (await dbContext.Users.AnyAsync(u => u.Email == email, cancellationToken))
@@ -61,11 +66,12 @@ internal static class ManageUsersEndpoints
             Id = Guid.CreateVersion7(),
             Email = email,
             PasswordHash = "",
+            SecurityStamp = Guid.Empty,
             DisplayName = request.DisplayName,
             IsAdmin = request.IsAdmin,
             CreatedAt = DateTimeOffset.UtcNow,
         };
-        user.PasswordHash = hasher.HashPassword(user, request.Password);
+        Passwords.Set(user, request.Password, hasher);
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
 

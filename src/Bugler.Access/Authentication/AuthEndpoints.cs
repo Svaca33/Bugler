@@ -12,6 +12,8 @@ public sealed record SetupRequest(string Email, string Password, string? Display
 
 public sealed record LoginRequest(string Email, string Password, bool StaySignedIn = false);
 
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
 public sealed record CurrentUserDto(
     Guid Id, string Email, string? DisplayName, bool IsAdmin, IReadOnlyList<Guid> GrantedApplicationIds);
 
@@ -21,6 +23,9 @@ internal static class AuthEndpoints
 {
     /// <summary>The role claim carried by an Admin's Session.</summary>
     internal const string AdminRole = "Admin";
+
+    /// <summary>The User's Security Stamp as it stood when this Session was minted.</summary>
+    internal const string SecurityStampClaim = "access.security_stamp";
 
     /// <summary>First run: no users exist yet — whoever sets up the server becomes Admin.</summary>
     public static async Task<IResult> Setup(
@@ -35,9 +40,14 @@ internal static class AuthEndpoints
             return Results.Conflict("Setup has already been completed.");
         }
 
-        if (!IsValidEmail(request.Email) || request.Password.Length < 8)
+        if (!IsValidEmail(request.Email))
         {
-            return Results.BadRequest("A valid e-mail and a password of at least 8 characters are required.");
+            return Results.BadRequest("A valid e-mail address is required.");
+        }
+
+        if (!Passwords.IsAcceptable(request.Password))
+        {
+            return Results.BadRequest(Passwords.Requirement);
         }
 
         var admin = new User
@@ -45,11 +55,12 @@ internal static class AuthEndpoints
             Id = Guid.CreateVersion7(),
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = "",
+            SecurityStamp = Guid.Empty,
             DisplayName = request.DisplayName,
             IsAdmin = true,
             CreatedAt = DateTimeOffset.UtcNow,
         };
-        admin.PasswordHash = hasher.HashPassword(admin, request.Password);
+        Passwords.Set(admin, request.Password, hasher);
         dbContext.Users.Add(admin);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -81,6 +92,50 @@ internal static class AuthEndpoints
         return Results.Ok(await ToCurrentUserAsync(user, dbContext, cancellationToken));
     }
 
+    /// <summary>
+    /// A Password Change: the User proves themselves with the password they are replacing. Every
+    /// other Session dies with the Security Stamp it was minted from; this one is re-issued, so
+    /// nobody is thrown out of the browser they just used to change it.
+    /// </summary>
+    public static async Task<IResult> ChangePassword(
+        ChangePasswordRequest request,
+        ClaimsPrincipal principal,
+        AccessDbContext dbContext,
+        IPasswordHasher<User> hasher,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        var user = userId is null
+            ? null
+            : await dbContext.Users.FirstOrDefaultAsync(
+                u => u.Id == userId && u.DeactivatedAt == null, cancellationToken);
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (hasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword)
+            == PasswordVerificationResult.Failed)
+        {
+            return Results.BadRequest("The current password is not correct.");
+        }
+
+        if (!Passwords.IsAcceptable(request.NewPassword))
+        {
+            return Results.BadRequest(Passwords.Requirement);
+        }
+
+        Passwords.Set(user, request.NewPassword, hasher);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Whatever they chose about staying signed in, they chose it — a password change is no
+        // occasion to decide it for them again.
+        var existing = await httpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await SignInAsync(httpContext, user, existing.Properties?.IsPersistent ?? false);
+        return Results.NoContent();
+    }
+
     public static async Task<IResult> Logout(HttpContext httpContext, CancellationToken cancellationToken)
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -110,6 +165,7 @@ internal static class AuthEndpoints
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Email, user.Email),
+            new(SecurityStampClaim, user.SecurityStamp.ToString()),
         };
         if (user.IsAdmin)
         {

@@ -79,6 +79,7 @@ public static class AccessModule
             .Produces<CurrentUserDto>();
         endpoints.MapPost("/api/auth/login", AuthEndpoints.Login).AllowAnonymous()
             .Produces<CurrentUserDto>();
+        endpoints.MapPost("/api/auth/password/change", AuthEndpoints.ChangePassword).RequireAuthorization();
         endpoints.MapPost("/api/auth/logout", AuthEndpoints.Logout).RequireAuthorization();
         endpoints.MapGet("/api/auth/me", AuthEndpoints.Me).RequireAuthorization()
             .Produces<CurrentUserDto>();

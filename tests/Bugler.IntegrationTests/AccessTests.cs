@@ -184,6 +184,90 @@ public sealed class AccessTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, (await member.GetAsync("/api/users")).StatusCode);
     }
 
+    [Fact]
+    public async Task A_changed_password_is_the_only_one_that_signs_in()
+    {
+        const string email = "changer@bugler.test";
+        const string oldPassword = "OldPass123!";
+        const string newPassword = "NewPass456!";
+        var client = await _harness.CreateUserClientAsync(email, oldPassword, _harness.ApplicationId);
+
+        (await client.PostAsJsonAsync(
+                "/api/auth/password/change", new { currentPassword = oldPassword, newPassword }))
+            .EnsureSuccessStatusCode();
+
+        var fresh = _harness.CreateAnonymousClient();
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            (await fresh.PostAsJsonAsync("/api/auth/login", new { email, password = oldPassword })).StatusCode);
+        (await fresh.PostAsJsonAsync("/api/auth/login", new { email, password = newPassword }))
+            .EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// The Security Stamp in the cookie is what makes this true: every Session minted from the old
+    /// password is refused on its next request, except the one that did the changing.
+    /// </summary>
+    [Fact]
+    public async Task Changing_a_password_ends_every_other_session_but_its_own()
+    {
+        const string email = "two-browsers@bugler.test";
+        const string password = "TwoBrowsers123!";
+        var here = await _harness.CreateUserClientAsync(email, password, _harness.ApplicationId);
+        var elsewhere = _harness.CreateAnonymousClient();
+        (await elsewhere.PostAsJsonAsync("/api/auth/login", new { email, password })).EnsureSuccessStatusCode();
+        (await elsewhere.GetAsync("/api/auth/me")).EnsureSuccessStatusCode();
+
+        (await here.PostAsJsonAsync(
+                "/api/auth/password/change",
+                new { currentPassword = password, newPassword = "TwoBrowsers456!" }))
+            .EnsureSuccessStatusCode();
+
+        (await here.GetAsync("/api/auth/me")).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await elsewhere.GetAsync("/api/auth/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_wrong_current_password_changes_nothing()
+    {
+        const string email = "careful@bugler.test";
+        const string password = "CarefulPass123!";
+        var client = await _harness.CreateUserClientAsync(email, password, _harness.ApplicationId);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/password/change",
+            new { currentPassword = "not-the-password", newPassword = "WouldBeNew123!" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        (await _harness.CreateAnonymousClient().PostAsJsonAsync("/api/auth/login", new { email, password }))
+            .EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task A_new_password_below_the_minimum_is_refused()
+    {
+        const string email = "too-short@bugler.test";
+        const string password = "LongEnough123!";
+        var client = await _harness.CreateUserClientAsync(email, password, _harness.ApplicationId);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/password/change", new { currentPassword = password, newPassword = "short" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        (await _harness.CreateAnonymousClient().PostAsJsonAsync("/api/auth/login", new { email, password }))
+            .EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Nobody_changes_a_password_without_being_signed_in()
+    {
+        var response = await _harness.CreateAnonymousClient().PostAsJsonAsync(
+            "/api/auth/password/change",
+            new { currentPassword = BuglerHarness.AdminPassword, newPassword = "Whatever123!" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     /// <summary>Signs in on a fresh cookie jar and returns the raw Set-Cookie value of the session cookie.</summary>
     private async Task<string> SignInAndReadSessionCookieAsync(bool? staySignedIn)
     {

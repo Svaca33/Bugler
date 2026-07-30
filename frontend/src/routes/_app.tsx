@@ -1,7 +1,9 @@
 import { Navigate, Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 
 import markDark from "@/bugler-mark-dark.svg";
 import { Button } from "@/components/ui/button";
+import { ChangePasswordDialog } from "@/features/access/ChangePasswordDialog";
 import { useCurrentUser, useLogout } from "@/features/access/useAuth";
 import { NavTab } from "./-nav-tab";
 
@@ -13,6 +15,7 @@ function AppShell() {
   const user = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
+  const [changingPassword, setChangingPassword] = useState(false);
 
   if (user.isPending) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
@@ -41,12 +44,15 @@ function AppShell() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3.5">
-          <span
-            className="max-w-[240px] truncate font-mono text-[11.5px] text-[#A9BDD1]"
-            title={user.data.email}
+          {/* Your own e-mail is where your account settings live — there is no other door. */}
+          <button
+            type="button"
+            className="max-w-[240px] truncate rounded-[5px] px-1.5 py-1 font-mono text-[11.5px] text-[#A9BDD1] hover:bg-[#12253A] hover:text-[#DCE8F3]"
+            title={`${user.data.email} — change password`}
+            onClick={() => setChangingPassword(true)}
           >
             {user.data.email}
-          </span>
+          </button>
           <Button
             variant="outline"
             size="sm"
@@ -60,6 +66,8 @@ function AppShell() {
       <main className="min-h-0 min-w-0 flex-1">
         <Outlet />
       </main>
+
+      <ChangePasswordDialog open={changingPassword} onOpenChange={setChangingPassword} />
     </div>
   );
 }

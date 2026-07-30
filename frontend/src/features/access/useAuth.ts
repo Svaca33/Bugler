@@ -62,6 +62,19 @@ export function useSetup() {
   });
 }
 
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (input: { currentPassword: string; newPassword: string }) => {
+      const { error, response } = await api.POST("/api/auth/password/change", { body: input });
+      if (response.status === 400) {
+        // The endpoint answers with the reason: a wrong current password, or a new one it refused.
+        throw new Error(typeof error === "string" ? error : "The password was not changed.");
+      }
+      if (error !== undefined) throw new Error("The password was not changed.");
+    },
+  });
+}
+
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({

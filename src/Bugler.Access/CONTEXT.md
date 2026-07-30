@@ -27,5 +27,11 @@ _Avoid_: permission, role assignment, ACL entry
 **Session**:
 An authenticated sign-in of a User, lasting until logout, expiry, or — unless the User chose to
 stay signed in — until they close the browser. A Session is revalidated against the User behind it on
-each request, so deactivation or deletion ends it and role changes reach it without a re-login.
+each request, so deactivation, deletion or a new password ends it and role changes reach it without
+a re-login. The Session the password was changed from is the one exception: it survives, because
+throwing somebody out of the browser they just used would say nothing about who they are.
 _Avoid_: token, login state
+
+**Password Change**:
+A User replacing their own password while signed in, proven by the password they are replacing.
+_Avoid_: reset, update

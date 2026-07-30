@@ -24,6 +24,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Bugler.Access.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Using Include="Bugler.SharedKernel.ApplicationId" Alias="ApplicationId" />
   </ItemGroup>
