@@ -1,14 +1,18 @@
 import { expect, test } from "bun:test";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import { RetentionField } from "./ServiceRetentionField";
+import { LOG_RETENTION, RetentionField } from "./ServiceRetentionField";
 
-/** Renders the field over a stored 90-day override against a 30-day server default. */
+/**
+ * Renders the field over a stored 90-day override against a 30-day server default. The clock it
+ * names changes only the wording; both are the same field, so the log one stands for both.
+ */
 function renderField(overrides: Partial<Parameters<typeof RetentionField>[0]> = {}) {
   const saved: Array<number | null> = [];
   render(
     <RetentionField
       id="svc-1"
+      clock={LOG_RETENTION}
       value={90}
       defaultRetentionDays={30}
       pending={false}
@@ -23,7 +27,7 @@ function renderField(overrides: Partial<Parameters<typeof RetentionField>[0]> = 
   return saved;
 }
 
-const field = () => screen.getByLabelText("Retention (days)") as HTMLInputElement;
+const field = () => screen.getByLabelText(LOG_RETENTION.label) as HTMLInputElement;
 
 const commit = (value: string) => {
   fireEvent.change(field(), { target: { value } });
@@ -48,7 +52,7 @@ test("shortening asks before it saves anything", () => {
 
   expect(saved).toEqual([]);
   expect(dialog()).not.toBeNull();
-  expect(screen.getByText("Shorten retention to 30 days?")).toBeTruthy();
+  expect(screen.getByText("Shorten log retention to 30 days?")).toBeTruthy();
 });
 
 test("confirming the shortening saves it and closes", async () => {

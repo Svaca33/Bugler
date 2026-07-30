@@ -40,4 +40,34 @@ public sealed class RetentionPurgeTests : IAsyncLifetime
         var spans = await _harness.WaitForRowsAsync("SELECT name FROM telemetry.spans", expectedCount: 1);
         Assert.Equal("fresh-span", Assert.Single(spans));
     }
+
+    /// <summary>
+    /// The two clocks run apart: telemetry between the Trace Retention and the Log Retention is
+    /// past its expiry as a span and still well inside it as a log.
+    /// </summary>
+    [Fact]
+    public async Task Purge_expires_spans_on_the_trace_clock_while_logs_of_the_same_age_stay()
+    {
+        var service = _harness.ServiceId;
+        await _harness.ExecuteSqlAsync($$"""
+            INSERT INTO telemetry.log_records
+                (service_id, timestamp, severity_number, body, resource_attributes, attributes)
+            VALUES ('{{service}}', now() - interval '5 days', 9, 'five-day-old log', '{}', '{}')
+            """);
+        await _harness.ExecuteSqlAsync($$"""
+            INSERT INTO telemetry.spans
+                (service_id, trace_id, span_id, name, kind, start_time, end_time, status_code,
+                 resource_attributes, attributes, events, links)
+            VALUES
+                ('{{service}}', 'cccccccccccccccccccccccccccccccc', 'cccccccccccccccc',
+                 'five-day-old span', 0, now() - interval '5 days', now() - interval '5 days', 0,
+                 '{}', '{}', '[]', '[]')
+            """);
+
+        await _harness.GetRequiredService<TelemetryPurger>().PurgeOnceAsync(CancellationToken.None);
+
+        var logs = await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 1);
+        Assert.Equal("five-day-old log", Assert.Single(logs));
+        await _harness.WaitForRowsAsync("SELECT name FROM telemetry.spans", expectedCount: 0);
+    }
 }

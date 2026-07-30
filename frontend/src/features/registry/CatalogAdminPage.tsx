@@ -178,6 +178,8 @@ function TopologyDetail(props: {
   // The generated client types integers as `number | string`; the UI works in numbers.
   const defaultRetentionDays =
     services.data === undefined ? undefined : Number(services.data.defaultRetentionDays);
+  const defaultTraceRetentionDays =
+    services.data === undefined ? undefined : Number(services.data.defaultTraceRetentionDays);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
@@ -212,19 +214,24 @@ function TopologyDetail(props: {
 
       <ApplicationAlertingCard applicationId={props.applicationId} />
 
-      {defaultRetentionDays !== undefined && list.length > 0 && (
-        <span className={CAPTION}>
-          SERVICES · retention defaults to {defaultRetentionDays} days
-        </span>
-      )}
+      {defaultRetentionDays !== undefined &&
+        defaultTraceRetentionDays !== undefined &&
+        list.length > 0 && (
+          <span className={CAPTION}>
+            SERVICES · defaults to {defaultRetentionDays} days of logs and{" "}
+            {defaultTraceRetentionDays} of traces
+          </span>
+        )}
 
       {defaultRetentionDays !== undefined &&
+        defaultTraceRetentionDays !== undefined &&
         list.map(service => (
           <ServiceCard
             key={service.id}
             applicationId={props.applicationId}
             service={service}
             defaultRetentionDays={defaultRetentionDays}
+            defaultTraceRetentionDays={defaultTraceRetentionDays}
             issuedPlaintext={issuedKey?.serviceId === service.id ? issuedKey.plaintext : null}
             onIssue={() => issueKey.mutate(service.id)}
             onIssuedSaved={() => setIssuedKey(null)}
@@ -234,6 +241,7 @@ function TopologyDetail(props: {
       <AddServiceForm
         applicationId={props.applicationId}
         defaultRetentionDays={defaultRetentionDays}
+        defaultTraceRetentionDays={defaultTraceRetentionDays}
       />
     </div>
   );
@@ -247,8 +255,10 @@ function ServiceCard(props: {
     environment: string;
     name: string;
     retentionDays?: number | string | null;
+    traceRetentionDays?: number | string | null;
   };
   defaultRetentionDays: number;
+  defaultTraceRetentionDays: number;
   issuedPlaintext: string | null;
   onIssue: () => void;
   onIssuedSaved: () => void;
@@ -291,6 +301,8 @@ function ServiceCard(props: {
   // The generated client types integers as `number | string`; the UI works in numbers.
   const retention =
     props.service.retentionDays == null ? null : Number(props.service.retentionDays);
+  const traceRetention =
+    props.service.traceRetentionDays == null ? null : Number(props.service.traceRetentionDays);
   const label = serviceLabel(props.service);
 
   return (
@@ -326,7 +338,9 @@ function ServiceCard(props: {
           applicationId={props.applicationId}
           serviceId={props.service.id}
           retentionDays={retention}
+          traceRetentionDays={traceRetention}
           defaultRetentionDays={props.defaultRetentionDays}
+          defaultTraceRetentionDays={props.defaultTraceRetentionDays}
         />
         <ServiceAlertingOverride applicationId={props.applicationId} serviceId={props.service.id} />
       </div>
@@ -390,12 +404,17 @@ function ServiceCard(props: {
   );
 }
 
-function AddServiceForm(props: { applicationId: string; defaultRetentionDays: number | undefined }) {
+function AddServiceForm(props: {
+  applicationId: string;
+  defaultRetentionDays: number | undefined;
+  defaultTraceRetentionDays: number | undefined;
+}) {
   const queryClient = useQueryClient();
   const [namespace, setNamespace] = useState("");
   const [environment, setEnvironment] = useState("");
   const [name, setName] = useState("");
   const [retention, setRetention] = useState("");
+  const [traceRetention, setTraceRetention] = useState("");
 
   const createService = useMutation({
     mutationFn: async () => {
@@ -406,6 +425,7 @@ function AddServiceForm(props: { applicationId: string; defaultRetentionDays: nu
           environment,
           name,
           retentionDays: retention === "" ? null : Number(retention),
+          traceRetentionDays: traceRetention === "" ? null : Number(traceRetention),
         },
       });
       if (error !== undefined || data === undefined) throw new Error("Failed to create service");
@@ -416,6 +436,7 @@ function AddServiceForm(props: { applicationId: string; defaultRetentionDays: nu
       setEnvironment("");
       setName("");
       setRetention("");
+      setTraceRetention("");
       queryClient.invalidateQueries({ queryKey: ["admin", "services", props.applicationId] });
       queryClient.invalidateQueries({ queryKey: ["catalog"] });
     },
@@ -464,7 +485,7 @@ function AddServiceForm(props: { applicationId: string; defaultRetentionDays: nu
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="new-service-retention">Retention (days)</Label>
+          <Label htmlFor="new-service-retention">Log retention (days)</Label>
           <Input
             id="new-service-retention"
             className="w-[136px]"
@@ -475,14 +496,33 @@ function AddServiceForm(props: { applicationId: string; defaultRetentionDays: nu
             onChange={event => setRetention(event.target.value)}
           />
         </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="new-service-trace-retention">Trace retention (days)</Label>
+          <Input
+            id="new-service-trace-retention"
+            className="w-[136px]"
+            type="number"
+            min={1}
+            placeholder={
+              props.defaultTraceRetentionDays === undefined
+                ? ""
+                : `${props.defaultTraceRetentionDays}`
+            }
+            value={traceRetention}
+            onChange={event => setTraceRetention(event.target.value)}
+          />
+        </div>
         <Button type="submit" size="sm" disabled={!complete || createService.isPending}>
           Add service
         </Button>
       </div>
       <p className="text-[11.5px] text-[#7D93AA]">
         One process, one registration: a backend and a mobile client of the same deployment are two
-        services with their own keys. Leave retention empty to follow the server default
-        {props.defaultRetentionDays === undefined ? "" : ` of ${props.defaultRetentionDays} days`}.
+        services with their own keys. Leave either retention empty to follow the server default
+        {props.defaultRetentionDays === undefined || props.defaultTraceRetentionDays === undefined
+          ? ""
+          : ` — ${props.defaultRetentionDays} days of logs, ${props.defaultTraceRetentionDays} of traces`}
+        .
       </p>
     </form>
   );

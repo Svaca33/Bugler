@@ -1696,6 +1696,8 @@ export interface components {
             name: string;
             /** Format: int32 */
             retentionDays: null | number | string;
+            /** Format: int32 */
+            traceRetentionDays: null | number | string;
         };
         CreateUserRequest: {
             email: string;
@@ -1834,12 +1836,16 @@ export interface components {
             name: string;
             /** Format: int32 */
             retentionDays: null | number | string;
+            /** Format: int32 */
+            traceRetentionDays: null | number | string;
             /** Format: date-time */
             createdAt: string;
         };
         ServiceListDto: {
             /** Format: int32 */
             defaultRetentionDays: number | string;
+            /** Format: int32 */
+            defaultTraceRetentionDays: number | string;
             services: components["schemas"]["ServiceDto"][];
         };
         SetApplicationAlertingRequest: {
@@ -1853,6 +1859,8 @@ export interface components {
         SetRetentionRequest: {
             /** Format: int32 */
             retentionDays: null | number | string;
+            /** Format: int32 */
+            traceRetentionDays: null | number | string;
         };
         SetServiceAlertingRequest: {
             sensitivity: null | components["schemas"]["Sensitivity"];

@@ -29,22 +29,32 @@ public sealed class TelemetryPurger(
                 .GetEffectiveRetentionsAsync(cancellationToken);
         }
 
-        foreach (var group in retentions.GroupBy(r => r.Days))
+        // Logs and spans run on their own clocks, so each table is grouped by its own number.
+        foreach (var group in retentions.GroupBy(r => r.LogDays))
         {
-            var cutoff = DateTime.UtcNow.AddDays(-group.Key);
-            var serviceIds = group.Select(r => r.ServiceId.Value).ToArray();
-
             var logs = await DeleteAsync(
                 "telemetry.log_records", "service_id = ANY(@services) AND timestamp < @cutoff",
-                serviceIds, cutoff, cancellationToken);
-            var spans = await DeleteAsync(
-                "telemetry.spans", "service_id = ANY(@services) AND start_time < @cutoff",
-                serviceIds, cutoff, cancellationToken);
+                group.Select(r => r.ServiceId.Value).ToArray(),
+                DateTime.UtcNow.AddDays(-group.Key), cancellationToken);
 
-            if (logs + spans > 0)
+            if (logs > 0)
             {
                 logger.LogInformation(
-                    "Purged {Logs} log records and {Spans} spans older than {Days} days", logs, spans, group.Key);
+                    "Purged {Logs} log records older than {Days} days", logs, group.Key);
+            }
+        }
+
+        foreach (var group in retentions.GroupBy(r => r.TraceDays))
+        {
+            var spans = await DeleteAsync(
+                "telemetry.spans", "service_id = ANY(@services) AND start_time < @cutoff",
+                group.Select(r => r.ServiceId.Value).ToArray(),
+                DateTime.UtcNow.AddDays(-group.Key), cancellationToken);
+
+            if (spans > 0)
+            {
+                logger.LogInformation(
+                    "Purged {Spans} spans older than {Days} days", spans, group.Key);
             }
         }
 

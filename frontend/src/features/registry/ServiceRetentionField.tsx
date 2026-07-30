@@ -16,47 +16,100 @@ import { Label } from "@/components/ui/label";
 
 import { effectiveRetentionDays, parseRetentionInput, shortensRetention } from "./retentionChange";
 
-/** One Service's retention, wired to the API. */
+/** What one of the two clocks is called wherever the field has to name it. */
+export interface RetentionClock {
+  /** The field's own label. */
+  label: string;
+  /** How the confirmation names the thing being shortened. */
+  name: string;
+  /** What the confirmation says will be deleted. */
+  subject: string;
+}
+
+export const LOG_RETENTION: RetentionClock = {
+  label: "Log retention (days)",
+  name: "log retention",
+  subject: "Logs",
+};
+
+export const TRACE_RETENTION: RetentionClock = {
+  label: "Trace retention (days)",
+  name: "trace retention",
+  subject: "Spans",
+};
+
+/**
+ * One Service's Retention Policy — both clocks — wired to the API. The endpoint takes the policy
+ * whole rather than a patch, so each field sends its own change together with the other as it
+ * stands; a null there would clear an override nobody touched.
+ */
 export function ServiceRetentionField(props: {
   applicationId: string;
   serviceId: string;
   retentionDays: number | null;
+  traceRetentionDays: number | null;
   defaultRetentionDays: number;
+  defaultTraceRetentionDays: number;
 }) {
-  const queryClient = useQueryClient();
-
-  const save = useMutation({
-    mutationFn: async (days: number | null) => {
-      const { error } = await api.PUT("/api/admin/services/{id}/retention", {
-        params: { path: { id: props.serviceId } },
-        body: { retentionDays: days },
-      });
-      if (error !== undefined) throw new Error("Failed to save the retention.");
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin", "services", props.applicationId] }),
-  });
+  const logs = useRetentionSave(props.applicationId, props.serviceId);
+  const traces = useRetentionSave(props.applicationId, props.serviceId);
 
   return (
-    <RetentionField
-      id={props.serviceId}
-      value={props.retentionDays}
-      defaultRetentionDays={props.defaultRetentionDays}
-      pending={save.isPending}
-      error={save.error}
-      onSave={days => save.mutateAsync(days)}
-    />
+    <>
+      <RetentionField
+        id={`${props.serviceId}-logs`}
+        clock={LOG_RETENTION}
+        value={props.retentionDays}
+        defaultRetentionDays={props.defaultRetentionDays}
+        pending={logs.isPending}
+        error={logs.error}
+        onSave={days =>
+          logs.mutateAsync({ retentionDays: days, traceRetentionDays: props.traceRetentionDays })
+        }
+      />
+      <RetentionField
+        id={`${props.serviceId}-traces`}
+        clock={TRACE_RETENTION}
+        value={props.traceRetentionDays}
+        defaultRetentionDays={props.defaultTraceRetentionDays}
+        pending={traces.isPending}
+        error={traces.error}
+        onSave={days =>
+          traces.mutateAsync({ retentionDays: props.retentionDays, traceRetentionDays: days })
+        }
+      />
+    </>
   );
 }
 
+/** One field's own saving, so a failure on one clock is not reported under the other. */
+function useRetentionSave(applicationId: string, serviceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (policy: {
+      retentionDays: number | null;
+      traceRetentionDays: number | null;
+    }) => {
+      const { error } = await api.PUT("/api/admin/services/{id}/retention", {
+        params: { path: { id: serviceId } },
+        body: policy,
+      });
+      if (error !== undefined) throw new Error("Failed to save the retention.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "services", applicationId] }),
+  });
+}
+
 /**
- * How long this Service's telemetry is kept. Empty means the server default, like every other
- * override on this card. Lengthening saves straight away; shortening hands stored telemetry to
- * the next purge, so it asks first — including when the shortening comes from clearing an
- * override that stood above the default.
+ * How long one of this Service's two clocks keeps its telemetry. Empty means the server default,
+ * like every other override on this card. Lengthening saves straight away; shortening hands stored
+ * telemetry to the next purge, so it asks first — including when the shortening comes from clearing
+ * an override that stood above the default.
  */
 export function RetentionField(props: {
   id: string;
+  clock: RetentionClock;
   value: number | null;
   defaultRetentionDays: number;
   pending: boolean;
@@ -106,7 +159,7 @@ export function RetentionField(props: {
 
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={`retention-${props.id}`}>Retention (days)</Label>
+      <Label htmlFor={`retention-${props.id}`}>{props.clock.label}</Label>
       <Input
         id={`retention-${props.id}`}
         key={`${props.value ?? ""}-${revision}`}
@@ -130,6 +183,7 @@ export function RetentionField(props: {
 
       {confirming !== null && (
         <ShorteningConfirmation
+          clock={props.clock}
           proposed={confirming.days}
           defaultRetentionDays={props.defaultRetentionDays}
           pending={props.pending}
@@ -149,6 +203,7 @@ export function RetentionField(props: {
  * is a deployment setting.
  */
 function ShorteningConfirmation(props: {
+  clock: RetentionClock;
   proposed: number | null;
   defaultRetentionDays: number;
   pending: boolean;
@@ -163,12 +218,14 @@ function ShorteningConfirmation(props: {
       <DialogContent>
         <div className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>Shorten retention to {days} days?</DialogTitle>
+            <DialogTitle>
+              Shorten {props.clock.name} to {days} days?
+            </DialogTitle>
             <DialogDescription>
               {props.proposed === null &&
                 `This service will follow the server default of ${days} days. `}
-              Logs and spans older than {days} days will be permanently deleted at the next purge
-              run. This cannot be undone.
+              {props.clock.subject} older than {days} days will be permanently deleted at the next
+              purge run. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
 

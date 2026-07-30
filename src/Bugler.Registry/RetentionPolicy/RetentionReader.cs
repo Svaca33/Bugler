@@ -11,9 +11,13 @@ internal sealed class RetentionReader(
     public async Task<IReadOnlyList<ServiceRetention>> GetEffectiveRetentionsAsync(
         CancellationToken cancellationToken)
     {
-        var defaultDays = options.Value.DefaultRetentionDays;
+        var defaultLogDays = options.Value.DefaultRetentionDays;
+        var defaultTraceDays = options.Value.DefaultTraceRetentionDays;
         return await dbContext.Services
-            .Select(s => new ServiceRetention(s.Id, s.RetentionDays ?? defaultDays))
+            .Select(s => new ServiceRetention(
+                s.Id,
+                s.RetentionDays ?? defaultLogDays,
+                s.TraceRetentionDays ?? defaultTraceDays))
             .ToListAsync(cancellationToken);
     }
 }

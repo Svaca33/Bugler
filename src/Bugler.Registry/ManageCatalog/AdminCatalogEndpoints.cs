@@ -17,18 +17,26 @@ public sealed record ServiceDto(
     string Environment,
     string Name,
     int? RetentionDays,
+    int? TraceRetentionDays,
     DateTimeOffset CreatedAt);
 
 /// <summary>
 /// The Services of one Application together with the retention that applies to those which
 /// do not override it — the client needs both to tell an override from what it inherits.
 /// </summary>
-public sealed record ServiceListDto(int DefaultRetentionDays, IReadOnlyList<ServiceDto> Services);
+public sealed record ServiceListDto(
+    int DefaultRetentionDays, int DefaultTraceRetentionDays, IReadOnlyList<ServiceDto> Services);
 
 public sealed record CreateServiceRequest(
-    Guid ApplicationId, string Namespace, string Environment, string Name, int? RetentionDays);
+    Guid ApplicationId, string Namespace, string Environment, string Name,
+    int? RetentionDays, int? TraceRetentionDays);
 
-public sealed record SetRetentionRequest(int? RetentionDays);
+/// <summary>
+/// A Service's whole Retention Policy, both clocks at once. Not a patch: each null clears that
+/// override and hands the Service back to the server default, so a caller changing one has to
+/// send the other as it stands.
+/// </summary>
+public sealed record SetRetentionRequest(int? RetentionDays, int? TraceRetentionDays);
 
 internal static class AdminCatalogEndpoints
 {
@@ -78,9 +86,10 @@ internal static class AdminCatalogEndpoints
             .OrderBy(s => s.Namespace).ThenBy(s => s.Environment).ThenBy(s => s.Name)
             .Select(s => new ServiceDto(
                 s.Id.Value, s.ApplicationId.Value, s.Namespace, s.Environment, s.Name,
-                s.RetentionDays, s.CreatedAt))
+                s.RetentionDays, s.TraceRetentionDays, s.CreatedAt))
             .ToListAsync(cancellationToken);
-        return new ServiceListDto(options.Value.DefaultRetentionDays, services);
+        return new ServiceListDto(
+            options.Value.DefaultRetentionDays, options.Value.DefaultTraceRetentionDays, services);
     }
 
     public static async Task<IResult> CreateService(
@@ -95,7 +104,7 @@ internal static class AdminCatalogEndpoints
             return Results.BadRequest("Namespace, environment and name must each be 1-200 characters.");
         }
 
-        if (request.RetentionDays is < 1)
+        if (request.RetentionDays is < 1 || request.TraceRetentionDays is < 1)
         {
             return Results.BadRequest("Retention must be at least 1 day.");
         }
@@ -124,13 +133,14 @@ internal static class AdminCatalogEndpoints
             Environment = environment,
             Name = name,
             RetentionDays = request.RetentionDays,
+            TraceRetentionDays = request.TraceRetentionDays,
             CreatedAt = DateTimeOffset.UtcNow,
         };
         dbContext.Services.Add(service);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Results.Ok(new ServiceDto(
             service.Id.Value, service.ApplicationId.Value, service.Namespace, service.Environment,
-            service.Name, service.RetentionDays, service.CreatedAt));
+            service.Name, service.RetentionDays, service.TraceRetentionDays, service.CreatedAt));
     }
 
     /// <summary>
@@ -203,7 +213,7 @@ internal static class AdminCatalogEndpoints
     public static async Task<IResult> SetRetention(
         Guid id, SetRetentionRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
     {
-        if (request.RetentionDays is < 1)
+        if (request.RetentionDays is < 1 || request.TraceRetentionDays is < 1)
         {
             return Results.BadRequest("Retention must be at least 1 day.");
         }
@@ -217,6 +227,7 @@ internal static class AdminCatalogEndpoints
         }
 
         service.RetentionDays = request.RetentionDays;
+        service.TraceRetentionDays = request.TraceRetentionDays;
         await dbContext.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
     }

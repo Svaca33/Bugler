@@ -1849,7 +1849,8 @@
           "namespace",
           "environment",
           "name",
-          "retentionDays"
+          "retentionDays",
+          "traceRetentionDays"
         ],
         "type": "object",
         "properties": {
@@ -1867,6 +1868,15 @@
             "type": "string"
           },
           "retentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "traceRetentionDays": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -2391,6 +2401,7 @@
           "environment",
           "name",
           "retentionDays",
+          "traceRetentionDays",
           "createdAt"
         ],
         "type": "object",
@@ -2421,6 +2432,15 @@
             ],
             "format": "int32"
           },
+          "traceRetentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -2430,11 +2450,20 @@
       "ServiceListDto": {
         "required": [
           "defaultRetentionDays",
+          "defaultTraceRetentionDays",
           "services"
         ],
         "type": "object",
         "properties": {
           "defaultRetentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "defaultTraceRetentionDays": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -2494,11 +2523,21 @@
       },
       "SetRetentionRequest": {
         "required": [
-          "retentionDays"
+          "retentionDays",
+          "traceRetentionDays"
         ],
         "type": "object",
         "properties": {
           "retentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "traceRetentionDays": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
