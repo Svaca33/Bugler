@@ -4,6 +4,7 @@ using Bugler.Exploration;
 using Bugler.Host;
 using Bugler.Host.IntegrationEvents;
 using Bugler.Ingestion;
+using Bugler.Mail;
 using Bugler.Registry;
 using Bugler.SharedKernel;
 
@@ -21,6 +22,7 @@ builder.Services.AddSingleton<OutboxSignal>();
 builder.Services.AddSingleton<IOutboxSignal>(p => p.GetRequiredService<OutboxSignal>());
 builder.Services.AddHostedService<OutboxDispatcher>();
 
+builder.Services.AddMail(builder.Configuration);
 builder.Services.AddRegistry(builder.Configuration);
 builder.Services.AddIngestion(builder.Configuration);
 builder.Services.AddAccess(builder.Configuration);

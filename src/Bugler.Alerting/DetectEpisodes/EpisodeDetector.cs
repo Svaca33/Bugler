@@ -1,6 +1,7 @@
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
 using Bugler.Alerting.Settings;
+using Bugler.Mail;
 using Bugler.Registry.Contracts;
 using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public sealed class EpisodeDetector(
     IServiceScopeFactory scopeFactory,
     NpgsqlDataSource dataSource,
     IOptions<AlertingOptions> options,
+    IOptions<MailOptions> mailOptions,
     ILogger<EpisodeDetector> logger)
 {
     private const int PageSize = 5000;
@@ -137,7 +139,7 @@ public sealed class EpisodeDetector(
         }
 
         var now = DateTimeOffset.UtcNow;
-        var mailEnabled = options.Value.Smtp.IsConfigured;
+        var mailEnabled = mailOptions.Value.Smtp.IsConfigured;
 
         foreach (var detection in decisions.Services)
         {

@@ -1,6 +1,7 @@
 using Bugler.Access.Contracts;
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
+using Bugler.Mail;
 using Bugler.Registry.Contracts;
 using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;

@@ -14,8 +14,8 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
         // Configured SMTP turns the mail channel on, so detection owes mail Deliveries.
         _harness = await BuglerHarness.StartAsync(builder =>
         {
-            builder.UseSetting("Alerting:Smtp:Host", "smtp.test");
-            builder.UseSetting("Alerting:Smtp:From", "bugler@test.local");
+            builder.UseSetting("Mail:Smtp:Host", "smtp.test");
+            builder.UseSetting("Mail:Smtp:From", "bugler@test.local");
         });
         _detector = _harness.GetRequiredService<EpisodeDetector>();
     }

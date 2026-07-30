@@ -12,7 +12,9 @@
     build gate for reasons unrelated to the code. Whatever gets stopped is listed at the end.
 
     postgres is deliberately left running: the ingested telemetry and the admin account are
-    what makes manual testing possible, and the image only bakes src/ and frontend/.
+    what makes manual testing possible, and the image only bakes src/ and frontend/. mailpit
+    comes up on its own as a dependency of the bugler service - whatever Bugler mails is read
+    at http://localhost:8025 rather than delivered.
 
     Manual testing happens on http://localhost:8080 - the container serves the production
     frontend build from wwwroot, which is the artifact that actually ships. The dev server on
@@ -144,7 +146,7 @@ if (-not $healthy) {
     Stop-WithFailure "Container did not report healthy within ${HealthTimeoutSeconds}s."
 }
 
-Write-Step 'Redeployed. UI + REST on http://localhost:8080, OTLP on :4317 (gRPC) and :4318 (HTTP).'
+Write-Step 'Redeployed. UI + REST on http://localhost:8080, OTLP on :4317 (gRPC) and :4318 (HTTP), mail on http://localhost:8025.'
 if ($stopped.Count -gt 0) {
     Write-Host "    stopped on the way: $($stopped -join ', ') - restart them yourself if you still need them" -ForegroundColor Yellow
 }

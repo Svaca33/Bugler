@@ -2,13 +2,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bugler.SharedKernel\Bugler.SharedKernel.csproj" />
+    <ProjectReference Include="..\Bugler.Mail\Bugler.Mail.csproj" />
     <ProjectReference Include="..\Bugler.Registry\Bugler.Registry.csproj" />
     <ProjectReference Include="..\Bugler.Access\Bugler.Access.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

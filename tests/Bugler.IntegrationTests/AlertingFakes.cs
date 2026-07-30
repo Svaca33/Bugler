@@ -1,4 +1,5 @@
 using Bugler.Alerting.DeliverMessages;
+using Bugler.Mail;
 
 namespace Bugler.IntegrationTests;
 

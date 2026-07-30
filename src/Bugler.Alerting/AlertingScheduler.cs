@@ -22,12 +22,6 @@ internal sealed class AlertingScheduler(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var interval = TimeSpan.FromSeconds(options.Value.PollIntervalSeconds);
-        if (!options.Value.Smtp.IsConfigured)
-        {
-            logger.LogWarning(
-                "SMTP is not configured (Alerting:Smtp): the mail channel is disabled and "
-                + "subscriptions will not be delivered");
-        }
 
         while (!stoppingToken.IsCancellationRequested)
         {

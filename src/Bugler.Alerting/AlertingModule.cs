@@ -23,6 +23,9 @@ public static class AlertingModule
     public static IServiceCollection AddAlerting(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.SectionName));
+        // Second bind onto the same options: PublicBaseUrl describes the server, so it is
+        // configured once and read by whoever puts links in messages (ADR 0011).
+        services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.ServerSectionName));
         services.AddDbContext<AlertingDbContext>((provider, options) => options
             .UseNpgsql(
                 provider.GetRequiredService<NpgsqlDataSource>(),
@@ -34,7 +37,6 @@ public static class AlertingModule
         services.AddSingleton<DeliveryRunner>();
         services.AddHostedService<AlertingScheduler>();
 
-        services.AddSingleton<IMailSender, MailKitMailSender>();
         // The typed client stays transient so the factory can rotate its handlers; the runner
         // resolves IChatSender from its per-run scope.
         services.AddHttpClient<GoogleChatSender>();

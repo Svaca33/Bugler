@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\Bugler.Registry\Bugler.Registry.csproj" />
     <ProjectReference Include="..\..\src\Bugler.Access\Bugler.Access.csproj" />
     <ProjectReference Include="..\..\src\Bugler.Alerting\Bugler.Alerting.csproj" />
+    <ProjectReference Include="..\..\src\Bugler.Mail\Bugler.Mail.csproj" />
     <ProjectReference Include="..\..\src\Bugler.Host\Bugler.Host.csproj" />
   </ItemGroup>
 

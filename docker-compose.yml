@@ -15,17 +15,26 @@ services:
       timeout: 3s
       retries: 10
 
+  # Local SMTP that goes nowhere: alerts and password-reset links land in its web UI on :8025
+  # instead of in somebody's inbox. Messages live in memory only and a restart forgets them.
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025" # web UI - read the mail here
+      - "1025:1025" # SMTP
+
   bugler:
     build: .
     environment:
       ConnectionStrings__bugler: "Host=postgres;Port=5432;Database=bugler;Username=bugler;Password=bugler"
-      # Alerting: links in messages point at PublicBaseUrl; mail stays disabled until SMTP is set.
-      # Alerting__PublicBaseUrl: "https://bugler.example.com"
-      # Alerting__Smtp__Host: "smtp.example.com"
-      # Alerting__Smtp__Port: "587"
-      # Alerting__Smtp__Username: "bugler"
-      # Alerting__Smtp__Password: "…"
-      # Alerting__Smtp__From: "bugler@example.com"
+      # Mail goes to the local mailpit; point this at a real server to have it leave the machine.
+      Mail__Smtp__Host: "mailpit"
+      Mail__Smtp__Port: "1025"
+      Mail__Smtp__From: "bugler@localhost"
+      # Mail__Smtp__Username: "bugler"
+      # Mail__Smtp__Password: "…"
+      # Where this Bugler is reachable from outside; links in mail and chat point at it.
+      # Server__PublicBaseUrl: "https://bugler.example.com"
     ports:
       - "8080:8080" # UI + REST API
       - "4317:4317" # OTLP/gRPC
@@ -33,6 +42,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
 volumes:
   postgres-data:

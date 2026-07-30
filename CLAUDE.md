@@ -23,9 +23,14 @@ Modular monolith of bounded contexts — see [CONTEXT-MAP.md](CONTEXT-MAP.md) an
 - `src/Bugler.Registry` — applications, services, API keys (`Authorization: Bearer blgr_…`)
 - `src/Bugler.Ingestion` — OTLP receivers (gRPC + HTTP), buffered writers, retention purge
 - `src/Bugler.Exploration` — read path for the UI (logs, traces, waterfall)
-- `src/Bugler.Alerting` — the unattended watch: polls stored logs, opens Episodes, mails subscribers and posts to Google Chat (SMTP + `PublicBaseUrl` under `Alerting` in appsettings; unset SMTP disables mail)
+- `src/Bugler.Alerting` — the unattended watch: polls stored logs, opens Episodes, mails subscribers and posts to Google Chat
 - `src/Bugler.SharedKernel` — shared ids/primitives and the integration event contracts (no behaviour)
+- `src/Bugler.Mail` — shared mail transport, not a context (ADR 0011): `IMailSender` awaits its outcome, `IMailQueue` hands off to a background loop. SMTP under `Mail` in appsettings; unset SMTP disables mail everywhere
 - `src/Bugler.Host` — composition root; owns deployment topology
+
+`Server:PublicBaseUrl` (how this Bugler is reachable from outside) is configured once and read by every module that puts a link in a message.
+
+`docker compose` runs a **mailpit** alongside Bugler: everything Bugler mails is read at http://localhost:8025 instead of being delivered.
 
 Module boundaries are enforced by `tests/Bugler.ArchitectureTests` (backend) and dependency-cruiser (`cd frontend && bun run arch`).
 

@@ -5,6 +5,7 @@
     <Project Path="src/Bugler.Exploration/Bugler.Exploration.csproj" />
     <Project Path="src/Bugler.Host/Bugler.Host.csproj" />
     <Project Path="src/Bugler.Ingestion/Bugler.Ingestion.csproj" />
+    <Project Path="src/Bugler.Mail/Bugler.Mail.csproj" />
     <Project Path="src/Bugler.Registry/Bugler.Registry.csproj" />
     <Project Path="src/Bugler.SharedKernel/Bugler.SharedKernel.csproj" />
   </Folder>

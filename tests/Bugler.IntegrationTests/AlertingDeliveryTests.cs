@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Bugler.Alerting.CloseQuietEpisodes;
 using Bugler.Alerting.DeliverMessages;
 using Bugler.Alerting.DetectEpisodes;
+using Bugler.Mail;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,9 +22,9 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
     {
         _harness = await BuglerHarness.StartAsync(builder =>
         {
-            builder.UseSetting("Alerting:Smtp:Host", "smtp.test");
-            builder.UseSetting("Alerting:Smtp:From", "bugler@test.local");
-            builder.UseSetting("Alerting:PublicBaseUrl", "https://bugler.test");
+            builder.UseSetting("Mail:Smtp:Host", "smtp.test");
+            builder.UseSetting("Mail:Smtp:From", "bugler@test.local");
+            builder.UseSetting("Server:PublicBaseUrl", "https://bugler.test");
             builder.ConfigureTestServices(services =>
             {
                 services.AddSingleton<IMailSender>(_mail);
