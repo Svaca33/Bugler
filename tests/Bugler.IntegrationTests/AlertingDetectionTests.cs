@@ -51,13 +51,13 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
         Assert.Equal(1, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.deliveries WHERE kind = 1 AND channel = 2", 1));
 
-        // More trouble while open: counted, never re-announced. The warning stays outside
-        // the default Errors sensitivity.
+        // More of the same kind while open: counted, never re-announced. The warning stays
+        // outside the default Errors sensitivity.
         await _harness.ExecuteSqlAsync($$"""
             INSERT INTO telemetry.log_records
                 (service_id, timestamp, severity_number, body, resource_attributes, attributes)
             VALUES
-                ('{{_harness.ServiceId}}', now(), 21, 'fatal', '{}', '{}'),
+                ('{{_harness.ServiceId}}', now(), 21, 'boom', '{}', '{}'),
                 ('{{_harness.ServiceId}}', now(), 14, 'warned', '{}', '{}')
             """);
         await _detector.DetectOnceAsync(CancellationToken.None);
@@ -66,6 +66,19 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
             "SELECT COUNT(*) FROM alerting.episodes WHERE error_count = 2 AND warn_count = 0", 1));
         Assert.Equal(2, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.deliveries", 2));
+
+        // A different kind of trouble is its own episode, announced on its own.
+        await _harness.ExecuteSqlAsync($$"""
+            INSERT INTO telemetry.log_records
+                (service_id, timestamp, severity_number, body, resource_attributes, attributes)
+            VALUES ('{{_harness.ServiceId}}', now(), 17, 'warehouse sync timed out', '{}', '{}')
+            """);
+        await _detector.DetectOnceAsync(CancellationToken.None);
+
+        Assert.Equal(2, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes WHERE closed_at IS NULL", 2));
+        Assert.Equal(4, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.deliveries", 4));
     }
 
     [Fact]
@@ -73,20 +86,20 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
     {
         await _detector.DetectOnceAsync(CancellationToken.None); // Seeds the cursor at 0.
 
-        await InsertWithIdAsync(20_000, "first");
+        await InsertWithIdAsync(20_000, "boom");
         await _detector.DetectOnceAsync(CancellationToken.None);
         Assert.Equal(1, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.episodes WHERE error_count = 1", 1));
 
         // A transaction holding a lower id committed after the poll passed it: the overlap
         // re-read (10 000 ids behind the cursor) still catches it.
-        await InsertWithIdAsync(15_000, "late commit");
+        await InsertWithIdAsync(15_000, "boom");
         await _detector.DetectOnceAsync(CancellationToken.None);
         Assert.Equal(1, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.episodes WHERE error_count = 2", 1));
 
         // Below the overlap window the poll no longer looks — the documented bound.
-        await InsertWithIdAsync(5_000, "too old");
+        await InsertWithIdAsync(5_000, "boom");
         await _detector.DetectOnceAsync(CancellationToken.None);
         // And a re-run changes nothing: the seen set keeps the overlap idempotent.
         await _detector.DetectOnceAsync(CancellationToken.None);

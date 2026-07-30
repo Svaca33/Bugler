@@ -15,6 +15,9 @@ public sealed class Episode
     /// <summary>Stored redundantly (immutable mapping) so visibility filtering and cascades need no catalog round-trip.</summary>
     public required ApplicationId ApplicationId { get; init; }
 
+    /// <summary>The kind of trouble this Episode is about — what tells it apart from the Service's other Episodes.</summary>
+    public required string Fingerprint { get; init; }
+
     /// <summary>Detection wall-clock, not the log's own claim — durations stay immune to sender clock skew.</summary>
     public required DateTimeOffset OpenedAt { get; init; }
 

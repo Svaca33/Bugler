@@ -112,11 +112,12 @@ public sealed class AlertingSettingsTests : IAsyncLifetime
         await _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, opened_at, first_log_id, first_log_timestamp,
-                 first_log_severity, first_log_body, error_count, warn_count, last_match_at)
+                (id, service_id, application_id, fingerprint, opened_at, first_log_id,
+                 first_log_timestamp, first_log_severity, first_log_body, error_count,
+                 warn_count, last_match_at)
             VALUES
-                (gen_random_uuid(), '{_harness.ServiceId}', '{_harness.ApplicationId}', now(), 1,
-                 now(), 17, 'boom', 3, 0, now())
+                (gen_random_uuid(), '{_harness.ServiceId}', '{_harness.ApplicationId}', 'boom',
+                 now(), 1, now(), 17, 'boom', 3, 0, now())
             """);
 
         var put = await _harness.Client.PutAsJsonAsync(

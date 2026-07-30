@@ -69,9 +69,12 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
         {
             episode.Property(e => e.ServiceId).HasConversion(ServiceIdConverter);
             episode.Property(e => e.ApplicationId).HasConversion(ApplicationIdConverter);
-            // The invariant: at most one open Episode per Service. Also the open-episode scan.
-            episode.HasIndex(e => e.ServiceId).IsUnique().HasFilter("closed_at IS NULL")
-                .HasDatabaseName("ix_episodes_one_open_per_service");
+            episode.Property(e => e.Fingerprint).HasMaxLength(300);
+            // The invariant: at most one open Episode per kind of trouble per Service.
+            // Also the open-episode scan.
+            episode.HasIndex(e => new { e.ServiceId, e.Fingerprint }).IsUnique()
+                .HasFilter("closed_at IS NULL")
+                .HasDatabaseName("ix_episodes_one_open_per_kind");
             episode.HasIndex(e => e.ApplicationId);
             episode.HasIndex(e => new { e.OpenedAt, e.Id });
         });

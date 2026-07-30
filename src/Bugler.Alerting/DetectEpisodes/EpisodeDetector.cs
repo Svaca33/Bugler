@@ -123,7 +123,7 @@ public sealed class EpisodeDetector(
             .ToHashSet();
         var openEpisodes = await dbContext.Episodes
             .Where(e => e.ClosedAt == null)
-            .ToDictionaryAsync(e => e.ServiceId, cancellationToken);
+            .ToDictionaryAsync(e => (e.ServiceId, e.Fingerprint), cancellationToken);
 
         var decisions = DetectionBatch.Decide(
             rows, snapshot.Effective, openEpisodes.Keys.ToHashSet(), seenIds);
@@ -148,6 +148,7 @@ public sealed class EpisodeDetector(
                     Id = Guid.CreateVersion7(),
                     ServiceId = detection.ServiceId,
                     ApplicationId = detection.ApplicationId,
+                    Fingerprint = detection.Fingerprint,
                     OpenedAt = now,
                     FirstLogId = first.Id,
                     FirstLogTimestamp = new DateTimeOffset(first.Timestamp, TimeSpan.Zero),
@@ -160,12 +161,12 @@ public sealed class EpisodeDetector(
                 dbContext.Episodes.Add(episode);
                 await EnqueueAlertsAsync(dbContext, episode, snapshot, mailEnabled, now, cancellationToken);
                 logger.LogInformation(
-                    "Episode opened for service {ServiceId} by log {LogId} (severity {Severity})",
-                    detection.ServiceId, first.Id, first.Severity);
+                    "Episode opened for service {ServiceId} by log {LogId} (severity {Severity}): {Fingerprint}",
+                    detection.ServiceId, first.Id, first.Severity, detection.Fingerprint);
             }
             else
             {
-                var episode = openEpisodes[detection.ServiceId];
+                var episode = openEpisodes[(detection.ServiceId, detection.Fingerprint)];
                 episode.ErrorCount += detection.ErrorCount;
                 episode.WarnCount += detection.WarnCount;
                 episode.LastMatchAt = now;
@@ -266,9 +267,12 @@ public sealed class EpisodeDetector(
     private async Task<IReadOnlyList<MatchingLog>> ReadMatchingPageAsync(
         long readFrom, CancellationToken cancellationToken)
     {
+        // The two attributes a Fingerprint prefers over the body: the sender's message template
+        // (`{OriginalFormat}`, as .NET loggers ship it) and the semantic event name.
         await using var command = dataSource.CreateCommand(
             """
-            SELECT id, service_id, timestamp, severity_number, left(body, 500)
+            SELECT id, service_id, timestamp, severity_number, left(body, 500),
+                   attributes->>'{OriginalFormat}', attributes->>'event.name'
             FROM telemetry.log_records
             WHERE id > @readFrom AND severity_number >= @floor
             ORDER BY id
@@ -287,7 +291,9 @@ public sealed class EpisodeDetector(
                 reader.GetGuid(1),
                 reader.GetDateTime(2),
                 reader.GetInt16(3),
-                await reader.IsDBNullAsync(4, cancellationToken) ? null : reader.GetString(4)));
+                await reader.IsDBNullAsync(4, cancellationToken) ? null : reader.GetString(4),
+                await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5),
+                await reader.IsDBNullAsync(6, cancellationToken) ? null : reader.GetString(6)));
         }
 
         return rows;

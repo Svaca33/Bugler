@@ -12,8 +12,12 @@ _Avoid_: alert level, threshold, trigger filter
 The stretch of time a Service must go without a matching Log Record before its open Episode closes. An Application-wide duration a Service may override.
 _Avoid_: cooldown, resolve timeout, silence period
 
+**Fingerprint**:
+The kind of trouble a Log Record announces: the sender's message template when it travels along, otherwise the body with its variable parts blanked. What tells one Episode of a Service apart from another.
+_Avoid_: error type, issue, grouping key
+
 **Episode**:
-One bounded stretch of trouble in one Service: opened by the first Log Record its Sensitivity matches, counting every match since, closed when a Quiet Window passes without one — or immediately and silently when Sensitivity turns Off. Never spans Services, never merges, and outlives the Log Records that drove it.
+One bounded stretch of one kind of trouble in one Service: opened by the first matching Log Record of a Fingerprint with no open Episode, counting every match of that Fingerprint since, closed when a Quiet Window passes without one — or immediately and silently when Sensitivity turns Off. Never spans Services, never merges, and outlives the Log Records that drove it.
 _Avoid_: incident, outage, alert group, error burst
 
 **Alert**:

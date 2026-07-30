@@ -16,6 +16,7 @@ public class MessageComposerTests
         Id = Guid.NewGuid(),
         ServiceId = Identity.Id,
         ApplicationId = Identity.ApplicationId,
+        Fingerprint = "Payment gateway timed out",
         OpenedAt = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero),
         FirstLogId = 42,
         FirstLogTimestamp = new DateTimeOffset(2026, 7, 29, 9, 59, 58, TimeSpan.Zero),

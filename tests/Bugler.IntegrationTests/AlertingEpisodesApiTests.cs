@@ -55,12 +55,12 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, opened_at, first_log_id, first_log_timestamp,
-                 first_log_severity, first_log_body, error_count, warn_count, last_match_at,
-                 closed_at, close_reason)
+                (id, service_id, application_id, fingerprint, opened_at, first_log_id,
+                 first_log_timestamp, first_log_severity, first_log_body, error_count,
+                 warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', now(), 1, now(), 17,
-                 '{body}', 1, 0, now(),
+                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', '{body}', now(), 1,
+                 now(), 17, '{body}', 1, 0, now(),
                  {(closed ? "now()" : "NULL")}, {(closed ? "1" : "NULL")})
             """);
 }

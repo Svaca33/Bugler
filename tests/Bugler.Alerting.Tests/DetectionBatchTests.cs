@@ -11,6 +11,8 @@ public class DetectionBatchTests
     private static readonly ServiceId Web = ServiceId.New();
     private static readonly ServiceId Worker = ServiceId.New();
 
+    private static readonly HashSet<(ServiceId, string)> NothingOpen = [];
+
     private static EffectiveSettings Defaults(params (ServiceId Id, Sensitivity? Override)[] services) =>
         EffectiveSettings.Build(
             services.Select(s => new CatalogService(s.Id, App, "Eshop", "acme", "prod", "web")).ToList(),
@@ -25,16 +27,16 @@ public class DetectionBatchTests
                 })
                 .ToList());
 
-    private static MatchingLog Log(long id, ServiceId service, short severity) =>
-        new(id, service.Value, DateTime.UtcNow, severity, $"log {id}");
+    private static MatchingLog Log(long id, ServiceId service, short severity, string body = "boom") =>
+        new(id, service.Value, DateTime.UtcNow, severity, body, Template: null, EventName: null);
 
     [Fact]
-    public void The_first_matching_log_opens_and_later_ones_only_count()
+    public void The_first_matching_log_opens_and_later_ones_of_the_same_kind_only_count()
     {
         var decisions = DetectionBatch.Decide(
             [Log(1, Web, 17), Log(2, Web, 21), Log(3, Web, 18)],
             Defaults((Web, null)),
-            servicesWithOpenEpisode: new HashSet<ServiceId>(),
+            NothingOpen,
             seenIds: new HashSet<long>());
 
         var detection = Assert.Single(decisions.Services);
@@ -45,17 +47,67 @@ public class DetectionBatchTests
     }
 
     [Fact]
-    public void An_already_open_episode_absorbs_matches_without_reopening()
+    public void A_different_kind_of_trouble_opens_its_own_episode()
+    {
+        var decisions = DetectionBatch.Decide(
+            [Log(1, Web, 17, "payment declined"), Log(2, Web, 17, "warehouse timeout")],
+            Defaults((Web, null)),
+            NothingOpen,
+            new HashSet<long>());
+
+        Assert.Equal(2, decisions.Services.Count);
+        Assert.All(decisions.Services, d => Assert.NotNull(d.OpensWith));
+    }
+
+    [Fact]
+    public void A_shared_template_holds_one_kind_even_when_bodies_differ()
+    {
+        MatchingLog Templated(long id, string body) => new(
+            id, Web.Value, DateTime.UtcNow, 17, body,
+            Template: "Payment declined for order {OrderId}: {DeclineReason}", EventName: null);
+
+        var decisions = DetectionBatch.Decide(
+            [Templated(1, "Payment declined for order 1: card expired"),
+             Templated(2, "Payment declined for order 2: insufficient funds")],
+            Defaults((Web, null)),
+            NothingOpen,
+            new HashSet<long>());
+
+        var detection = Assert.Single(decisions.Services);
+        Assert.Equal(2, detection.ErrorCount);
+    }
+
+    [Fact]
+    public void An_already_open_episode_absorbs_matches_of_its_kind_without_reopening()
     {
         var decisions = DetectionBatch.Decide(
             [Log(5, Web, 17)],
             Defaults((Web, null)),
-            servicesWithOpenEpisode: new HashSet<ServiceId> { Web },
-            seenIds: new HashSet<long>());
+            new HashSet<(ServiceId, string)> { (Web, "boom") },
+            new HashSet<long>());
 
         var detection = Assert.Single(decisions.Services);
         Assert.Null(detection.OpensWith);
         Assert.Equal(1, detection.ErrorCount);
+    }
+
+    [Fact]
+    public void Beyond_the_open_cap_new_kinds_fold_into_the_overflow_episode()
+    {
+        var alreadyOpen = Enumerable.Range(0, DetectionBatch.MaxOpenEpisodesPerService)
+            .Select(i => (Web, $"kind {i}"))
+            .ToHashSet();
+
+        var decisions = DetectionBatch.Decide(
+            [Log(1, Web, 17, "yet another kind"), Log(2, Web, 17, "and one more")],
+            Defaults((Web, null)),
+            alreadyOpen,
+            new HashSet<long>());
+
+        var detection = Assert.Single(decisions.Services);
+        Assert.Equal(Fingerprint.Overflow, detection.Fingerprint);
+        Assert.NotNull(detection.OpensWith);
+        Assert.Equal(2, detection.ErrorCount);
     }
 
     [Fact]
@@ -64,7 +116,7 @@ public class DetectionBatchTests
         var decisions = DetectionBatch.Decide(
             [Log(1, Web, 16), Log(2, Web, 17)],
             Defaults((Web, Sensitivity.ErrorsAndWarnings)),
-            new HashSet<ServiceId>(),
+            NothingOpen,
             new HashSet<long>());
 
         var detection = Assert.Single(decisions.Services);
@@ -79,7 +131,7 @@ public class DetectionBatchTests
         var decisions = DetectionBatch.Decide(
             [Log(1, Web, 14), Log(2, Worker, 14)],
             Defaults((Web, null), (Worker, Sensitivity.ErrorsAndWarnings)),
-            new HashSet<ServiceId>(),
+            NothingOpen,
             new HashSet<long>());
 
         var detection = Assert.Single(decisions.Services);
@@ -93,7 +145,7 @@ public class DetectionBatchTests
         var decisions = DetectionBatch.Decide(
             [Log(1, Web, 17), Log(2, Web, 17)],
             Defaults((Web, null)),
-            new HashSet<ServiceId> { Web },
+            new HashSet<(ServiceId, string)> { (Web, "boom") },
             seenIds: new HashSet<long> { 1 });
 
         Assert.Equal([2], decisions.MatchedIds);
@@ -107,7 +159,7 @@ public class DetectionBatchTests
         var decisions = DetectionBatch.Decide(
             [Log(1, orphan, 21)],
             Defaults((Web, null)),
-            new HashSet<ServiceId>(),
+            NothingOpen,
             new HashSet<long>());
 
         Assert.Empty(decisions.Services);
@@ -120,7 +172,7 @@ public class DetectionBatchTests
         var decisions = DetectionBatch.Decide(
             [Log(1, Web, 17), Log(2, Worker, 17)],
             Defaults((Web, null), (Worker, null)),
-            servicesWithOpenEpisode: new HashSet<ServiceId> { Worker },
+            new HashSet<(ServiceId, string)> { (Worker, "boom") },
             new HashSet<long>());
 
         Assert.Equal(2, decisions.Services.Count);
