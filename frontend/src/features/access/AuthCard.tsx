@@ -62,7 +62,7 @@ export function AuthCard(props: {
           </CardContent>
         </Card>
 
-        <p className="text-center font-mono text-[11px] text-[#5F7590]">bugler 0.1.0 · self-hosted</p>
+        <p className="text-center font-mono text-[11px] text-[#5F7590]">bugler · self-hosted</p>
       </div>
     </div>
   );

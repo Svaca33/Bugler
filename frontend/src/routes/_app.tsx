@@ -31,9 +31,6 @@ function AppShell() {
         <div className="flex items-center gap-[9px] pr-[30px]">
           <img src={markDark} alt="" className="size-7" />
           <span className="text-[21px] leading-none font-semibold tracking-[-0.85px]">bugler</span>
-          <span className="rounded border border-[#1E344C] px-[5px] py-0.5 font-mono text-[10px] text-[#6E86A0]">
-            0.1.0
-          </span>
         </div>
 
         <nav className="flex items-stretch gap-0.5">
