@@ -1309,10 +1309,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ServiceDto"
-                  }
+                  "$ref": "#/components/schemas/ServiceListDto"
                 }
               }
             }
@@ -1709,6 +1706,17 @@
           }
         }
       },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          }
+        }
+      },
       "CreateApplicationRequest": {
         "required": [
           "name"
@@ -1930,17 +1938,6 @@
           "applicationId": {
             "type": "string",
             "format": "uuid"
-          }
-        }
-      },
-      "ChatWebhookDto": {
-        "required": [
-          "domain"
-        ],
-        "type": "object",
-        "properties": {
-          "domain": {
-            "type": "string"
           }
         }
       },
@@ -2266,6 +2263,29 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ServiceListDto": {
+        "required": [
+          "defaultRetentionDays",
+          "services"
+        ],
+        "type": "object",
+        "properties": {
+          "defaultRetentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceDto"
+            }
           }
         }
       },

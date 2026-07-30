@@ -12,6 +12,7 @@ import {
 /**
  * One service's overrides of its application's alerting: empty means inherit, and clearing both
  * fields removes the override entirely — the retention "empty = server default" semantic.
+ * Renders bare fields; the service card owns the row they sit in, shared with retention.
  */
 export function ServiceAlertingOverride(props: { applicationId: string; serviceId: string }) {
   const queryClient = useQueryClient();
@@ -43,7 +44,7 @@ export function ServiceAlertingOverride(props: { applicationId: string; serviceI
   const applicationQuietWindow = data.quietWindowMinutes ?? data.defaults.quietWindowMinutes;
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <>
       <SensitivityField
         id={`override-sensitivity-${props.serviceId}`}
         value={override?.sensitivity}
@@ -63,6 +64,6 @@ export function ServiceAlertingOverride(props: { applicationId: string; serviceI
       {save.error !== null && (
         <p className="text-[12.5px] text-[#F0685A]">{save.error.message}</p>
       )}
-    </div>
+    </>
   );
 }

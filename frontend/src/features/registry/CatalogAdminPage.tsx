@@ -12,6 +12,7 @@ import { ApplicationAlertingCard } from "./ApplicationAlertingCard";
 import { DeleteConfirmation } from "./DeleteConfirmation";
 import { serviceConfirmationPhrase } from "./deletionConfirmation";
 import { ServiceAlertingOverride } from "./ServiceAlertingOverride";
+import { ServiceRetentionField } from "./ServiceRetentionField";
 
 const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
@@ -173,7 +174,10 @@ function TopologyDetail(props: {
     },
   });
 
-  const list = services.data ?? [];
+  const list = services.data?.services ?? [];
+  // The generated client types integers as `number | string`; the UI works in numbers.
+  const defaultRetentionDays =
+    services.data === undefined ? undefined : Number(services.data.defaultRetentionDays);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
@@ -208,18 +212,29 @@ function TopologyDetail(props: {
 
       <ApplicationAlertingCard applicationId={props.applicationId} />
 
-      {list.map(service => (
-        <ServiceCard
-          key={service.id}
-          applicationId={props.applicationId}
-          service={service}
-          issuedPlaintext={issuedKey?.serviceId === service.id ? issuedKey.plaintext : null}
-          onIssue={() => issueKey.mutate(service.id)}
-          onIssuedSaved={() => setIssuedKey(null)}
-        />
-      ))}
+      {defaultRetentionDays !== undefined && list.length > 0 && (
+        <span className={CAPTION}>
+          SERVICES · retention defaults to {defaultRetentionDays} days
+        </span>
+      )}
 
-      <AddServiceForm applicationId={props.applicationId} />
+      {defaultRetentionDays !== undefined &&
+        list.map(service => (
+          <ServiceCard
+            key={service.id}
+            applicationId={props.applicationId}
+            service={service}
+            defaultRetentionDays={defaultRetentionDays}
+            issuedPlaintext={issuedKey?.serviceId === service.id ? issuedKey.plaintext : null}
+            onIssue={() => issueKey.mutate(service.id)}
+            onIssuedSaved={() => setIssuedKey(null)}
+          />
+        ))}
+
+      <AddServiceForm
+        applicationId={props.applicationId}
+        defaultRetentionDays={defaultRetentionDays}
+      />
     </div>
   );
 }
@@ -233,6 +248,7 @@ function ServiceCard(props: {
     name: string;
     retentionDays?: number | string | null;
   };
+  defaultRetentionDays: number;
   issuedPlaintext: string | null;
   onIssue: () => void;
   onIssuedSaved: () => void;
@@ -272,20 +288,15 @@ function ServiceCard(props: {
   });
 
   const activeKeys = (keys.data ?? []).filter(k => k.revokedAt == null);
-  const retention = props.service.retentionDays;
+  // The generated client types integers as `number | string`; the UI works in numbers.
+  const retention =
+    props.service.retentionDays == null ? null : Number(props.service.retentionDays);
   const label = serviceLabel(props.service);
 
   return (
     <div className="flex flex-col gap-3 rounded-[11px] border border-[#1E344C] bg-card p-4">
       <div className="flex items-center gap-2.5">
         <span className="font-mono text-[13px] font-medium text-foreground">{label}</span>
-        <span
-          className={`rounded-[5px] bg-[#16283C] px-[7px] py-0.5 font-mono text-[10.5px] ${
-            retention != null ? "text-[#A9BDD1]" : "text-[#8CA1B8]"
-          }`}
-        >
-          {retention != null ? `retention ${retention} d` : "server default"}
-        </span>
         <Button size="sm" variant="secondary" className="ml-auto" onClick={props.onIssue}>
           Issue key
         </Button>
@@ -310,7 +321,15 @@ function ServiceCard(props: {
         onConfirm={() => deleteService.mutate()}
       />
 
-      <ServiceAlertingOverride applicationId={props.applicationId} serviceId={props.service.id} />
+      <div className="flex flex-wrap items-end gap-3">
+        <ServiceRetentionField
+          applicationId={props.applicationId}
+          serviceId={props.service.id}
+          retentionDays={retention}
+          defaultRetentionDays={props.defaultRetentionDays}
+        />
+        <ServiceAlertingOverride applicationId={props.applicationId} serviceId={props.service.id} />
+      </div>
 
       {props.issuedPlaintext !== null && (
         <div className="flex flex-col gap-2 rounded-[9px] border border-[rgba(233,164,60,0.55)] bg-[rgba(233,164,60,0.10)] p-3.5">
@@ -371,7 +390,7 @@ function ServiceCard(props: {
   );
 }
 
-function AddServiceForm(props: { applicationId: string }) {
+function AddServiceForm(props: { applicationId: string; defaultRetentionDays: number | undefined }) {
   const queryClient = useQueryClient();
   const [namespace, setNamespace] = useState("");
   const [environment, setEnvironment] = useState("");
@@ -451,7 +470,7 @@ function AddServiceForm(props: { applicationId: string }) {
             className="w-[136px]"
             type="number"
             min={1}
-            placeholder="30"
+            placeholder={props.defaultRetentionDays === undefined ? "" : `${props.defaultRetentionDays}`}
             value={retention}
             onChange={event => setRetention(event.target.value)}
           />
@@ -462,7 +481,8 @@ function AddServiceForm(props: { applicationId: string }) {
       </div>
       <p className="text-[11.5px] text-[#7D93AA]">
         One process, one registration: a backend and a mobile client of the same deployment are two
-        services with their own keys. Leave retention empty to follow the server default.
+        services with their own keys. Leave retention empty to follow the server default
+        {props.defaultRetentionDays === undefined ? "" : ` of ${props.defaultRetentionDays} days`}.
       </p>
     </form>
   );

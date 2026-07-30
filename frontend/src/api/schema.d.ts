@@ -1191,7 +1191,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ServiceDto"][];
+                        "application/json": components["schemas"]["ServiceListDto"];
                     };
                 };
             };
@@ -1529,6 +1529,9 @@ export interface components {
             environment: string;
             name: string;
         };
+        ChatWebhookDto: {
+            domain: string;
+        };
         CreateApplicationRequest: {
             name: string;
         };
@@ -1586,9 +1589,6 @@ export interface components {
         GrantRequest: {
             /** Format: uuid */
             applicationId: string;
-        };
-        ChatWebhookDto: {
-            domain: string;
         };
         IssuedApiKeyDto: {
             /** Format: uuid */
@@ -1670,6 +1670,11 @@ export interface components {
             retentionDays: null | number | string;
             /** Format: date-time */
             createdAt: string;
+        };
+        ServiceListDto: {
+            /** Format: int32 */
+            defaultRetentionDays: number | string;
+            services: components["schemas"]["ServiceDto"][];
         };
         SetApplicationAlertingRequest: {
             sensitivity: null | components["schemas"]["Sensitivity"];

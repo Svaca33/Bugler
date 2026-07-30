@@ -42,9 +42,9 @@ public sealed class CatalogDeletionTests : IAsyncLifetime
             $"SELECT COUNT(*) FROM registry.api_keys WHERE service_id = '{service}'", 0));
         Assert.Equal(HttpStatusCode.Unauthorized, (await IngestAsync(_harness.ApiKey)).StatusCode);
 
-        var remaining = await _harness.Client.GetFromJsonAsync<List<ServiceDto>>(
+        var remaining = await _harness.Client.GetFromJsonAsync<ServiceListDto>(
             $"/api/admin/applications/{_harness.ApplicationId}/services");
-        Assert.Empty(remaining!);
+        Assert.Empty(remaining!.Services);
 
         // Delivered messages are dropped: a quiet outbox is the steady state.
         Assert.Equal(0, await _harness.WaitForCountAsync(

@@ -5,6 +5,7 @@ using Bugler.Exploration.BrowseCatalog;
 using Bugler.Registry.ManageApiKeys;
 using Bugler.Registry.ManageCatalog;
 using Google.Protobuf;
+using Microsoft.AspNetCore.Hosting;
 using OpenTelemetry.Proto.Collector.Logs.V1;
 using OpenTelemetry.Proto.Common.V1;
 using OpenTelemetry.Proto.Logs.V1;
@@ -19,7 +20,11 @@ public sealed class RegistryAdminTests : IAsyncLifetime
 {
     private BuglerHarness _harness = null!;
 
-    public async Task InitializeAsync() => _harness = await BuglerHarness.StartAsync();
+    // A default no code hardcodes, so the listing has to have read it from configuration.
+    private const int DefaultRetentionDays = 45;
+
+    public async Task InitializeAsync() => _harness = await BuglerHarness.StartAsync(
+        builder => builder.UseSetting("Registry:DefaultRetentionDays", $"{DefaultRetentionDays}"));
 
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
@@ -73,6 +78,22 @@ public sealed class RegistryAdminTests : IAsyncLifetime
         var retention = await admin.PutAsJsonAsync(
             $"/api/admin/services/{service.Id}/retention", new { retentionDays = 7 });
         Assert.Equal(HttpStatusCode.NoContent, retention.StatusCode);
+
+        // The listing carries the server default beside the services, so a client can tell an
+        // override from what a service merely inherits.
+        var listing = await admin.GetFromJsonAsync<ServiceListDto>(
+            $"/api/admin/applications/{application.Id}/services");
+        Assert.Equal(DefaultRetentionDays, listing!.DefaultRetentionDays);
+        Assert.Equal(7, listing.Services.Single(s => s.Id == service.Id).RetentionDays);
+        Assert.Null(listing.Services.Single(s => s.Name == "mobile").RetentionDays);
+
+        var clear = await admin.PutAsJsonAsync(
+            $"/api/admin/services/{service.Id}/retention", new { retentionDays = (int?)null });
+        Assert.Equal(HttpStatusCode.NoContent, clear.StatusCode);
+
+        var cleared = await admin.GetFromJsonAsync<ServiceListDto>(
+            $"/api/admin/applications/{application.Id}/services");
+        Assert.Null(cleared!.Services.Single(s => s.Id == service.Id).RetentionDays);
     }
 
     [Fact]

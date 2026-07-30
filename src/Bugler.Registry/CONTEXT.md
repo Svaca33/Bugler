@@ -37,8 +37,12 @@ The credential proving an export comes from a specific Service; it admits teleme
 _Avoid_: token, secret, ingest key
 
 **Retention Policy**:
-How long a Service's telemetry is kept: the server-wide default unless the Service overrides it.
+How long a Service's telemetry is kept: the server-wide default unless the Service overrides it. Not stamped on a Signal when it arrives but applied continuously, so shortening a policy reaches back and takes telemetry that is already stored.
 _Avoid_: TTL, expiration, lifetime
+
+**Effective Retention**:
+The days that actually govern one Service — its own override where it has one, the server-wide default where it has none. What a purge works from, and what a change has to be judged against: dropping an override shortens retention whenever the default is the smaller of the two.
+_Avoid_: resolved retention, actual retention
 
 **Catalog**:
 The browsable inventory of Applications and their Services.

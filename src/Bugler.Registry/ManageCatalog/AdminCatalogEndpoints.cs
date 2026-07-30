@@ -2,6 +2,7 @@ using Bugler.Registry.Catalog;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Bugler.Registry.ManageCatalog;
 
@@ -17,6 +18,12 @@ public sealed record ServiceDto(
     string Name,
     int? RetentionDays,
     DateTimeOffset CreatedAt);
+
+/// <summary>
+/// The Services of one Application together with the retention that applies to those which
+/// do not override it — the client needs both to tell an override from what it inherits.
+/// </summary>
+public sealed record ServiceListDto(int DefaultRetentionDays, IReadOnlyList<ServiceDto> Services);
 
 public sealed record CreateServiceRequest(
     Guid ApplicationId, string Namespace, string Environment, string Name, int? RetentionDays);
@@ -59,17 +66,21 @@ internal static class AdminCatalogEndpoints
         return Results.Ok(new ApplicationDto(application.Id.Value, application.Name, application.CreatedAt));
     }
 
-    public static async Task<IReadOnlyList<ServiceDto>> ListServices(
-        Guid applicationId, RegistryDbContext dbContext, CancellationToken cancellationToken)
+    public static async Task<ServiceListDto> ListServices(
+        Guid applicationId,
+        RegistryDbContext dbContext,
+        IOptions<RegistryOptions> options,
+        CancellationToken cancellationToken)
     {
         var id = new ApplicationId(applicationId);
-        return await dbContext.Services
+        var services = await dbContext.Services
             .Where(s => s.ApplicationId == id)
             .OrderBy(s => s.Namespace).ThenBy(s => s.Environment).ThenBy(s => s.Name)
             .Select(s => new ServiceDto(
                 s.Id.Value, s.ApplicationId.Value, s.Namespace, s.Environment, s.Name,
                 s.RetentionDays, s.CreatedAt))
             .ToListAsync(cancellationToken);
+        return new ServiceListDto(options.Value.DefaultRetentionDays, services);
     }
 
     public static async Task<IResult> CreateService(
