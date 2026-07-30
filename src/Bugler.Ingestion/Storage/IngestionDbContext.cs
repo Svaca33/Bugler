@@ -22,7 +22,13 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             log.Property(l => l.SpanId).HasMaxLength(16);
             log.HasIndex(l => new { l.ServiceId, l.Timestamp }).IsDescending(false, true);
             log.HasIndex(l => l.TraceId);
-            log.HasIndex(l => l.Attributes).HasMethod("gin");
+            // Serves the Exploration log list, its total and its Volume (ADR 0012): `WHERE
+            // service_id = ANY(@services) AND timestamp … ORDER BY timestamp DESC LIMIT n`.
+            // Timestamp leads so the index already stands in the order asked for and the LIMIT
+            // stops the scan; the other two columns keep the Source Filter and the severity
+            // bands off the heap.
+            log.HasIndex(l => new { l.Timestamp, l.ServiceId, l.SeverityNumber })
+                .IsDescending(true, false, false);
             // Serves the Alerting detection poll (ADR 0010): `WHERE id > @from AND
             // severity_number >= 17|13 ORDER BY id` — both floors imply this predicate.
             log.HasIndex(l => l.Id).HasFilter("severity_number >= 13")
@@ -41,7 +47,6 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             span.Property(s => s.Links).HasColumnType("jsonb");
             span.HasIndex(s => new { s.ServiceId, s.StartTime }).IsDescending(false, true);
             span.HasIndex(s => s.TraceId);
-            span.HasIndex(s => s.Attributes).HasMethod("gin");
         });
     }
 
