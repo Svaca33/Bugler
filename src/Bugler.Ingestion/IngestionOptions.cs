@@ -12,4 +12,11 @@ public sealed class IngestionOptions
 
     /// <summary>How often expired telemetry is purged.</summary>
     public int PurgeIntervalMinutes { get; set; } = 60;
+
+    /// <summary>
+    /// How many Signals one purge statement removes before committing and starting the next.
+    /// Bounds the transaction, not the run: a run keeps issuing statements until nothing expired
+    /// is left.
+    /// </summary>
+    public int PurgeBatchSize { get; set; } = 50_000;
 }
