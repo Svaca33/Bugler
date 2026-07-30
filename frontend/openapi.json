@@ -22,6 +22,45 @@
         }
       }
     },
+    "/api/admin/mail/test": {
+      "post": {
+        "tags": [
+          "SendTestMail"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestMailResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/status": {
       "get": {
         "tags": [
@@ -2323,6 +2362,44 @@
           }
         }
       },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ResetPasswordRequest": {
         "required": [
           "token",
@@ -2644,6 +2721,17 @@
           }
         }
       },
+      "TestMailResult": {
+        "required": [
+          "sentTo"
+        ],
+        "type": "object",
+        "properties": {
+          "sentTo": {
+            "type": "string"
+          }
+        }
+      },
       "TraceDetailResponse": {
         "required": [
           "traceId",
@@ -2901,6 +2989,9 @@
   "tags": [
     {
       "name": "Bugler.Host"
+    },
+    {
+      "name": "SendTestMail"
     },
     {
       "name": "AuthEndpoints"

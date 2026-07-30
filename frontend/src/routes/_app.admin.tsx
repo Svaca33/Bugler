@@ -3,12 +3,15 @@ import { Navigate, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { UsersAdminPage } from "@/features/access/UsersAdminPage";
 import { useCurrentUser } from "@/features/access/useAuth";
 import { CatalogAdminPage } from "@/features/registry/CatalogAdminPage";
+import { ServerAdminPage } from "@/features/server/ServerAdminPage";
 
-type AdminSection = "topology" | "people";
+type AdminSection = "topology" | "people" | "server";
+
+const SECTIONS: AdminSection[] = ["topology", "people", "server"];
 
 export const Route = createFileRoute("/_app/admin")({
   validateSearch: (search: Record<string, unknown>): { section: AdminSection } => ({
-    section: search.section === "people" ? "people" : "topology",
+    section: SECTIONS.find(s => s === search.section) ?? "topology",
   }),
   component: AdminRoute,
 });
@@ -44,11 +47,18 @@ function AdminRoute() {
             active={section === "people"}
             onClick={() => navigate({ search: { section: "people" }, replace: true })}
           />
+          <Tab
+            label="Server"
+            active={section === "server"}
+            onClick={() => navigate({ search: { section: "server" }, replace: true })}
+          />
         </nav>
       </div>
 
       <div className="min-h-0 flex-1">
-        {section === "topology" ? <CatalogAdminPage /> : <UsersAdminPage />}
+        {section === "topology" && <CatalogAdminPage />}
+        {section === "people" && <UsersAdminPage />}
+        {section === "server" && <ServerAdminPage />}
       </div>
     </div>
   );

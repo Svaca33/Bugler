@@ -62,6 +62,15 @@ app.MapGet("/health", async (HealthProbe probe, CancellationToken cancellationTo
 
 var appSurface = app.MapGroup("").ServedOn(Surface.App);
 appSurface.MapOpenApi();
+
+// A deployment diagnostic, like /health: whether this server can send mail at all.
+appSurface.MapPost("/api/admin/mail/test", SendTestMail.Handle)
+    .RequireAuthorization("Admin")
+    .Produces<TestMailResult>()
+    // The refusal is the useful answer here, so it belongs in the document like any other.
+    .ProducesProblem(StatusCodes.Status400BadRequest)
+    .ProducesProblem(StatusCodes.Status502BadGateway);
+
 appSurface.MapExploration();
 appSurface.MapAccess();
 appSurface.MapAlerting();

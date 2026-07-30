@@ -37,6 +37,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TestMailResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/status": {
         parameters: {
             query?: never;
@@ -1810,6 +1863,14 @@ export interface components {
         ObservedKeysResponse: {
             items: components["schemas"]["ObservedKeyDto"][];
         };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+        };
         ResetPasswordRequest: {
             token: string;
             newPassword: string;
@@ -1879,6 +1940,9 @@ export interface components {
         SubscriptionsDto: {
             applicationIds: string[];
             serviceIds: string[];
+        };
+        TestMailResult: {
+            sentTo: string;
         };
         TraceDetailResponse: {
             traceId: string;
