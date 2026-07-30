@@ -122,7 +122,7 @@ internal static class SummarizeLogVolumeEndpoint
         }
 
         await using var command = dataSource.CreateCommand();
-        command.CommandTimeout = Sql.AggregateTimeoutSeconds;
+        command.CommandTimeout = Sql.VolumeTimeoutSeconds;
         var where = criteria.Where(command, serviceIds);
         command.CommandText = $"SELECT min(timestamp) FROM telemetry.log_records{where}";
 
@@ -138,7 +138,7 @@ internal static class SummarizeLogVolumeEndpoint
         CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand();
-        command.CommandTimeout = Sql.AggregateTimeoutSeconds;
+        command.CommandTimeout = Sql.VolumeTimeoutSeconds;
         var where = criteria.Where(command, serviceIds);
         command.Parameters.AddWithValue("width", width);
 
