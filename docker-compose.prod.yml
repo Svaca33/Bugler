@@ -16,7 +16,7 @@ services:
   bugler:
     # Pinned to a version in .env, never to a floating tag: rolling back is then a one-line edit
     # and a restart, and two servers on the same tag are running the same thing.
-    image: ${BUGLER_IMAGE:?set BUGLER_IMAGE in .env, e.g. svaca33/bugler:1.0.0}
+    image: ${BUGLER_IMAGE:?set BUGLER_IMAGE in .env to the version you were told to run, e.g. svaca33/bugler:0.1.69}
     restart: unless-stopped
     environment:
       # Maximum Pool Size is deliberate: the cluster's max_connections is shared with every other
