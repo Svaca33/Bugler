@@ -26,6 +26,8 @@ public sealed class Delivery
 public enum DeliveryKind : short
 {
     Alert = 1,
+
+    /// <summary>Historical only: ADR 0003 retired the All Clear. Old rows keep the value; nothing writes it.</summary>
     AllClear = 2,
 }
 

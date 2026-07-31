@@ -1246,7 +1246,8 @@ export interface paths {
                 query?: {
                     applicationId?: string;
                     serviceId?: string;
-                    open?: boolean;
+                    state?: components["schemas"]["EpisodeState"][];
+                    fingerprint?: string;
                     beforeId?: string;
                     limit?: number | string;
                 };
@@ -1269,6 +1270,111 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/acknowledgement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/solve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1731,13 +1837,6 @@ export interface components {
             environment: string;
             name: string;
         };
-        ChangePasswordRequest: {
-            currentPassword: string;
-            newPassword: string;
-        };
-        ChatWebhookDto: {
-            domain: string;
-        };
         CreateApplicationRequest: {
             name: string;
         };
@@ -1766,8 +1865,6 @@ export interface components {
             isAdmin: boolean;
             grantedApplicationIds: string[];
         };
-        /** @enum {unknown} */
-        EpisodeCloseReason: "QuietWindow" | "SensitivityOff" | null;
         EpisodeDto: {
             /** Format: uuid */
             id: string;
@@ -1775,11 +1872,12 @@ export interface components {
             applicationId: string;
             /** Format: uuid */
             serviceId: string;
+            fingerprint: string;
+            state: components["schemas"]["EpisodeState"];
             /** Format: date-time */
             openedAt: string;
             /** Format: date-time */
             closedAt: null | string;
-            closeReason: null | components["schemas"]["EpisodeCloseReason"];
             /** Format: date-time */
             lastMatchAt: string;
             /** Format: int32 */
@@ -1793,13 +1891,30 @@ export interface components {
             /** Format: int16 */
             firstLogSeverity: number | string;
             firstLogBody: null | string;
+            /** Format: date-time */
+            acknowledgedAt: null | string;
+            acknowledgedBy: null | string;
+            /** Format: date-time */
+            solvedAt: null | string;
+            solvedBy: null | string;
+            /** Format: int32 */
+            priorCount: number | string;
         };
+        /** @enum {unknown} */
+        EpisodeState: "Open" | "Quieted" | "Solved" | "Muted";
         ForgotPasswordRequest: {
             email: string;
         };
         GrantRequest: {
             /** Format: uuid */
             applicationId: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        ChatWebhookDto: {
+            domain: string;
         };
         IssuedApiKeyDto: {
             /** Format: uuid */

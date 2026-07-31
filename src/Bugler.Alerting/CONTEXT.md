@@ -1,6 +1,6 @@
 # Alerting
 
-The unattended watch over incoming logs: notices when a Service starts logging trouble, opens an Episode, tells the people who asked, and tells them when it is over. Detection is configured per Application; delivery is each person's own choice.
+The unattended watch over incoming logs: notices when a Service starts logging trouble, opens an Episode, and tells the people who asked. How a stretch of trouble ended — on its own, by a human verdict, or because the watching stopped — is read in the UI, never mailed. Detection is configured per Application; delivery is each person's own choice.
 
 ## Language
 
@@ -17,23 +17,35 @@ The kind of trouble a Log Record announces: the sender's message template when i
 _Avoid_: error type, issue, grouping key
 
 **Episode**:
-One bounded stretch of one kind of trouble in one Service: opened by the first matching Log Record of a Fingerprint with no open Episode, counting every match of that Fingerprint since, closed when a Quiet Window passes without one — or immediately and silently when Sensitivity turns Off. Never spans Services, never merges, and outlives the Log Records that drove it.
+One bounded stretch of one kind of trouble in one Service: opened by the first matching Log Record of a Fingerprint with no open Episode, counting every match of that Fingerprint since. It ends by Quieting, by being Solved, or by being Muted — and never reopens: a later match of the same Fingerprint starts a new Episode. Never spans Services, never merges, and outlives the Log Records that drove it.
 _Avoid_: incident, outage, alert group, error burst
+
+**Quieted**:
+How an Episode ends on its own: its Service's Quiet Window passed without a matching Log Record. The trouble stopped; nothing is claimed to be fixed. Only the passage of time does this — no hand can.
+_Avoid_: auto-resolved, expired, closed by quiet window
+
+**Solved**:
+The one human verdict on an Episode: the cause was fixed. May be rendered on any Episode not yet Solved and ends an open one on the spot. Terminal and irreversible — trouble that returns is a new Episode. Consumes any acknowledgement.
+_Avoid_: resolved, fixed, closed
+
+**Muted**:
+How an Episode ends when its Service's Sensitivity turns Off: the watching stopped, nothing is claimed about the problem. May still be Solved later.
+_Avoid_: silenced, dismissed
+
+**Acknowledged**:
+The live mark that somebody has taken an Episode on — who and when. A flag beside the lifecycle, not a state of it: it survives Quieting, may be withdrawn or taken over by anyone who may see the Application, and is removed by Solve — a Solved Episode is never Acknowledged.
+_Avoid_: assigned, claimed, owned
 
 **Alert**:
 The message announcing that an Episode opened: which Service, when, and the first matching Log Record itself. Exactly one per Episode per channel.
 _Avoid_: notification, alarm
 
-**All Clear**:
-The message announcing that an Episode closed by falling quiet: how long it ran and how much it counted. An Episode silenced by Sensitivity turning Off sends none — nothing was resolved.
-_Avoid_: resolved notice, recovery message
-
 **Subscription**:
-A User's standing personal request to be mailed Alerts and All Clears — for one Application (all its Services, present and future) or for one Service. Dormant while its User cannot currently read the Application; dies only with the Deletion of the User or of what it points at.
+A User's standing personal request to be mailed Alerts — for one Application (all its Services, present and future) or for one Service. Dormant while its User cannot currently read the Application; dies only with the Deletion of the User or of what it points at.
 _Avoid_: watch, recipient list, notification preference
 
 **Chat Webhook**:
-The one optional Google Chat incoming webhook an Application may hold; every Alert and All Clear of its Services also goes there. A secret only Admins handle.
+The one optional Google Chat incoming webhook an Application may hold; every Alert of its Services also goes there. A secret only Admins handle.
 _Avoid_: chat integration, space URL
 
 **Delivery**:

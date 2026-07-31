@@ -2,19 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 
-export function useCurrentUser() {
-  return useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: async () => {
-      const { data, response } = await api.GET("/api/auth/me");
-      if (response.status === 401) return null;
-      if (data === undefined) throw new Error("Failed to load session");
-      return data;
-    },
-    retry: false,
-    staleTime: 60_000,
-  });
-}
+// The "who is signed in" query moved to @/api/queries (app-wide, not an access feature);
+// re-exported here so the access feature keeps one import for its auth hooks.
+export { useCurrentUser } from "@/api/queries";
 
 export function useAuthStatus() {
   return useQuery({

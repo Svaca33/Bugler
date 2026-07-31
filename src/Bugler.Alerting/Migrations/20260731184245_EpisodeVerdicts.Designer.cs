@@ -3,6 +3,7 @@ using System;
 using Bugler.Alerting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Bugler.Alerting.Migrations
 {
     [DbContext(typeof(AlertingDbContext))]
-    partial class AlertingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260731184245_EpisodeVerdicts")]
+    partial class EpisodeVerdicts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

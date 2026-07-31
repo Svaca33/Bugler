@@ -1,4 +1,3 @@
-using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
 using Bugler.Alerting.Settings;
 using Bugler.Registry.Contracts;
@@ -10,9 +9,10 @@ using Microsoft.Extensions.Logging;
 namespace Bugler.Alerting.CloseQuietEpisodes;
 
 /// <summary>
-/// One closing sweep: an open Episode whose Service stayed quiet for its Quiet Window closes
-/// with an All Clear owed to exactly the recipients of its Alert; one whose Sensitivity turned
-/// Off closes silently (the net for a detect run racing a settings change). One transaction.
+/// One closing sweep, and nothing but state: an open Episode whose Service stayed quiet for its
+/// Quiet Window becomes Quieted; one whose Sensitivity turned Off becomes Muted (the net for a
+/// detect run racing a settings change). Nobody is notified — the Alert is the only message
+/// Bugler sends (ADR 0003). One transaction.
 /// </summary>
 public sealed class EpisodeCloser(
     IServiceScopeFactory scopeFactory,
@@ -58,7 +58,6 @@ public sealed class EpisodeCloser(
                 case EpisodeCloseReason.QuietWindow:
                     episode.ClosedAt = now;
                     episode.CloseReason = EpisodeCloseReason.QuietWindow;
-                    await EnqueueAllClearsAsync(dbContext, episode, now, cancellationToken);
                     logger.LogInformation(
                         "Episode of service {ServiceId} fell quiet after {Errors} errors "
                         + "and {Warns} warnings",
@@ -69,34 +68,5 @@ public sealed class EpisodeCloser(
 
         await SilentClose.ApplyAsync(dbContext, mutedServices, now, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// The All Clear goes to exactly who got the Alert: to a mid-episode subscriber it would
-    /// announce a resolution of nothing, and a mid-episode unsubscriber still deserves the end
-    /// of the story they were told started. Access is still re-checked at send time.
-    /// </summary>
-    private static async Task EnqueueAllClearsAsync(
-        AlertingDbContext dbContext, Episode episode, DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        var alerts = await dbContext.Deliveries
-            .AsNoTracking()
-            .Where(d => d.EpisodeId == episode.Id && d.Kind == DeliveryKind.Alert)
-            .ToListAsync(cancellationToken);
-
-        foreach (var alert in alerts)
-        {
-            dbContext.Deliveries.Add(new Delivery
-            {
-                Id = Guid.CreateVersion7(),
-                EpisodeId = episode.Id,
-                Kind = DeliveryKind.AllClear,
-                Channel = alert.Channel,
-                UserId = alert.UserId,
-                CreatedAt = now,
-                NextAttemptAt = now,
-            });
-        }
     }
 }

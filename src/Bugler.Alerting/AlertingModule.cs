@@ -1,3 +1,4 @@
+using Bugler.Alerting.ActOnEpisodes;
 using Bugler.Alerting.CloseQuietEpisodes;
 using Bugler.Alerting.DeliverMessages;
 using Bugler.Alerting.DetectEpisodes;
@@ -65,6 +66,9 @@ public static class AlertingModule
         user.MapGet("/subscriptions", SubscriptionEndpoints.GetOwn).Produces<SubscriptionsDto>();
         user.MapPut("/subscriptions", SubscriptionEndpoints.SetOwn);
         user.MapGet("/episodes", EpisodesEndpoint.Handle).Produces<ListEpisodesResponse>();
+        user.MapPost("/episodes/{id:guid}/acknowledge", EpisodeActionEndpoints.Acknowledge);
+        user.MapDelete("/episodes/{id:guid}/acknowledgement", EpisodeActionEndpoints.Unacknowledge);
+        user.MapPost("/episodes/{id:guid}/solve", EpisodeActionEndpoints.Solve);
 
         return endpoints;
     }

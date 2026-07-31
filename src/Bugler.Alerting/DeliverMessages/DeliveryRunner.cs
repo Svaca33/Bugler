@@ -33,8 +33,11 @@ public sealed class DeliveryRunner(
 
         await LapseExpiredAsync(dbContext, now, cancellationToken);
 
+        // Alerts are the only messages Bugler sends (ADR 0003). Historical AllClear rows are
+        // lapsed or delivered; the filter is belt and braces against composing one anyway.
         var due = await dbContext.Deliveries
-            .Where(d => d.DeliveredAt == null && d.LapsedAt == null && d.NextAttemptAt <= now)
+            .Where(d => d.Kind == DeliveryKind.Alert
+                && d.DeliveredAt == null && d.LapsedAt == null && d.NextAttemptAt <= now)
             .OrderBy(d => d.CreatedAt)
             .Take(BatchSize)
             .ToListAsync(cancellationToken);
@@ -62,14 +65,6 @@ public sealed class DeliveryRunner(
         foreach (var delivery in due)
         {
             var episode = episodes[delivery.EpisodeId];
-
-            // An All Clear must not overtake its Alert: the end of a story nobody was told
-            // began would only confuse. It waits for the sibling to succeed or lapse.
-            if (delivery.Kind == DeliveryKind.AllClear
-                && await AlertSiblingStillPendingAsync(dbContext, delivery, cancellationToken))
-            {
-                continue;
-            }
 
             if (!identityByService.TryGetValue(episode.ServiceId, out var identity))
             {
@@ -111,8 +106,7 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var message = MessageComposer.Compose(
-            delivery.Kind, episode, identity, options.Value.PublicBaseUrl);
+        var message = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
         await AttemptAsync(
             delivery,
             () => mailSender.SendAsync(
@@ -134,8 +128,7 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var message = MessageComposer.Compose(
-            delivery.Kind, episode, identity, options.Value.PublicBaseUrl);
+        var message = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
         await AttemptAsync(
             delivery,
             () => chatSender.SendAsync(webhookUrl, message.Text, cancellationToken));
@@ -174,17 +167,6 @@ public sealed class DeliveryRunner(
             logger.LogWarning("{Count} deliveries outlived their time-to-live and lapsed", lapsed);
         }
     }
-
-    private static async Task<bool> AlertSiblingStillPendingAsync(
-        AlertingDbContext dbContext, Delivery allClear, CancellationToken cancellationToken) =>
-        await dbContext.Deliveries.AnyAsync(
-            d => d.EpisodeId == allClear.EpisodeId
-                && d.Kind == DeliveryKind.Alert
-                && d.Channel == allClear.Channel
-                && d.UserId == allClear.UserId
-                && d.DeliveredAt == null
-                && d.LapsedAt == null,
-            cancellationToken);
 
     /// <summary>One Access ask per Application: which of these subscribers may be told right now?</summary>
     private static async Task<RecipientDirectory> ResolveRecipientsAsync(

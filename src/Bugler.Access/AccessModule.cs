@@ -5,6 +5,7 @@ using Bugler.Access.Outbox;
 using Bugler.Access.ReadVisibility;
 using Bugler.Access.ResetPassword;
 using Bugler.Access.ResolveMailRecipients;
+using Bugler.Access.ResolveUserNames;
 using Bugler.Access.RevokeDeletedApplicationGrants;
 using Bugler.Access.Users;
 using Bugler.SharedKernel;
@@ -39,6 +40,7 @@ public static class AccessModule
         services.AddHttpContextAccessor();
         services.AddScoped<IReadVisibility, GrantedVisibility>();
         services.AddScoped<IMailRecipients, MailRecipientResolver>();
+        services.AddScoped<IUserNames, UserNameResolver>();
         services.AddScoped<IIntegrationEventHandler<ApplicationDeleted>, DeletedApplicationGrantRevoker>();
 
         // The dispatcher drains every IIntegrationEventOutbox; publishing stays on the concrete

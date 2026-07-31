@@ -72,9 +72,15 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             episode.Property(e => e.Fingerprint).HasMaxLength(300);
             // The invariant: at most one open Episode per kind of trouble per Service.
             // Also the open-episode scan.
-            episode.HasIndex(e => new { e.ServiceId, e.Fingerprint }).IsUnique()
+            // Named HasIndex overloads make two distinct indexes over the same columns; the
+            // explicit database names keep the snake_case convention from renaming them.
+            episode.HasIndex(e => new { e.ServiceId, e.Fingerprint }, "one_open_per_kind")
+                .IsUnique()
                 .HasFilter("closed_at IS NULL")
                 .HasDatabaseName("ix_episodes_one_open_per_kind");
+            // The full history of a kind of trouble: recurrence counts and the grouped UI read.
+            episode.HasIndex(e => new { e.ServiceId, e.Fingerprint }, "kind_history")
+                .HasDatabaseName("ix_episodes_kind_history");
             episode.HasIndex(e => e.ApplicationId);
             episode.HasIndex(e => new { e.OpenedAt, e.Id });
         });

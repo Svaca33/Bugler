@@ -33,5 +33,66 @@ public sealed class Episode
     public DateTimeOffset LastMatchAt { get; set; }
 
     public DateTimeOffset? ClosedAt { get; set; }
+
+    /// <summary>How the stretch stopped taking matches; the display state is derived, never stored twice (ADR 0003).</summary>
     public EpisodeCloseReason? CloseReason { get; set; }
+
+    public DateTimeOffset? AcknowledgedAt { get; private set; }
+    public Guid? AcknowledgedByUserId { get; private set; }
+
+    public DateTimeOffset? SolvedAt { get; private set; }
+    public Guid? SolvedByUserId { get; private set; }
+
+    /// <summary>Not mapped (no setter): Solved wins, then whether — and how — the stretch ended.</summary>
+    public EpisodeState State =>
+        SolvedAt is not null ? EpisodeState.Solved
+        : ClosedAt is null ? EpisodeState.Open
+        : CloseReason is EpisodeCloseReason.QuietWindow ? EpisodeState.Quieted
+        : EpisodeState.Muted;
+
+    /// <summary>
+    /// Takes the Episode on — or over: one slot, last hand wins (see CONTEXT.md: Acknowledged).
+    /// False on a Solved Episode, which is never Acknowledged.
+    /// </summary>
+    public bool Acknowledge(Guid userId, DateTimeOffset now)
+    {
+        if (SolvedAt is not null)
+        {
+            return false;
+        }
+
+        AcknowledgedByUserId = userId;
+        AcknowledgedAt = now;
+        return true;
+    }
+
+    /// <summary>Withdraws the acknowledgement — the live claim ends, no record remains.</summary>
+    public void Unacknowledge()
+    {
+        AcknowledgedByUserId = null;
+        AcknowledgedAt = null;
+    }
+
+    /// <summary>
+    /// The terminal human verdict (see CONTEXT.md: Solved): ends an open Episode on the spot and
+    /// consumes any acknowledgement. False when already Solved — the verdict is rendered once.
+    /// </summary>
+    public bool Solve(Guid userId, DateTimeOffset now)
+    {
+        if (SolvedAt is not null)
+        {
+            return false;
+        }
+
+        if (ClosedAt is null)
+        {
+            ClosedAt = now;
+            CloseReason = EpisodeCloseReason.Solved;
+        }
+
+        SolvedByUserId = userId;
+        SolvedAt = now;
+        Unacknowledge();
+        return true;
+    }
 }

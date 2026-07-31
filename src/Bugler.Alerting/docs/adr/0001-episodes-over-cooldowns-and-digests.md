@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted, amended by ADR 0003 (the All Clear retired)
 ---
 
 # Episodes over cooldowns and digests

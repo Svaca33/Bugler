@@ -1309,10 +1309,20 @@
             }
           },
           {
-            "name": "open",
+            "name": "state",
             "in": "query",
             "schema": {
-              "type": "boolean"
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EpisodeState"
+              }
+            }
+          },
+          {
+            "name": "fingerprint",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1346,6 +1356,75 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/acknowledge": {
+      "post": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/acknowledgement": {
+      "delete": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/solve": {
+      "post": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -1845,32 +1924,6 @@
           }
         }
       },
-      "ChangePasswordRequest": {
-        "required": [
-          "currentPassword",
-          "newPassword"
-        ],
-        "type": "object",
-        "properties": {
-          "currentPassword": {
-            "type": "string"
-          },
-          "newPassword": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatWebhookDto": {
-        "required": [
-          "domain"
-        ],
-        "type": "object",
-        "properties": {
-          "domain": {
-            "type": "string"
-          }
-        }
-      },
       "CreateApplicationRequest": {
         "required": [
           "name"
@@ -1987,28 +2040,27 @@
           }
         }
       },
-      "EpisodeCloseReason": {
-        "enum": [
-          "QuietWindow",
-          "SensitivityOff",
-          null
-        ]
-      },
       "EpisodeDto": {
         "required": [
           "id",
           "applicationId",
           "serviceId",
+          "fingerprint",
+          "state",
           "openedAt",
           "closedAt",
-          "closeReason",
           "lastMatchAt",
           "errorCount",
           "warnCount",
           "firstLogId",
           "firstLogTimestamp",
           "firstLogSeverity",
-          "firstLogBody"
+          "firstLogBody",
+          "acknowledgedAt",
+          "acknowledgedBy",
+          "solvedAt",
+          "solvedBy",
+          "priorCount"
         ],
         "type": "object",
         "properties": {
@@ -2024,6 +2076,12 @@
             "type": "string",
             "format": "uuid"
           },
+          "fingerprint": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/EpisodeState"
+          },
           "openedAt": {
             "type": "string",
             "format": "date-time"
@@ -2034,16 +2092,6 @@
               "string"
             ],
             "format": "date-time"
-          },
-          "closeReason": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/EpisodeCloseReason"
-              }
-            ]
           },
           "lastMatchAt": {
             "type": "string",
@@ -2090,8 +2138,50 @@
               "null",
               "string"
             ]
+          },
+          "acknowledgedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "acknowledgedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "solvedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "solvedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "priorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
+      },
+      "EpisodeState": {
+        "enum": [
+          "Open",
+          "Quieted",
+          "Solved",
+          "Muted"
+        ]
       },
       "ForgotPasswordRequest": {
         "required": [
@@ -2113,6 +2203,32 @@
           "applicationId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
           }
         }
       },
@@ -3028,6 +3144,9 @@
     },
     {
       "name": "EpisodesEndpoint"
+    },
+    {
+      "name": "EpisodeActionEndpoints"
     },
     {
       "name": "AdminCatalogEndpoints"

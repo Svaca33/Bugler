@@ -39,7 +39,7 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
     public async Task DisposeAsync() => await _harness.DisposeAsync();
 
     [Fact]
-    public async Task An_episode_is_announced_by_mail_and_chat_and_resolved_the_same_way()
+    public async Task An_episode_is_announced_by_mail_and_chat_and_quiets_in_silence()
     {
         await SubscribeAdminAndSetWebhookAsync();
         await OpenEpisodeAsync();
@@ -55,52 +55,19 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
         Assert.Contains("chat.googleapis.com", alertChat.WebhookUrl);
 
         // The service falls quiet: backdate the last match past the 15-minute default window.
+        // The Episode becomes Quieted — and nobody is told (ADR 0003): the Alert is the only
+        // message Bugler sends.
         await _harness.ExecuteSqlAsync(
             "UPDATE alerting.episodes SET last_match_at = now() - interval '20 minutes'");
         await _closer.CloseOnceAsync(CancellationToken.None);
         await _runner.DeliverOnceAsync(CancellationToken.None);
 
-        Assert.Equal(2, _mail.Sent.Count);
-        Assert.Equal("[Bugler] All clear in Eshop acme/prod/web", _mail.Sent[1].Subject);
-        Assert.Contains("Counted: 1 error, 0 warnings.", _mail.Sent[1].TextBody);
-        Assert.Equal(2, _chat.Sent.Count);
+        Assert.Single(_mail.Sent);
+        Assert.Single(_chat.Sent);
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes WHERE closed_at IS NOT NULL AND close_reason = 1", 1));
         Assert.Equal(0, await _harness.WaitForCountAsync(
-            "SELECT COUNT(*) FROM alerting.deliveries WHERE delivered_at IS NULL", 0));
-    }
-
-    [Fact]
-    public async Task An_all_clear_never_overtakes_its_alert()
-    {
-        await SubscribeAdminAndSetWebhookAsync();
-        await OpenEpisodeAsync();
-
-        _mail.Fail = true;
-        _chat.Fail = true;
-        await _runner.DeliverOnceAsync(CancellationToken.None);
-        Assert.Equal(2, await _harness.WaitForCountAsync(
-            "SELECT COUNT(*) FROM alerting.deliveries WHERE attempts = 1 AND delivered_at IS NULL", 2));
-
-        await _harness.ExecuteSqlAsync(
-            "UPDATE alerting.episodes SET last_match_at = now() - interval '20 minutes'");
-        await _closer.CloseOnceAsync(CancellationToken.None);
-        await _runner.DeliverOnceAsync(CancellationToken.None);
-
-        // The All Clears exist but wait: their Alert siblings are still owed.
-        Assert.Equal(2, await _harness.WaitForCountAsync(
-            "SELECT COUNT(*) FROM alerting.deliveries WHERE kind = 2 AND attempts = 0", 2));
-        Assert.Empty(_mail.Sent);
-
-        // The outage ends: due Alerts go out first, the All Clears follow next run.
-        _mail.Fail = false;
-        _chat.Fail = false;
-        await _harness.ExecuteSqlAsync(
-            "UPDATE alerting.deliveries SET next_attempt_at = now() - interval '1 second'");
-        await _runner.DeliverOnceAsync(CancellationToken.None);
-        await _runner.DeliverOnceAsync(CancellationToken.None);
-
-        Assert.Equal(2, _mail.Sent.Count);
-        Assert.StartsWith("[Bugler] Trouble", _mail.Sent[0].Subject);
-        Assert.StartsWith("[Bugler] All clear", _mail.Sent[1].Subject);
+            "SELECT COUNT(*) FROM alerting.deliveries WHERE kind = 2", 0));
     }
 
     [Fact]
