@@ -17,10 +17,14 @@ sign in once before it can pull:
 docker login -u svaca33
 ```
 
-Use a **read-only access token**, never the account password. Docker Hub issues them separately and
-either side can revoke one without disturbing anything else — which matters, because `docker login`
-leaves the credential in `~/.docker/config.json` base64-encoded rather than encrypted. Read-only is
-what makes that acceptable: the token can fetch Bugler and do nothing else.
+Use an access token, never the account password: Docker Hub issues them separately and either side
+can revoke one without disturbing anything else. That matters here, because `docker login` leaves
+the credential in `~/.docker/config.json` base64-encoded rather than encrypted — read-only is what
+makes leaving it there acceptable.
+
+The scope wanted is **Read only**, which reaches private repositories. **Public Repo Read-only** is
+a different scope and the wrong one: it reads public content only, so a pull of this image fails
+with a not-found that looks exactly like a typo in the tag.
 
 Note where this leaves the deployment: it depends on a personal Docker Hub account. Moving the image
 to a registry the company owns, or making it public if Bugler is ever open-sourced, removes both the
