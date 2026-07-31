@@ -6,6 +6,38 @@ already exist and belong to somebody else. This describes that deployment:
 [docker-compose.prod.yml](docker-compose.prod.yml) runs **one container**, against the machine's
 own PostgreSQL and its own mail relay.
 
+The server never builds Bugler and never holds its source. It runs a published image.
+
+## Where the image comes from
+
+Bugler is published to a **private Docker Hub repository**, so the machine has to sign in once
+before it can pull:
+
+```bash
+docker login -u <account>
+```
+
+Use a **read-only access token**, never the account password. Docker Hub issues them separately and
+either side can revoke one without disturbing anything else — which matters, because `docker login`
+leaves the credential in `~/.docker/config.json` base64-encoded rather than encrypted. Read-only is
+what makes that acceptable: the token can fetch Bugler and do nothing else.
+
+Note where this leaves the deployment: it depends on a personal Docker Hub account. Moving the image
+to a registry the company owns, or making it public if Bugler is ever open-sourced, removes both the
+token and that dependency.
+
+### Publishing a version
+
+From a machine with the source:
+
+```bash
+docker build -t <account>/bugler:1.0 .
+docker push <account>/bugler:1.0
+```
+
+Tag versions rather than pushing over `latest`. The server pins the tag in its `.env`, so a rollback
+is one line and a restart — and two servers on the same tag are demonstrably running the same thing.
+
 ## What to ask of whoever administers the database
 
 Bugler needs its own database and role, and none of this is something Bugler can do for itself.
@@ -52,11 +84,15 @@ secret belongs in the compose file itself, and `.env` is not committed.
 cp .env.example .env
 ```
 
-Then:
+`BUGLER_IMAGE` is the version to run — pin it, never `latest`. Then:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
+
+Only three files need to reach the server: `docker-compose.prod.yml`, the `.env` built from
+`.env.example`, and this document. Everything else arrives in the image.
 
 ## What is exposed where
 

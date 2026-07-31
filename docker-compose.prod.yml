@@ -5,14 +5,18 @@
 # it to them. There is no postgres service here and no mailpit: mail sent from this file reaches
 # real inboxes.
 #
-# Everything that differs between installations comes from a .env file beside this one. See
-# DEPLOYMENT.md for what belongs in it and what to ask of whoever administers the database.
+# It runs a published image and never builds: the server is not expected to hold the source. See
+# DEPLOYMENT.md for where the image comes from and what to ask of whoever administers the database.
+# Everything that differs between installations comes from a .env file beside this one.
 #
-#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
 
 services:
   bugler:
-    build: .
+    # Pinned to a version in .env, never to a floating tag: rolling back is then a one-line edit
+    # and a restart, and two servers on the same tag are running the same thing.
+    image: ${BUGLER_IMAGE:?set BUGLER_IMAGE in .env, e.g. account/bugler:1.0}
     restart: unless-stopped
     environment:
       # Maximum Pool Size is deliberate: the cluster's max_connections is shared with every other
