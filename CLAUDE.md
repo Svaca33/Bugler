@@ -12,7 +12,7 @@ cd frontend && bun dev             # UI on :3000, proxies /api + /openapi to :80
 cd e2e && bun run test             # Playwright; needs `docker compose up -d postgres mailpit` first
 docker compose up -d --build bugler  # full stack on :8080; image bakes the frontend — rebuild after ANY change
 powershell -File scripts/redeploy.ps1  # finish a change: build+typecheck gate → stop dev servers → rebuild the bugler container → wait for /health
-powershell -File scripts/publish-image.ps1 -Repository svaca33/bugler  # build + tag from <Version> in Directory.Build.props; -Push to publish
+powershell -File scripts/publish-image.ps1 -Repository svaca33/bugler  # build + tag as <VersionPrefix>.<commits behind HEAD>; refuses a dirty tree; -Push to publish
 dotnet run --project tools/Bugler.SampleSource -- --api-key blgr_…  # stream sample telemetry into a running Bugler (tools/Bugler.SampleSource/README.md)
 ```
 

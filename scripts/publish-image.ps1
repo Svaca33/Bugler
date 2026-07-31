@@ -4,9 +4,14 @@
     Builds the Bugler image and tags it with the version from Directory.Build.props.
 
 .DESCRIPTION
-    The tag is never typed by hand: it is read from <Version> in Directory.Build.props, the same
-    property the assemblies inside the image are stamped from. The tag on the registry and the
-    build inside the container therefore cannot drift apart.
+    The tag is never typed by hand. It is <VersionPrefix> from Directory.Build.props followed by
+    the number of commits behind HEAD, and that same count is passed into the container build, so
+    the assemblies inside the image carry exactly the version the tag claims. Every commit is
+    therefore a version of its own, and no two builds can claim the same one.
+
+    A working tree with uncommitted changes is refused: the count would name a commit whose
+    content is not what is being built, and a tag that lies about which commit it holds is worse
+    than no tag. -AllowDirty is there for when that is understood and meant anyway.
 
     Pushing is deliberately a separate step. It needs credentials this script has no business
     holding, and it publishes to somewhere outside this machine — so unless -Push is given, the
@@ -25,7 +30,10 @@ param(
     [string] $Repository,
 
     # Push after building. Requires `docker login` to have been done already.
-    [switch] $Push
+    [switch] $Push,
+
+    # Build anyway from a working tree that has uncommitted changes.
+    [switch] $AllowDirty
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,18 +51,32 @@ function Stop-WithFailure([string] $message) {
 
 $propsPath = Join-Path $repo 'Directory.Build.props'
 [xml] $props = Get-Content -Path $propsPath -Raw
-$versionNode = $props.SelectSingleNode('//Version')
-$version = if ($null -eq $versionNode) { '' } else { $versionNode.InnerText }
-if ([string]::IsNullOrWhiteSpace($version)) {
-    Stop-WithFailure "No <Version> in $propsPath - that file is where the version lives."
+$prefixNode = $props.SelectSingleNode('//VersionPrefix')
+$prefix = if ($null -eq $prefixNode) { '' } else { $prefixNode.InnerText }
+if ([string]::IsNullOrWhiteSpace($prefix)) {
+    Stop-WithFailure "No <VersionPrefix> in $propsPath - that file is where the version lives."
 }
-
-$tag = "${Repository}:${version}"
-Write-Step "Building $tag"
 
 Push-Location $repo
 try {
-    & docker build -t $tag .
+    # A dirty tree would be tagged with the count of the last commit while holding something else.
+    $dirty = & git status --porcelain
+    if ($dirty -and -not $AllowDirty) {
+        Write-Host '    uncommitted:' -ForegroundColor Yellow
+        $dirty | ForEach-Object { Write-Host "        $_" }
+        Stop-WithFailure 'Working tree is not clean - commit first, or pass -AllowDirty.'
+    }
+
+    $height = (& git rev-list --count HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($height)) {
+        Stop-WithFailure 'Could not count commits - is this a git working tree?'
+    }
+
+    $version = "${prefix}.${height}"
+    $tag = "${Repository}:${version}"
+    Write-Step "Building $tag (commit $((& git rev-parse --short HEAD).Trim()))"
+
+    & docker build --build-arg "BUILD_HEIGHT=$height" -t $tag .
     if ($LASTEXITCODE -ne 0) {
         Stop-WithFailure 'docker build failed - nothing was tagged.'
     }

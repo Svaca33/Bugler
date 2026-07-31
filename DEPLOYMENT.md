@@ -38,21 +38,33 @@ token and that dependency.
 
 ### Publishing a version
 
-Bugler's version is written in one place: `<Version>` in
-[Directory.Build.props](Directory.Build.props). Every assembly is stamped from it, and the publish
-script reads it — so the tag is never typed by hand, and an image cannot claim a version different
-from the build inside it.
+A version is `<VersionPrefix>` from [Directory.Build.props](Directory.Build.props) followed by the
+number of commits behind HEAD — `1.0.67`, `1.0.68`, and so on. The first two numbers are raised by
+hand, when a change deserves saying so; the third moves on its own, so **every commit is a version
+of its own** and no two builds can claim the same one.
+
+That count cannot be worked out inside the container — `.dockerignore` keeps `.git` out of the build
+context, and should — so the script counts it outside and passes it in. Which is also what makes the
+tag on the registry and the assemblies inside the image provably the same number, rather than two
+things somebody kept in step by hand.
 
 ```bash
 powershell -File scripts/publish-image.ps1 -Repository svaca33/bugler
 ```
 
-That builds and tags, then stops and prints the push. Pushing needs credentials and puts the image
-somewhere outside the machine, so it stays a deliberate second step — `-Push` does it once
-`docker login` has been done with a token that may write.
+It refuses a working tree with uncommitted changes: the count would name a commit whose content is
+not what is being built, and a tag that lies about which commit it holds is worse than no tag at
+all.
 
-Raise `<Version>` before each release, and never push over a tag that has already shipped: the
-server pins its tag, and going back to it only means anything while it still holds what it held.
+It builds and tags, then stops and prints the push — that needs credentials and puts the image
+somewhere outside the machine, so it stays a deliberate second step. `-Push` does it once
+`docker login` has been done with a token that may write. Never push over a tag that has already
+shipped: the server pins its tag, and going back to it only means anything while it still holds
+what it held.
+
+Note what this rules out: the published version cannot be written down anywhere in this repository,
+because writing it down is a commit, which makes it the previous version. It belongs in the `.env`
+of the server running it, and in whatever you send whoever installs it.
 
 ## What to ask of whoever administers the database
 
