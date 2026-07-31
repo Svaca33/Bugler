@@ -10,11 +10,11 @@ The server never builds Bugler and never holds its source. It runs a published i
 
 ## Where the image comes from
 
-Bugler is published to a **private Docker Hub repository**, so the machine has to sign in once
-before it can pull:
+Bugler is published to **`svaca33/bugler`**, a private Docker Hub repository, so the machine has to
+sign in once before it can pull:
 
 ```bash
-docker login -u <account>
+docker login -u svaca33
 ```
 
 Use a **read-only access token**, never the account password. Docker Hub issues them separately and
@@ -34,7 +34,7 @@ script reads it — so the tag is never typed by hand, and an image cannot claim
 from the build inside it.
 
 ```bash
-powershell -File scripts/publish-image.ps1 -Repository <account>/bugler
+powershell -File scripts/publish-image.ps1 -Repository svaca33/bugler
 ```
 
 That builds and tags, then stops and prints the push. Pushing needs credentials and puts the image
