@@ -40,7 +40,7 @@ Never colour severity from `--chart-1`…`--chart-5`: that ramp is the generic c
 
 ## Where the truth lives
 
-`styles.css` → `@import "_ds_bundle.css"` holds every token (`:root` / `.dark`) and every compiled utility — read it before inventing a class. Each component's API is `components/<group>/<Name>/<Name>.d.ts`; usage judgment and composition examples are in the sibling `<Name>.prompt.md`.
+`styles.css` → `@import "_ds_bundle.css"` holds every token (`:root` / `.dark`) and every compiled utility — read it before inventing a class. `tokens/tokens.css` is the token set alone (with the design-rationale comments); custom properties that appear only in `_ds_bundle.css` — `--tw-*`, `--animate-*`, `--default-*` — are Tailwind plumbing, not tokens. Each component's API is `components/<group>/<Name>/<Name>.d.ts`; usage judgment and composition examples are in the sibling `<Name>.prompt.md`.
 
 ## Example
 

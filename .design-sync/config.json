@@ -6,6 +6,8 @@
   "srcDir": "src/components",
   "tsconfig": "tsconfig.json",
   "cssEntry": ".ds-css/entry.css",
+  "tokensPkg": "..",
+  "tokensGlob": ".ds-css/tokens.css",
   "buildCmd": "cd frontend && bun ds-css/build.ts",
   "docsDir": "../.design-sync/docs",
   "readmeHeader": ".design-sync/conventions.md",
