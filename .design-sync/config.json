@@ -16,7 +16,8 @@
     "Combobox": { "cardMode": "single", "primaryStory": "OpenWithKeys" },
     "Dialog": { "cardMode": "single", "primaryStory": "Destructive", "viewport": "720x520" },
     "Chart": { "cardMode": "single", "primaryStory": "LogVolume", "viewport": "720x400" },
-    "Resizable": { "cardMode": "single", "primaryStory": "LogDetail", "viewport": "720x360" }
+    "Resizable": { "cardMode": "single", "primaryStory": "LogDetail", "viewport": "720x360" },
+    "DetailPanel": { "cardMode": "single", "primaryStory": "ListAndDetail", "viewport": "720x360" }
   },
   "componentSrcMap": {
     "Button": "src/components/ui/button.tsx",
@@ -24,8 +25,11 @@
     "Chart": "src/components/ui/chart.tsx",
     "Checkbox": "src/components/ui/checkbox.tsx",
     "Combobox": "src/components/ui/combobox.tsx",
+    "DetailPanel": "src/components/ui/detail-panel.tsx",
     "Dialog": "src/components/ui/dialog.tsx",
     "FilterChip": "src/components/ui/filter-chip.tsx",
+    "FilterRail": "src/components/ui/filter-rail.tsx",
+    "FilterSelect": "src/components/ui/filter-select.tsx",
     "Input": "src/components/ui/input.tsx",
     "Label": "src/components/ui/label.tsx",
     "Resizable": "src/components/ui/resizable.tsx",
