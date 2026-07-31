@@ -8,6 +8,12 @@ own PostgreSQL and its own mail relay.
 
 The server never builds Bugler and never holds its source. It runs a published image.
 
+Whoever administers that machine does not need this document — it talks about publishing images and
+links into the repository, neither of which is their concern.
+[docs/handover-to-server-admin.md](docs/handover-to-server-admin.md) is the standalone version to
+send them: the six things Bugler asks of the server, the commands to run, and nothing else. Keep the
+two in step when what the server needs changes.
+
 ## Where the image comes from
 
 Bugler is published to **`svaca33/bugler`**, a private Docker Hub repository, so the machine has to
