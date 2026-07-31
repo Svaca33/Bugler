@@ -1304,8 +1304,11 @@
             "name": "serviceId",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
             }
           },
           {
@@ -1320,6 +1323,28 @@
           },
           {
             "name": "fingerprint",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "acknowledged",
             "in": "query",
             "schema": {
               "type": "string"
@@ -1353,6 +1378,124 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListEpisodesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/counts": {
+      "get": {
+        "tags": [
+          "EpisodeCountsEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "serviceId",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "fingerprint",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "acknowledged",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodeCountsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/detail": {
+      "get": {
+        "tags": [
+          "EpisodeDetailEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodeDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerting/sensitivity": {
+      "get": {
+        "tags": [
+          "EffectiveSensitivityEndpoint"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSensitivityResponse"
                 }
               }
             }
@@ -2040,6 +2183,95 @@
           }
         }
       },
+      "EpisodeCountsResponse": {
+        "required": [
+          "open",
+          "quieted",
+          "solved",
+          "muted"
+        ],
+        "type": "object",
+        "properties": {
+          "open": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "quieted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "solved": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "muted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "EpisodeDetailDto": {
+        "required": [
+          "episode",
+          "mailAlert",
+          "chatAlert",
+          "effectiveSensitivity",
+          "quietWindowMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "episode": {
+            "$ref": "#/components/schemas/EpisodeDto"
+          },
+          "mailAlert": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MailAlertDto"
+              }
+            ]
+          },
+          "chatAlert": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ChatAlertDto"
+              }
+            ]
+          },
+          "effectiveSensitivity": {
+            "$ref": "#/components/schemas/Sensitivity"
+          },
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "EpisodeDto": {
         "required": [
           "id",
@@ -2221,6 +2453,21 @@
           }
         }
       },
+      "ChatAlertDto": {
+        "required": [
+          "deliveredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "ChatWebhookDto": {
         "required": [
           "domain"
@@ -2275,6 +2522,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EpisodeDto"
+            }
+          }
+        }
+      },
+      "ListSensitivityResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceSensitivityDto"
             }
           }
         }
@@ -2443,6 +2704,30 @@
             "items": {
               "$ref": "#/components/schemas/VolumeBucketDto"
             }
+          }
+        }
+      },
+      "MailAlertDto": {
+        "required": [
+          "subscriberCount",
+          "firstDeliveredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "subscriberCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "firstDeliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -2669,6 +2954,22 @@
             "items": {
               "$ref": "#/components/schemas/ServiceDto"
             }
+          }
+        }
+      },
+      "ServiceSensitivityDto": {
+        "required": [
+          "serviceId",
+          "off"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "off": {
+            "type": "boolean"
           }
         }
       },
@@ -3144,6 +3445,15 @@
     },
     {
       "name": "EpisodesEndpoint"
+    },
+    {
+      "name": "EpisodeCountsEndpoint"
+    },
+    {
+      "name": "EpisodeDetailEndpoint"
+    },
+    {
+      "name": "EffectiveSensitivityEndpoint"
     },
     {
       "name": "EpisodeActionEndpoints"

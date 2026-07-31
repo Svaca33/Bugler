@@ -8,7 +8,7 @@ import {
   MIN_DETAIL_WIDTH,
   readDetailWidth,
   writeDetailWidth,
-} from "./detailWidth";
+} from "@/lib/detailWidth";
 
 /** Long enough that a drag writes once when it settles, short enough to survive a quick tab-away. */
 const SAVE_DELAY_MS = 200;

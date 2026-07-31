@@ -1245,9 +1245,12 @@ export interface paths {
             parameters: {
                 query?: {
                     applicationId?: string;
-                    serviceId?: string;
+                    serviceId?: string[];
                     state?: components["schemas"]["EpisodeState"][];
                     fingerprint?: string;
+                    from?: string;
+                    q?: string;
+                    acknowledged?: string;
                     beforeId?: string;
                     limit?: number | string;
                 };
@@ -1264,6 +1267,120 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ListEpisodesResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    serviceId?: string[];
+                    fingerprint?: string;
+                    from?: string;
+                    q?: string;
+                    acknowledged?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EpisodeCountsResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EpisodeDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/sensitivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ListSensitivityResponse"];
                     };
                 };
             };
@@ -1865,6 +1982,24 @@ export interface components {
             isAdmin: boolean;
             grantedApplicationIds: string[];
         };
+        EpisodeCountsResponse: {
+            /** Format: int32 */
+            open: number | string;
+            /** Format: int32 */
+            quieted: number | string;
+            /** Format: int32 */
+            solved: number | string;
+            /** Format: int32 */
+            muted: number | string;
+        };
+        EpisodeDetailDto: {
+            episode: components["schemas"]["EpisodeDto"];
+            mailAlert: null | components["schemas"]["MailAlertDto"];
+            chatAlert: null | components["schemas"]["ChatAlertDto"];
+            effectiveSensitivity: components["schemas"]["Sensitivity"];
+            /** Format: int32 */
+            quietWindowMinutes: number | string;
+        };
         EpisodeDto: {
             /** Format: uuid */
             id: string;
@@ -1913,6 +2048,10 @@ export interface components {
             currentPassword: string;
             newPassword: string;
         };
+        ChatAlertDto: {
+            /** Format: date-time */
+            deliveredAt: null | string;
+        };
         ChatWebhookDto: {
             domain: string;
         };
@@ -1929,6 +2068,9 @@ export interface components {
         JsonElement: unknown;
         ListEpisodesResponse: {
             items: components["schemas"]["EpisodeDto"][];
+        };
+        ListSensitivityResponse: {
+            items: components["schemas"]["ServiceSensitivityDto"][];
         };
         ListTracesResponse: {
             items: components["schemas"]["TraceSummaryDto"][];
@@ -1970,6 +2112,12 @@ export interface components {
             to: string;
             bucket: string;
             buckets: components["schemas"]["VolumeBucketDto"][];
+        };
+        MailAlertDto: {
+            /** Format: int32 */
+            subscriberCount: number | string;
+            /** Format: date-time */
+            firstDeliveredAt: null | string;
         };
         ObservedKeyDto: {
             scope: string;
@@ -2023,6 +2171,11 @@ export interface components {
             /** Format: int32 */
             defaultTraceRetentionDays: number | string;
             services: components["schemas"]["ServiceDto"][];
+        };
+        ServiceSensitivityDto: {
+            /** Format: uuid */
+            serviceId: string;
+            off: boolean;
         };
         SetApplicationAlertingRequest: {
             sensitivity: null | components["schemas"]["Sensitivity"];

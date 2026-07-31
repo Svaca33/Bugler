@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/api/client";
@@ -14,7 +14,7 @@ import {
   type AttributeFilter,
   type FilterScope,
 } from "./attributeFilters";
-import type { SourceFilters } from "./sourceFilter";
+import type { SourceFilters } from "@/lib/sourceFilter";
 
 interface ObservedKey {
   scope: FilterScope;
@@ -111,8 +111,8 @@ export function AttributeFilterBar(props: {
           className={column ? "w-full" : "w-64"}
           autoFocus
           options={options}
-          placeholder="Filter by key…"
-          emptyText={keys.isPending ? "Loading keys…" : "No keys observed."}
+          placeholder="Filter by keyâ€¦"
+          emptyText={keys.isPending ? "Loading keysâ€¦" : "No keys observed."}
           onSelect={selected => setPendingKey(items[Number(selected)] ?? null)}
           onBlur={cancel}
         />
@@ -149,7 +149,7 @@ export function AttributeFilterBar(props: {
               Add
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={cancel} aria-label="Cancel filter">
-              ✕
+              âœ•
             </Button>
           </span>
         </span>

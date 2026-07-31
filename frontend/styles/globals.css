@@ -57,6 +57,10 @@
   --color-severity-debug-rail: var(--severity-debug-rail);
   --color-severity-debug-fill: var(--severity-debug-fill);
 
+  /* Solved is a success, and success is not the brand: --primary means "interactive / brand",
+     so the one green verdict gets its own token instead of borrowing brass. */
+  --color-state-solved: var(--state-solved);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -123,6 +127,9 @@
   --severity-debug-rail: #C3CCD5;
   --severity-debug-fill: #78818A;
 
+  /* Same caveat as the severity steps above: picked on paper, never rendered. */
+  --state-solved: #2E7D4F;
+
   --sidebar: #F7F3EC;
   --sidebar-foreground: #14202E;
   --sidebar-primary: #B26E0E;
@@ -182,6 +189,8 @@
   /* Deliberately neutral: "no severity declared" is not a hue. It also opens the gap to
      -info-fill to ΔE 18.5 — a blue step there sat at 10.9, indistinguishable in a stack. */
   --severity-debug-fill: #5E6B78;
+
+  --state-solved: #5FB37C;
 
   --sidebar: #0C1A29;
   --sidebar-foreground: #EAF1F8;

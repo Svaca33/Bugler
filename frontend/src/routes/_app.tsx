@@ -5,6 +5,7 @@ import markDark from "@/bugler-mark-dark.svg";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/features/access/ChangePasswordDialog";
 import { useCurrentUser, useLogout } from "@/features/access/useAuth";
+import { useOpenEpisodeCount } from "@/features/alerting/useOpenEpisodeCount";
 import { NavTab } from "./-nav-tab";
 
 export const Route = createFileRoute("/_app")({
@@ -16,6 +17,7 @@ function AppShell() {
   const logout = useLogout();
   const navigate = useNavigate();
   const [changingPassword, setChangingPassword] = useState(false);
+  const openEpisodes = useOpenEpisodeCount(user.data != null);
 
   if (user.isPending) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
@@ -36,7 +38,7 @@ function AppShell() {
         <nav className="flex items-stretch gap-0.5">
           <NavTab to="/" label="Logs" />
           <NavTab to="/traces" label="Traces" />
-          <NavTab to="/alerts" label="Alerts" />
+          <NavTab to="/alerts" label="Alerts" badge={openEpisodes} />
           {user.data.isAdmin && <NavTab to="/admin" label="Admin" />}
         </nav>
 

@@ -1,10 +1,10 @@
-import { afterEach, expect, test } from "bun:test";
+﻿import { afterEach, expect, test } from "bun:test";
 import { render, screen } from "@testing-library/react";
 
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
-import { DetailPanel } from "./DetailPanel";
-import { MIN_LIST_WIDTH, writeDetailWidth } from "./detailWidth";
+import { DetailPanel } from "./detail-panel";
+import { MIN_LIST_WIDTH, writeDetailWidth } from "@/lib/detailWidth";
 
 function renderPanel() {
   return render(
@@ -53,7 +53,7 @@ test("the page's header content and its close button share one header row", () =
 
 /*
  * The restored width is deliberately NOT asserted here. The library expresses a panel's size as
- * `flex-grow`, and turning the stored pixels into that fraction needs a measured group width —
+ * `flex-grow`, and turning the stored pixels into that fraction needs a measured group width â€”
  * which happy-dom, having no layout engine, always reports as zero, so every panel comes out an
  * even split no matter what was stored. Asserting it would only measure the test environment.
  * What the width actually depends on is covered in `detailWidth.test.ts`; that the panel is the

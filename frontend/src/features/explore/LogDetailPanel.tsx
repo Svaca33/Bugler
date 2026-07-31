@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 
 import type { LogRecord } from "@/api/client";
 import { useCatalog } from "@/api/queries";
@@ -8,8 +8,8 @@ import { severityClass, severityLabel } from "@/lib/severity";
 
 import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
 import { AttributeLeafList } from "./AttributeLeafList";
-import { DetailPanel } from "./DetailPanel";
-import { serviceLabels } from "./sourceFilter";
+import { DetailPanel } from "@/components/ui/detail-panel";
+import { serviceLabels } from "@/lib/sourceFilter";
 
 export function LogDetailPanel(props: {
   log: LogRecord;
@@ -40,15 +40,15 @@ export function LogDetailPanel(props: {
           value={log.severityText || severityLabel(severity)}
           valueClass={severityClass(severity)}
         />
-        <Row label="Service" value={service ?? "—"} />
-        <Row label="Scope" value={log.scopeName ?? "—"} />
-        <Row label="Span" value={log.spanId ?? "—"} />
+        <Row label="Service" value={service ?? "â€”"} />
+        <Row label="Scope" value={log.scopeName ?? "â€”"} />
+        <Row label="Span" value={log.spanId ?? "â€”"} />
       </dl>
 
       {log.traceId != null && (
         <Button asChild variant="secondary" size="sm" className="w-full">
           <Link to="/traces/$traceId" params={{ traceId: log.traceId }}>
-            View trace {log.traceId.slice(0, 8)}…
+            View trace {log.traceId.slice(0, 8)}â€¦
           </Link>
         </Button>
       )}

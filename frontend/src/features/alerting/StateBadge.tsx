@@ -2,8 +2,9 @@ import type { Episode } from "@/api/client";
 
 const STYLES: Record<Episode["state"], string> = {
   Open: "text-severity-error",
-  Quieted: "text-[#8CA1B8]",
-  Solved: "text-primary",
+  // Quieted wears the warn amber: the episode closed on the timer, nobody judged it.
+  Quieted: "text-severity-warn",
+  Solved: "text-state-solved",
   Muted: "text-[#6E86A0]",
 };
 

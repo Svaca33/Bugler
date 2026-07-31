@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using Bugler.Access.Contracts;
 using Bugler.Alerting.Episodes;
-using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,45 +39,38 @@ internal static class EpisodesEndpoint
     /// </summary>
     public static async Task<IResult> Handle(
         Guid? applicationId,
-        Guid? serviceId,
+        Guid[]? serviceId,
         EpisodeState[]? state,
         string? fingerprint,
+        DateTimeOffset? from,
+        string? q,
+        string? acknowledged,
         Guid? beforeId,
         int? limit,
+        ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
         IUserNames userNames,
         CancellationToken cancellationToken)
     {
+        if (GetUserId(principal) is not { } callerId)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!EpisodeFilter.IsValidAcknowledged(acknowledged))
+        {
+            return Results.BadRequest("acknowledged must be \"none\" or \"me\".");
+        }
+
         var visible = await readVisibility.GetVisibleApplicationsAsync(cancellationToken);
         if (visible is { Count: 0 })
         {
             return Results.Ok(new ListEpisodesResponse([]));
         }
 
-        var query = dbContext.Episodes.AsNoTracking().AsQueryable();
-        if (visible is not null)
-        {
-            var visibleIds = visible.ToList();
-            query = query.Where(e => visibleIds.Contains(e.ApplicationId));
-        }
-
-        if (applicationId is { } application)
-        {
-            var id = new ApplicationId(application);
-            query = query.Where(e => e.ApplicationId == id);
-        }
-
-        if (serviceId is { } service)
-        {
-            var id = new ServiceId(service);
-            query = query.Where(e => e.ServiceId == id);
-        }
-
-        if (fingerprint is not null)
-        {
-            query = query.Where(e => e.Fingerprint == fingerprint);
-        }
+        var query = dbContext.Episodes.AsNoTracking()
+            .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId);
 
         if (state is { Length: > 0 })
         {
@@ -140,6 +133,10 @@ internal static class EpisodesEndpoint
     }
 
     /// <summary>Null when nobody holds the mark; a deleted User leaves the timestamp with no name.</summary>
-    private static string? NameOf(IReadOnlyDictionary<Guid, string> names, Guid? userId) =>
+    internal static string? NameOf(IReadOnlyDictionary<Guid, string> names, Guid? userId) =>
         userId is { } id && names.TryGetValue(id, out var name) ? name : null;
+
+    // Access's claim helper is internal to Access; the two lines are cheaper than a contract.
+    private static Guid? GetUserId(ClaimsPrincipal principal) =>
+        Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 }

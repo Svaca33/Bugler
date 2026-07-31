@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { api } from "@/api/client";
@@ -8,9 +8,9 @@ import { formatTime } from "@/lib/format";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
-import { FilterGroup, FilterRail } from "./FilterRail";
-import { FilterSelect } from "./FilterSelect";
-import { facetOptions, serviceLabels, type SourceFilters } from "./sourceFilter";
+import { FilterGroup, FilterRail } from "@/components/ui/filter-rail";
+import { FilterSelect } from "@/components/ui/filter-select";
+import { facetOptions, serviceLabels, type SourceFilters } from "@/lib/sourceFilter";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
 import { TimeFilterControl } from "./TimeFilterControl";
 
@@ -179,7 +179,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                     )}
                   </span>
                   <span className="truncate font-mono text-[11.5px] text-[#A9BDD1]">
-                    {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "—"}
+                    {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "â€”"}
                   </span>
                   <span className="whitespace-nowrap font-mono text-[11.5px] text-[#7D93AA]">
                     {formatTime(trace.startTime)}

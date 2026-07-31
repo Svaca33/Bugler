@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { api } from "@/api/client";
@@ -27,10 +27,10 @@ import {
   describeWidth,
   type VolumeWindow,
 } from "./logVolume";
-import type { SourceFilters } from "./sourceFilter";
+import type { SourceFilters } from "@/lib/sourceFilter";
 import { EMPTY_TIME, type TimeFilterValue } from "./timeFilter";
 
-/** Everything the chart narrows by — the very same criteria the list under it narrows by. */
+/** Everything the chart narrows by â€” the very same criteria the list under it narrows by. */
 export interface VolumeFilters extends SourceFilters, TimeFilterValue {
   severityMin?: number;
   q?: string;
@@ -86,14 +86,14 @@ export function LogVolumeChart(props: {
     return (
       <Frame>
         <p className="text-muted-foreground self-center text-xs">
-          The window is too wide to summarize. Narrow the Time Filter — the list below is unaffected.
+          The window is too wide to summarize. Narrow the Time Filter â€” the list below is unaffected.
         </p>
       </Frame>
     );
   }
 
-  // The first window has nothing to hold on to, so the placeholder keeps the height — the list
-  // below must not jump — and the Spinner says the wait is work rather than emptiness.
+  // The first window has nothing to hold on to, so the placeholder keeps the height â€” the list
+  // below must not jump â€” and the Spinner says the wait is work rather than emptiness.
   if (volume.data === undefined) {
     return (
       <Frame>
@@ -108,13 +108,13 @@ export function LogVolumeChart(props: {
   const resolved: VolumeWindow = { from, to, widthMs: durationMs(volume.data.bucket) ?? 0 };
   const edgeOf = (start: string) => bucketEdge(start, resolved);
   // A Band the severity threshold excludes is empty by construction, so it gets neither a stack
-  // segment nor a legend entry — the chart shows the list's set and only the list's set.
+  // segment nor a legend entry â€” the chart shows the list's set and only the list's set.
   const bands = bandsAdmittedBy(filters.severityMin);
 
   // Holding the previous window is what keeps the list still, but it also makes a slow reload look
   // like nothing happened: the old chart simply sits there for seconds and then swaps. At a
   // retention's width summarizing takes that long, so the wait has to be visible. Not while Live is
-  // on — that reloads every five seconds by design, and a spinner blinking on every tick is noise.
+  // on â€” that reloads every five seconds by design, and a spinner blinking on every tick is noise.
   const reloading = volume.isFetching && !live;
 
   const commit = () => {
@@ -133,7 +133,7 @@ export function LogVolumeChart(props: {
 
   return (
     <Frame
-      label={`${formatBoundary(from)} → ${formatBoundary(to)} · ${describeWidth(resolved.widthMs)} buckets`}
+      label={`${formatBoundary(from)} â†’ ${formatBoundary(to)} Â· ${describeWidth(resolved.widthMs)} buckets`}
       legend={bands}
     >
       <div className="relative">
@@ -219,7 +219,7 @@ export function LogVolumeChart(props: {
 
 /**
  * The wait made visible. Local to the chart rather than a kit primitive: everywhere else in Bugler
- * a wait is short enough to say in words ("Loading…", "Sending…"), and only summarizing a whole
+ * a wait is short enough to say in words ("Loadingâ€¦", "Sendingâ€¦"), and only summarizing a whole
  * retention takes long enough to need something that moves.
  */
 function Spinner() {
@@ -238,10 +238,10 @@ function Frame(props: { label?: string; legend?: typeof SEVERITY_BANDS; children
     <div className="border-border/60 flex shrink-0 flex-col gap-1 border-b px-5 pt-2 pb-1.5">
       <div className="flex items-center gap-4">
         <span className="text-muted-foreground shrink-0 truncate font-mono text-[10px] tracking-[0.08em]">
-        {props.label ?? " "}
+        {props.label ?? "Â "}
         </span>
         {/* A key to the colours, not a control: severityMin is a threshold, so a clickable Band
-            could only ever mean "and above" — a control doing something other than it looks. */}
+            could only ever mean "and above" â€” a control doing something other than it looks. */}
         <div className="ml-auto flex items-center gap-3">
           {props.legend?.map(band => (
             <span key={band.key} className="flex items-center gap-1.5">

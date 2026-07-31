@@ -32,6 +32,17 @@ export type EpisodesResponse =
 
 export type Episode = EpisodesResponse["items"][number];
 
+export type EpisodeCounts =
+  NonNullable<paths["/api/alerting/episodes/counts"]["get"]["responses"]["200"]["content"]["application/json"]>;
+
+export type EpisodeDetail =
+  NonNullable<
+    paths["/api/alerting/episodes/{id}/detail"]["get"]["responses"]["200"]["content"]["application/json"]
+  >;
+
+export type SensitivityList =
+  NonNullable<paths["/api/alerting/sensitivity"]["get"]["responses"]["200"]["content"]["application/json"]>;
+
 export type Subscriptions =
   NonNullable<paths["/api/alerting/subscriptions"]["get"]["responses"]["200"]["content"]["application/json"]>;
 

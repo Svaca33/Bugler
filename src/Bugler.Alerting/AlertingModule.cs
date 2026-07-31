@@ -1,12 +1,14 @@
 using Bugler.Alerting.ActOnEpisodes;
 using Bugler.Alerting.CloseQuietEpisodes;
 using Bugler.Alerting.DeliverMessages;
+using Bugler.Alerting.DescribeEpisode;
 using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.DropDeletedTargets;
 using Bugler.Alerting.DropDeletedUserSubscriptions;
 using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.ManageAlertingSettings;
 using Bugler.Alerting.ManageSubscriptions;
+using Bugler.Alerting.ReadEffectiveSensitivity;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -66,6 +68,9 @@ public static class AlertingModule
         user.MapGet("/subscriptions", SubscriptionEndpoints.GetOwn).Produces<SubscriptionsDto>();
         user.MapPut("/subscriptions", SubscriptionEndpoints.SetOwn);
         user.MapGet("/episodes", EpisodesEndpoint.Handle).Produces<ListEpisodesResponse>();
+        user.MapGet("/episodes/counts", EpisodeCountsEndpoint.Handle).Produces<EpisodeCountsResponse>();
+        user.MapGet("/episodes/{id:guid}/detail", EpisodeDetailEndpoint.Handle).Produces<EpisodeDetailDto>();
+        user.MapGet("/sensitivity", EffectiveSensitivityEndpoint.Handle).Produces<ListSensitivityResponse>();
         user.MapPost("/episodes/{id:guid}/acknowledge", EpisodeActionEndpoints.Acknowledge);
         user.MapDelete("/episodes/{id:guid}/acknowledgement", EpisodeActionEndpoints.Unacknowledge);
         user.MapPost("/episodes/{id:guid}/solve", EpisodeActionEndpoints.Solve);
