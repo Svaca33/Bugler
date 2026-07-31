@@ -5,10 +5,13 @@ import { useState } from "react";
 import { api, type TraceSpan } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { formatTime } from "@/lib/format";
 
 import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
 import { AttributeLeafList } from "./AttributeLeafList";
+import { DetailPanel } from "./DetailPanel";
+import { MIN_LIST_WIDTH } from "./detailWidth";
 import { JsonBlock } from "./LogDetailPanel";
 import { serviceLabels } from "./sourceFilter";
 import type { TraceFilters } from "./TracesPage";
@@ -65,8 +68,12 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
   const errorCount = spans.filter(s => s.statusCode === 2).length;
 
   return (
-    <div className="flex h-full min-h-0">
-      <div className="flex min-w-0 flex-1 flex-col">
+    <ResizablePanelGroup className="min-h-0">
+      <ResizablePanel
+        id="waterfall"
+        minSize={`${MIN_LIST_WIDTH}px`}
+        className="flex h-full min-w-0 flex-col"
+      >
         <div className="flex items-center gap-3.5 border-b border-[#17293D] bg-[#0B1826] px-[22px] py-3.5">
           <Link
             to="/traces"
@@ -146,23 +153,20 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
             );
           })}
         </div>
-      </div>
+      </ResizablePanel>
 
       {selected !== null && (
-        <aside className="flex w-96 shrink-0 flex-col gap-[18px] overflow-auto border-l border-[#17293D] bg-[#0B1826] px-5 py-4">
-          <div className="flex items-center gap-2">
-            <h2 className="min-w-0 truncate text-sm font-semibold tracking-[-0.1px]" title={selected.name}>
+        <DetailPanel
+          onClose={() => setSelected(null)}
+          title={
+            <h2
+              className="min-w-0 truncate text-sm font-semibold tracking-[-0.1px]"
+              title={selected.name}
+            >
               {selected.name}
             </h2>
-            <button
-              type="button"
-              aria-label="Close"
-              className="ml-auto rounded-[5px] px-1.5 py-0.5 text-[13px] text-muted-foreground hover:bg-[#16283C] hover:text-foreground"
-              onClick={() => setSelected(null)}
-            >
-              ✕
-            </button>
-          </div>
+          }
+        >
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[5px]">
             <DetailRow label="Span" value={selected.spanId} />
             <DetailRow label="Parent" value={selected.parentSpanId ?? "—"} />
@@ -203,9 +207,9 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
             </h3>
             <JsonBlock value={selected.events} />
           </section>
-        </aside>
+        </DetailPanel>
       )}
-    </div>
+    </ResizablePanelGroup>
   );
 }
 

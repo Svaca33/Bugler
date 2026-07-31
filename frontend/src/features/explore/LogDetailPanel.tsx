@@ -8,6 +8,7 @@ import { severityClass, severityLabel } from "@/lib/severity";
 
 import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
 import { AttributeLeafList } from "./AttributeLeafList";
+import { DetailPanel } from "./DetailPanel";
 import { serviceLabels } from "./sourceFilter";
 
 export function LogDetailPanel(props: {
@@ -23,20 +24,15 @@ export function LogDetailPanel(props: {
   const severity = Number(log.severityNumber);
   const service = serviceLabels(catalog.data?.applications ?? []).get(log.serviceId);
   return (
-    <aside className="flex w-96 shrink-0 flex-col gap-[18px] overflow-auto border-l border-[#17293D] bg-[#0B1826] px-5 py-4">
-      <div className="flex items-center gap-2">
-        <h2 className="text-sm font-semibold tracking-[-0.1px]">Log record</h2>
-        <span className="font-mono text-sm font-medium text-[#A9BDD1]">#{log.id}</span>
-        <button
-          type="button"
-          aria-label="Close"
-          className="ml-auto rounded-[5px] px-1.5 py-0.5 text-[13px] text-muted-foreground hover:bg-[#16283C] hover:text-foreground"
-          onClick={props.onClose}
-        >
-          ✕
-        </button>
-      </div>
-
+    <DetailPanel
+      onClose={props.onClose}
+      title={
+        <>
+          <h2 className="text-sm font-semibold tracking-[-0.1px]">Log record</h2>
+          <span className="font-mono text-sm font-medium text-[#A9BDD1]">#{log.id}</span>
+        </>
+      }
+    >
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[5px]">
         <Row label="Time" value={formatTime(log.timestamp)} />
         <Row
@@ -78,7 +74,7 @@ export function LogDetailPanel(props: {
           onToggle={toggle}
         />
       </Section>
-    </aside>
+    </DetailPanel>
   );
 }
 

@@ -6,11 +6,13 @@ import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Input } from "@/components/ui/input";
+import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { formatTime } from "@/lib/format";
 import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "@/lib/severity";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
+import { MIN_LIST_WIDTH } from "./detailWidth";
 import { FilterGroup, FilterRail } from "./FilterRail";
 import { FilterSelect } from "./FilterSelect";
 import { tenantOf } from "./format";
@@ -251,143 +253,149 @@ export function LogsPage(props: {
         </FilterGroup>
       </FilterRail>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-3.5 px-5 py-3">
-          <h1 className="text-sm font-semibold tracking-[-0.1px]">Log records</h1>
-          {live && (
-            <span className="flex items-center gap-1.5 font-mono text-[11px] text-primary">
-              <span className="size-1.5 animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
-              refreshing every 5 s
-            </span>
-          )}
-          {/* Live is not a filter — it is how often this list refetches, so it lives on the list. */}
-          <div className="ml-auto flex items-center gap-3">
-            <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>
-            <Button
-              type="button"
-              variant={live ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLive(!live)}
-            >
-              {live ? "Live ●" : "Live"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Pinned above the scroll, never inside it: the Volume is the frame of reference for
-            where in time you are, and it is needed most while paging back through older records. */}
-        <LogVolumeChart
-          filters={filters}
-          live={live}
-          onNarrow={time => {
-            // Narrowing to a stretch of the past is the opposite of watching what arrives.
-            setLive(false);
-            onChange({ ...filters, ...time });
-          }}
-        />
-
-        <div className="min-h-0 flex-1 overflow-auto">
-          <div
-            className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
-          >
-            <span />
-            <span>TIME</span>
-            <span>SEVERITY</span>
-            <span>SERVICE</span>
-            <span>TENANT</span>
-            <span>MESSAGE</span>
-          </div>
-          <div data-testid="log-rows">
-            {items.map(log => {
-              const severity = Number(log.severityNumber);
-              const isSelected = selectedLogId !== undefined && Number(log.id) === selectedLogId;
-              const isError = severity >= 17;
-              const rowBackground = isSelected
-                ? "bg-[rgba(233,164,60,0.09)] shadow-[inset_2px_0_0_#E9A43C] hover:bg-[rgba(233,164,60,0.14)]"
-                : isError
-                  ? "bg-[rgba(229,84,74,0.07)] hover:bg-[#12243A]"
-                  : "hover:bg-[#12243A]";
-              return (
-                <div
-                  key={log.id}
-                  className={`${GRID} h-[37px] cursor-pointer border-b border-[#101F31] ${rowBackground}`}
-                  onClick={() => onSelectLog(Number(log.id))}
-                >
-                  <span className={`h-[15px] w-[3px] rounded-[2px] ${severityRailClass(severity)}`} />
-                  <span
-                    className={`whitespace-nowrap font-mono text-[11.5px] ${isSelected ? "text-[#B6C8DA]" : "text-[#7D93AA]"}`}
-                  >
-                    {formatTime(log.timestamp)}
-                  </span>
-                  <span
-                    className={`truncate font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] ${severityClass(severity)}`}
-                  >
-                    {log.severityText || severityLabel(severity)}
-                  </span>
-                  <span
-                    className={`truncate font-mono text-[11.5px] ${isSelected ? "text-[#C6D6E6]" : "text-[#A9BDD1]"}`}
-                  >
-                    {labels.get(log.serviceId) ?? "—"}
-                  </span>
-                  <span className="truncate font-mono text-[11.5px] text-[#7D93AA]">
-                    {tenantOf(log) || "—"}
-                  </span>
-                  <span
-                    className={`truncate font-mono text-[12.5px] ${
-                      isSelected ? "text-[#F6E3C4]" : severity < 9 ? "text-[#A9BDD1]" : "text-[#DCE8F3]"
-                    }`}
-                  >
-                    {log.body}
-                  </span>
-                </div>
-              );
-            })}
-            {items.length === 0 && !logs.isPending && (
-              <div className="flex flex-col items-center gap-3 py-16">
-                <p className="text-[#8CA1B8]">{emptyStateMessage("log records", filters)}</p>
-                {widerPresets(filters).length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#6E86A0] text-xs">Widen to</span>
-                    {widerPresets(filters).map(preset => (
-                      <Button
-                        key={preset.value}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onChange({ ...filters, ...EMPTY_TIME, range: preset.value })}
-                      >
-                        {preset.label}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </div>
+      <ResizablePanelGroup className="min-w-0 flex-1">
+        <ResizablePanel
+          id="list"
+          minSize={`${MIN_LIST_WIDTH}px`}
+          className="flex h-full min-w-0 flex-col"
+        >
+          <div className="flex items-center gap-3.5 px-5 py-3">
+            <h1 className="text-sm font-semibold tracking-[-0.1px]">Log records</h1>
+            {live && (
+              <span className="flex items-center gap-1.5 font-mono text-[11px] text-primary">
+                <span className="size-1.5 animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
+                refreshing every 5 s
+              </span>
             )}
+            {/* Live is not a filter — it is how often this list refetches, so it lives on the list. */}
+            <div className="ml-auto flex items-center gap-3">
+              <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>
+              <Button
+                type="button"
+                variant={live ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLive(!live)}
+              >
+                {live ? "Live ●" : "Live"}
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3 border-t border-[#17293D] px-5 py-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!logs.hasNextPage || logs.isFetchingNextPage}
-            onClick={() => logs.fetchNextPage()}
-          >
-            {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
-          </Button>
-          <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
-        </div>
-      </div>
+          {/* Pinned above the scroll, never inside it: the Volume is the frame of reference for
+              where in time you are, and it is needed most while paging back through older records. */}
+          <LogVolumeChart
+            filters={filters}
+            live={live}
+            onNarrow={time => {
+              // Narrowing to a stretch of the past is the opposite of watching what arrives.
+              setLive(false);
+              onChange({ ...filters, ...time });
+            }}
+          />
 
-      {selected !== null && (
-        <LogDetailPanel
-          log={selected}
-          filters={filters.filters ?? []}
-          onFiltersChange={next =>
-            onChange({ ...filters, filters: next.length > 0 ? next : undefined })
-          }
-          onClose={() => onSelectLog(undefined)}
-        />
-      )}
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div
+              className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
+            >
+              <span />
+              <span>TIME</span>
+              <span>SEVERITY</span>
+              <span>SERVICE</span>
+              <span>TENANT</span>
+              <span>MESSAGE</span>
+            </div>
+            <div data-testid="log-rows">
+              {items.map(log => {
+                const severity = Number(log.severityNumber);
+                const isSelected = selectedLogId !== undefined && Number(log.id) === selectedLogId;
+                const isError = severity >= 17;
+                const rowBackground = isSelected
+                  ? "bg-[rgba(233,164,60,0.09)] shadow-[inset_2px_0_0_#E9A43C] hover:bg-[rgba(233,164,60,0.14)]"
+                  : isError
+                    ? "bg-[rgba(229,84,74,0.07)] hover:bg-[#12243A]"
+                    : "hover:bg-[#12243A]";
+                return (
+                  <div
+                    key={log.id}
+                    className={`${GRID} h-[37px] cursor-pointer border-b border-[#101F31] ${rowBackground}`}
+                    onClick={() => onSelectLog(Number(log.id))}
+                  >
+                    <span className={`h-[15px] w-[3px] rounded-[2px] ${severityRailClass(severity)}`} />
+                    <span
+                      className={`whitespace-nowrap font-mono text-[11.5px] ${isSelected ? "text-[#B6C8DA]" : "text-[#7D93AA]"}`}
+                    >
+                      {formatTime(log.timestamp)}
+                    </span>
+                    <span
+                      className={`truncate font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] ${severityClass(severity)}`}
+                    >
+                      {log.severityText || severityLabel(severity)}
+                    </span>
+                    <span
+                      className={`truncate font-mono text-[11.5px] ${isSelected ? "text-[#C6D6E6]" : "text-[#A9BDD1]"}`}
+                    >
+                      {labels.get(log.serviceId) ?? "—"}
+                    </span>
+                    <span className="truncate font-mono text-[11.5px] text-[#7D93AA]">
+                      {tenantOf(log) || "—"}
+                    </span>
+                    <span
+                      className={`truncate font-mono text-[12.5px] ${
+                        isSelected ? "text-[#F6E3C4]" : severity < 9 ? "text-[#A9BDD1]" : "text-[#DCE8F3]"
+                      }`}
+                    >
+                      {log.body}
+                    </span>
+                  </div>
+                );
+              })}
+              {items.length === 0 && !logs.isPending && (
+                <div className="flex flex-col items-center gap-3 py-16">
+                  <p className="text-[#8CA1B8]">{emptyStateMessage("log records", filters)}</p>
+                  {widerPresets(filters).length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#6E86A0] text-xs">Widen to</span>
+                      {widerPresets(filters).map(preset => (
+                        <Button
+                          key={preset.value}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onChange({ ...filters, ...EMPTY_TIME, range: preset.value })}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 border-t border-[#17293D] px-5 py-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!logs.hasNextPage || logs.isFetchingNextPage}
+              onClick={() => logs.fetchNextPage()}
+            >
+              {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
+            </Button>
+            <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
+          </div>
+        </ResizablePanel>
+
+        {selected !== null && (
+          <LogDetailPanel
+            log={selected}
+            filters={filters.filters ?? []}
+            onFiltersChange={next =>
+              onChange({ ...filters, filters: next.length > 0 ? next : undefined })
+            }
+            onClose={() => onSelectLog(undefined)}
+          />
+        )}
+      </ResizablePanelGroup>
     </div>
   );
 }
