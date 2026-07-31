@@ -28,15 +28,21 @@ token and that dependency.
 
 ### Publishing a version
 
-From a machine with the source:
+Bugler's version is written in one place: `<Version>` in
+[Directory.Build.props](Directory.Build.props). Every assembly is stamped from it, and the publish
+script reads it — so the tag is never typed by hand, and an image cannot claim a version different
+from the build inside it.
 
 ```bash
-docker build -t <account>/bugler:1.0 .
-docker push <account>/bugler:1.0
+powershell -File scripts/publish-image.ps1 -Repository <account>/bugler
 ```
 
-Tag versions rather than pushing over `latest`. The server pins the tag in its `.env`, so a rollback
-is one line and a restart — and two servers on the same tag are demonstrably running the same thing.
+That builds and tags, then stops and prints the push. Pushing needs credentials and puts the image
+somewhere outside the machine, so it stays a deliberate second step — `-Push` does it once
+`docker login` has been done with a token that may write.
+
+Raise `<Version>` before each release, and never push over a tag that has already shipped: the
+server pins its tag, and going back to it only means anything while it still holds what it held.
 
 ## What to ask of whoever administers the database
 

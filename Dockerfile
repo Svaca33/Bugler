@@ -7,7 +7,9 @@ RUN bun run build
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
 WORKDIR /src
-COPY global.json Bugler.slnx ./
+# Directory.Build.props carries the version every assembly is stamped with — without it the build
+# inside the image would produce a different one from the tag outside it.
+COPY global.json Bugler.slnx Directory.Build.props ./
 COPY src/ src/
 RUN dotnet publish src/Bugler.Host -c Release -o /out
 

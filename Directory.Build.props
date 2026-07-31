@@ -1,0 +1,12 @@
+<Project>
+
+  <PropertyGroup>
+    <!--
+      The one place Bugler's version is written. Every assembly is stamped from it, and
+      scripts/publish-image.ps1 reads it to tag the image, so the tag on Docker Hub and the build
+      inside the container can never drift apart. Raise it here and nowhere else.
+    -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>
