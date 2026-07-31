@@ -79,18 +79,48 @@ STARTTLS is used when the relay offers it. Authentication is supported but not r
 
 ## Network exposure
 
-Bugler serves three ports, and they are genuinely separate surfaces — an application pointed at a
-telemetry port cannot reach the UI or the API, whatever it sends.
+Bugler serves three ports, and they are genuinely separate surfaces: it answers a request only on
+the port that surface belongs to, so an application pointed at a telemetry port cannot reach the UI
+or the API, whatever it sends. Put them behind one hostname, as below, and it is then the proxy's
+routing that keeps them apart.
 
-| Port | What it is | Who should reach it |
-| --- | --- | --- |
-| 8080 | web UI and REST API | **internal network only**, through a reverse proxy terminating TLS |
-| 4318 | telemetry ingest (HTTP) | sending applications, including ones outside the network — **must be behind TLS** |
-| 4317 | telemetry ingest (gRPC) | sending applications on the local network |
+| Port | What it is |
+| --- | --- |
+| 8080 | web UI and REST API |
+| 4318 | telemetry ingest (HTTP) |
+| 4317 | telemetry ingest (gRPC) |
 
-**TLS on 4318 is not optional.** Every export carries an API key in an `Authorization` header, so
-without TLS that key is readable by anything on the path. An IP allowlist in front of it is welcome
-as a second layer, but it is a filter, not encryption.
+**All three are plain HTTP** — Bugler holds no certificate. TLS is the reverse proxy's job, and the
+simplest arrangement is the one where the proxy that already serves the UI carries the telemetry
+too, on one hostname:
+
+```nginx
+listen 443 ssl http2;
+
+location / {
+    proxy_pass http://127.0.0.1:8080;          # UI and REST API
+}
+location ~ ^/v1/(logs|traces)$ {
+    proxy_pass http://127.0.0.1:4318;          # telemetry over HTTP
+}
+location /opentelemetry.proto.collector. {
+    grpc_pass grpc://127.0.0.1:4317;           # telemetry over gRPC
+}
+```
+
+Then **only 443 needs to be open** — 4318 and 4317 can stay unreachable from outside the host, and
+the sending applications are given the plain hostname with no port.
+
+The gRPC block needs `http2` on the listener and `grpc_pass` rather than `proxy_pass`; with an
+ordinary `proxy_pass` those exports quietly land on the UI and come back as 404s.
+
+**TLS in front of the ingest is not optional.** Every export carries an API key in an
+`Authorization` header, so without TLS that key is readable by anything on the path. An IP allowlist
+is welcome as a second layer, but it is a filter, not encryption.
+
+If some sender must reach 4318 or 4317 as a port instead, say so — those ports then need TLS
+arranged for them specifically, which is a different piece of proxy configuration and not something
+Bugler does for itself.
 
 By default the compose file binds 8080 to `127.0.0.1`, so the only way in is a reverse proxy on this
 same machine. If the proxy runs elsewhere, set `BUGLER_APP_BIND=0.0.0.0` in `.env` and let the

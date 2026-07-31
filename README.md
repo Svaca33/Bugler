@@ -58,6 +58,11 @@ involved in the choice.
 | Authentication | `Authorization: Bearer blgr_…` on every export |
 | Body | protobuf only — JSON-encoded OTLP is refused with `415` |
 
+Those are the ports the server itself listens on, as plain HTTP. Behind a reverse proxy the address
+senders are given is usually the hostname with no port at all, the proxy routing `/v1/logs`,
+`/v1/traces` and the gRPC service paths to them — see
+[DEPLOYMENT.md](DEPLOYMENT.md#what-is-exposed-where).
+
 Register an Application and a Service in **Admin** and issue that Service an API key. The key *is*
 the sender's identity: `service.name` and the rest of the resource attributes are stored and shown,
 but never decide which Service the data belongs to ([ADR 0006](docs/adr/0006-service-is-the-sender-identity.md)).

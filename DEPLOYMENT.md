@@ -143,20 +143,59 @@ reach the UI or the REST API, whatever it puts in a Host header.
 | Port | Surface | Who should reach it |
 | --- | --- | --- |
 | 8080 | UI + REST API + OpenAPI | the internal network only, through a reverse proxy that terminates TLS |
-| 4318 | OTLP/HTTP | senders, including those outside the network — **behind TLS** |
-| 4317 | OTLP/gRPC | senders on the local network |
+| 4318 | OTLP/HTTP | senders — **never unwrapped, whatever fronts it** |
+| 4317 | OTLP/gRPC | senders, over a proxy that speaks HTTP/2, or the local network |
+
+**None of the three carries TLS itself.** Kestrel serves all of them as plain HTTP
+([appsettings.json](src/Bugler.Host/appsettings.json)), so whatever terminates TLS sits in front —
+and that leaves two shapes of deployment.
+
+### One hostname on 443 — the arrangement to reach for
+
+The reverse proxy already terminating TLS for the UI can carry the telemetry too. Senders then need
+no port at all, and only 443 is open to the world:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;          # UI, REST API, OpenAPI
+}
+location ~ ^/v1/(logs|traces)$ {
+    proxy_pass http://127.0.0.1:4318;          # OTLP/HTTP
+}
+location /opentelemetry.proto.collector. {
+    grpc_pass grpc://127.0.0.1:4317;           # OTLP/gRPC — needs `listen 443 ssl http2`
+}
+```
+
+gRPC reaches its surface this way only if the proxy speaks HTTP/2 to 4317; without `grpc_pass` the
+export lands on the app surface and comes back a 404. With this in place the OTLP ports need not be
+published outside the host at all — bind them to the loopback in `docker-compose.prod.yml` the way
+8080 already is.
+
+The cost is that all three surfaces share one origin, so the isolation the table above describes is
+enforced by the proxy's routing rules rather than by the network. Inside the container the port
+check still holds — the proxy connects to three distinct ports — but a sender holding the export URL
+now also holds the UI's address.
+
+### Ports published directly
+
+If senders reach 4318 and 4317 as ports instead, TLS has to be arranged for them specifically: a
+proxy listening on those ports with the certificate, or Kestrel given one. `https://…:4318` does not
+work against the shipped configuration, because nothing there terminates TLS.
+
+### Either way
 
 Two things to get right, because neither fails loudly:
 
-- **TLS on 4318 is not optional.** A Service API key travels in the `Authorization` header of every
-  single export. Without TLS it is readable by anything on the path, and an IP allowlist is a filter,
-  not encryption.
+- **TLS in front of the OTLP surfaces is not optional.** A Service API key travels in the
+  `Authorization` header of every single export. Without TLS it is readable by anything on the path,
+  and an IP allowlist is a filter, not encryption.
 - **The session cookie needs the proxy to be honest.** Bugler sees plain HTTP behind a TLS proxy, so
   set `Cookie.SecurePolicy` accordingly if the deployment ever serves the UI over anything but the
   internal network.
 
-An IP allowlist in front of 4318 is worth having where the senders are known and few. Treat it as a
-second lock: the API key is what actually proves who is exporting.
+An IP allowlist in front of the ingest paths is worth having where the senders are known and few.
+Treat it as a second lock: the API key is what actually proves who is exporting.
 
 ## First run
 
@@ -168,9 +207,13 @@ Then register an Application, register its Services, issue an API key each, and 
 at the server:
 
 ```bash
-OTEL_EXPORTER_OTLP_ENDPOINT=https://bugler.example.com:4318
+OTEL_EXPORTER_OTLP_ENDPOINT=https://bugler.example.com
 OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_…"
 ```
+
+That is the endpoint for the arrangement above, where the proxy on 443 carries the telemetry: no
+port, and the same URL works for gRPC and HTTP alike. Where the OTLP ports are published directly,
+name the port and the protocol's own scheme instead — and see that TLS actually terminates there.
 
 ## Checking it actually works
 
