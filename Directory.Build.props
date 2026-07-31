@@ -2,18 +2,26 @@
 
   <PropertyGroup>
     <!--
-      Bugler's version. The first two numbers are raised by hand, when a change deserves saying so;
-      the third is the number of commits behind HEAD, so every commit is a version of its own and
-      no two builds can claim the same one.
+      Bugler's version, as major.minor.patch.
 
-      That count cannot be worked out inside the container: .dockerignore keeps .git out of the
-      build context, and should. scripts/publish-image.ps1 counts it outside and passes it in,
-      which is also what makes the tag on the registry and the build inside the image provably the
-      same number rather than two things somebody kept in step by hand.
+      Major and minor are raised by hand, by scripts/bump-version.ps1, when a change deserves
+      saying so. Patch is the number of commits made since that major.minor began, so every commit
+      inside a release line is a version of its own, and the count starts again at 0 whenever the
+      line does.
+
+      VersionPatchBase is what makes "since that major.minor began" a fact rather than a memory:
+      it is the total commit count at which the current line started, and patch is simply the
+      total now minus that. bump-version.ps1 writes it; nothing else should.
+
+      The count cannot be worked out inside the container - .dockerignore keeps .git out of the
+      build context, and should - so scripts/publish-image.ps1 works it out here and passes it in.
+      That is also what makes the tag on the registry and the assemblies inside the image provably
+      the same number, rather than two things somebody keeps in step by hand.
 
       A build with no count passed in is a local one, and says so by being .0.
     -->
-    <VersionPrefix>1.0</VersionPrefix>
+    <VersionPrefix>0.1</VersionPrefix>
+    <VersionPatchBase>0</VersionPatchBase>
     <BuildHeight Condition="'$(BuildHeight)' == ''">0</BuildHeight>
     <Version>$(VersionPrefix).$(BuildHeight)</Version>
   </PropertyGroup>

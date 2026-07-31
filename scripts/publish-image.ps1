@@ -5,9 +5,10 @@
 
 .DESCRIPTION
     The tag is never typed by hand. It is <VersionPrefix> from Directory.Build.props followed by
-    the number of commits behind HEAD, and that same count is passed into the container build, so
-    the assemblies inside the image carry exactly the version the tag claims. Every commit is
-    therefore a version of its own, and no two builds can claim the same one.
+    the number of commits made since that major.minor began, and that same count is passed into
+    the container build, so the assemblies inside the image carry exactly the version the tag
+    claims. Every commit is therefore a version of its own, and no two builds can claim the same
+    one.
 
     A working tree with uncommitted changes is refused: the count would name a commit whose
     content is not what is being built, and a tag that lies about which commit it holds is worse
@@ -57,6 +58,9 @@ if ([string]::IsNullOrWhiteSpace($prefix)) {
     Stop-WithFailure "No <VersionPrefix> in $propsPath - that file is where the version lives."
 }
 
+$baseNode = $props.SelectSingleNode('//VersionPatchBase')
+$patchBase = if ($null -eq $baseNode) { '0' } else { $baseNode.InnerText }
+
 Push-Location $repo
 try {
     # A dirty tree would be tagged with the count of the last commit while holding something else.
@@ -67,9 +71,15 @@ try {
         Stop-WithFailure 'Working tree is not clean - commit first, or pass -AllowDirty.'
     }
 
-    $height = (& git rev-list --count HEAD).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($height)) {
+    $total = (& git rev-list --count HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($total)) {
         Stop-WithFailure 'Could not count commits - is this a git working tree?'
+    }
+
+    # Commits made since this major.minor began, which is what the patch number counts.
+    $height = [int] $total - [int] $patchBase
+    if ($height -lt 0) {
+        Stop-WithFailure "VersionPatchBase ($patchBase) is ahead of the history ($total commits) - was a bump committed on a branch that has since been rewritten?"
     }
 
     $version = "${prefix}.${height}"

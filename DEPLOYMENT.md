@@ -38,10 +38,22 @@ token and that dependency.
 
 ### Publishing a version
 
-A version is `<VersionPrefix>` from [Directory.Build.props](Directory.Build.props) followed by the
-number of commits behind HEAD — `1.0.67`, `1.0.68`, and so on. The first two numbers are raised by
-hand, when a change deserves saying so; the third moves on its own, so **every commit is a version
-of its own** and no two builds can claim the same one.
+A version is `major.minor.patch`. The first two are raised by hand when a change deserves saying so;
+the patch is the number of commits made **since that major.minor began**, so every commit is a
+version of its own, no two builds can claim the same one, and the count starts again at 0 whenever
+a release line does — `0.1.68`, `0.1.69`, then `0.2.0`, `0.2.1`.
+
+Both live in [Directory.Build.props](Directory.Build.props), and only
+[scripts/bump-version.ps1](scripts/bump-version.ps1) should write them:
+
+```bash
+powershell -File scripts/bump-version.ps1 -Minor    # 0.1.68 -> next commit is 0.2.0
+powershell -File scripts/bump-version.ps1 -Major    # 0.1.68 -> next commit is 1.0.0
+```
+
+It edits the file and stops — committing and publishing stay yours. It needs a clean tree, because
+it counts its own edit as the first commit of the new line; anything else waiting to be committed
+would land in the new line while belonging to the old one.
 
 That count cannot be worked out inside the container — `.dockerignore` keeps `.git` out of the build
 context, and should — so the script counts it outside and passes it in. Which is also what makes the
