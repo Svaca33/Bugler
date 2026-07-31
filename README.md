@@ -1,6 +1,6 @@
 # Bugler
 
-Self-hosted telemetry server: collects **logs and traces** via the OpenTelemetry protocol (OTLP) and lets a team explore and correlate them in a web UI. Built for the situation where a company runs **multiple applications, each deployed separately for multiple clients**, and team members may only see the telemetry of the applications they are granted.
+Self-hosted telemetry server: collects **logs and traces** via the OpenTelemetry protocol (OTLP), lets a team explore and correlate them in a web UI, and mails or messages whoever subscribed when a service starts logging trouble. Built for the situation where a company runs **multiple applications, each deployed separately for multiple clients**, and team members may only see the telemetry of the applications they are granted.
 
 Metrics support is planned for a later phase.
 
@@ -19,7 +19,7 @@ The domain hierarchy is **Application → Service → Tenant**:
 - A *Service* is one registered sender — one role of one deployment, identified by its namespace, environment and name (`demo/prod · backend`). It owns its API keys and retention, and its identity is what the key proves, never what the telemetry claims about itself ([ADR 0006](docs/adr/0006-service-is-the-sender-identity.md)).
 - A *Tenant* is a customer inside a multi-tenant Service, visible only as a filter attribute in telemetry.
 
-The codebase is split into four bounded contexts — **Ingestion**, **Exploration**, **Registry**, **Access** — described in [CONTEXT-MAP.md](CONTEXT-MAP.md), each with its own glossary (`src/Bugler.<Context>/CONTEXT.md`). Architectural decisions are recorded as ADRs in [docs/adr](docs/adr).
+The codebase is split into five bounded contexts — **Ingestion**, **Exploration**, **Alerting**, **Registry**, **Access** — described in [CONTEXT-MAP.md](CONTEXT-MAP.md), each with its own glossary (`src/Bugler.<Context>/CONTEXT.md`). Architectural decisions are recorded as ADRs in [docs/adr](docs/adr).
 
 ## Running it
 
@@ -163,4 +163,9 @@ Architecture tests enforce the context boundaries described in [CONTEXT-MAP.md](
 
 ## Status
 
-Early development — scaffolded solution; domain implementation in progress.
+Version line `0.1` — the whole path is implemented and runs: OTLP ingest of logs and traces,
+the explore UI, applications, services, API keys and retention, local accounts with per-application
+grants, and the alerting watch with its mail and Google Chat notifications.
+
+Metrics have no receiver yet, and the release line says what it says: this has not been run
+long enough anywhere for `1.0` to be an honest number.
