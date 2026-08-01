@@ -10,16 +10,19 @@ namespace Bugler.Mail;
 /// thread-safe and Bugler's volume is a handful of messages per incident, so pooling would buy
 /// nothing.
 /// </summary>
-internal sealed class MailKitMailSender(IOptions<MailOptions> options) : IMailSender
+internal sealed class MailKitMailSender(
+    ISmtpSettingsSource settingsSource,
+    IOptions<MailOptions> options) : IMailSender
 {
     public async Task SendAsync(MailMessage message, CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        var smtp = settings.Smtp;
+        var smtp = await settingsSource.GetCurrentAsync(cancellationToken);
         if (!smtp.IsConfigured)
         {
             // Said plainly: this text is what a caller records and what the operator reads.
-            throw new InvalidOperationException("SMTP is not configured (Mail:Smtp).");
+            throw new InvalidOperationException(
+                "SMTP is not configured (Administration → Server, or Mail:Smtp).");
         }
 
         var mime = new MimeMessage();
@@ -36,8 +39,7 @@ internal sealed class MailKitMailSender(IOptions<MailOptions> options) : IMailSe
         try
         {
             using var client = new SmtpClient();
-            await client.ConnectAsync(
-                smtp.Host, smtp.Port, SecureSocketOptions.StartTlsWhenAvailable, deadline.Token);
+            await client.ConnectAsync(smtp.Host, smtp.Port, Map(smtp.Security), deadline.Token);
             if (smtp.Username.Length > 0)
             {
                 await client.AuthenticateAsync(smtp.Username, smtp.Password, deadline.Token);
@@ -56,4 +58,12 @@ internal sealed class MailKitMailSender(IOptions<MailOptions> options) : IMailSe
                 $"The SMTP server did not answer within {settings.SendTimeoutSeconds} seconds.");
         }
     }
+
+    private static SecureSocketOptions Map(SmtpSecurity security) => security switch
+    {
+        SmtpSecurity.None => SecureSocketOptions.None,
+        SmtpSecurity.StartTls => SecureSocketOptions.StartTls,
+        SmtpSecurity.ImplicitTls => SecureSocketOptions.SslOnConnect,
+        _ => SecureSocketOptions.StartTlsWhenAvailable,
+    };
 }

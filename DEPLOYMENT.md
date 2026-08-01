@@ -234,6 +234,7 @@ What is precious is small; what is enormous is disposable.
 | `registry` | kilobytes | re-registering every Service **and re-issuing every API key** |
 | `access` | kilobytes | recreating the accounts and their grants |
 | `alerting` | kilobytes | silence where the alerts used to be, and nobody notices silence |
+| `server` | bytes | re-entering the SMTP settings saved from the admin screen |
 
 API keys are stored only as SHA-256 hashes, so losing `registry` cannot be undone by reading a
 backup of it out of some other machine — the plaintext exists nowhere but in the configuration of

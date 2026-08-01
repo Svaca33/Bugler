@@ -21,7 +21,7 @@ public sealed class EpisodeDetector(
     IServiceScopeFactory scopeFactory,
     NpgsqlDataSource dataSource,
     IOptions<AlertingOptions> options,
-    IOptions<MailOptions> mailOptions,
+    ISmtpSettingsSource smtpSettings,
     ILogger<EpisodeDetector> logger)
 {
     private const int PageSize = 5000;
@@ -139,7 +139,7 @@ public sealed class EpisodeDetector(
         }
 
         var now = DateTimeOffset.UtcNow;
-        var mailEnabled = mailOptions.Value.Smtp.IsConfigured;
+        var mailEnabled = (await smtpSettings.GetCurrentAsync(cancellationToken)).IsConfigured;
 
         foreach (var detection in decisions.Services)
         {

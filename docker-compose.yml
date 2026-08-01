@@ -38,8 +38,11 @@ services:
       Mail__Smtp__Host: "mailpit"
       Mail__Smtp__Port: "1025"
       Mail__Smtp__From: "bugler@localhost"
+      # Mail__Smtp__Security: "Automatic" # or None / StartTls / ImplicitTls
       # Mail__Smtp__Username: "bugler"
       # Mail__Smtp__Password: "…"
+      # Saving SMTP settings in the UI (Administration → Server) overrides all of the above
+      # until reset there (ADR 0014).
       # Where this Bugler is reachable from outside; links in mail and chat point at it.
       # Server__PublicBaseUrl: "https://bugler.example.com"
     ports:

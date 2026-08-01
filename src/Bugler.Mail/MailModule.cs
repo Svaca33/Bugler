@@ -14,6 +14,13 @@ public static class MailModule
     {
         services.Configure<MailOptions>(configuration.GetSection(MailOptions.SectionName));
 
+        // The configuration section is the default source of SMTP settings. The Host replaces the
+        // interface registration with its stored settings (which fall back to this one), so the
+        // concrete type stays registered on its own.
+        services.AddSingleton<ConfigurationSmtpSettingsSource>();
+        services.AddSingleton<ISmtpSettingsSource>(p =>
+            p.GetRequiredService<ConfigurationSmtpSettingsSource>());
+
         services.AddSingleton<IMailSender, MailKitMailSender>();
         services.AddSingleton<MailQueue>();
         services.AddSingleton<IMailQueue>(p => p.GetRequiredService<MailQueue>());

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Bugler.Mail;
 
@@ -13,7 +12,7 @@ namespace Bugler.Mail;
 internal sealed class QueuedMailSender(
     MailQueue queue,
     IMailSender sender,
-    IOptions<MailOptions> options,
+    ISmtpSettingsSource settingsSource,
     ILogger<QueuedMailSender> logger) : BackgroundService
 {
     private static readonly TimeSpan[] RetryDelays =
@@ -21,12 +20,13 @@ internal sealed class QueuedMailSender(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!options.Value.Smtp.IsConfigured)
+        if (!(await settingsSource.GetCurrentAsync(stoppingToken)).IsConfigured)
         {
             // The one place that says it, for every context that would have sent something.
             logger.LogWarning(
-                "SMTP is not configured (Mail:Smtp): no mail will leave Bugler — alerts reach "
-                + "their subscribers only in the UI and password resets stay unavailable");
+                "SMTP is not configured (Administration → Server, or Mail:Smtp): no mail will "
+                + "leave Bugler — alerts reach their subscribers only in the UI and password "
+                + "resets stay unavailable");
         }
 
         try

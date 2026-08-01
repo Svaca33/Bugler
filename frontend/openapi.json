@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8080/"
+      "url": "http://127.0.0.1:8090/"
     }
   ],
   "paths": {
@@ -18,45 +18,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/admin/mail/test": {
-      "post": {
-        "tags": [
-          "SendTestMail"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TestMailResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Bad Gateway",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
           }
         }
       }
@@ -228,6 +189,118 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CurrentUserDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/mail/test": {
+      "post": {
+        "tags": [
+          "SendTestMail"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestMailResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/mail/settings": {
+      "get": {
+        "tags": [
+          "MailSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MailSettingsEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMailSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "MailSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailSettingsDto"
                 }
               }
             }
@@ -3039,6 +3112,52 @@
           }
         }
       },
+      "MailSettingsDto": {
+        "required": [
+          "source",
+          "host",
+          "port",
+          "security",
+          "username",
+          "hasPassword",
+          "from"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/MailSettingsSource"
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "security": {
+            "$ref": "#/components/schemas/SmtpSecurity"
+          },
+          "username": {
+            "type": "string"
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "from": {
+            "type": "string"
+          }
+        }
+      },
+      "MailSettingsSource": {
+        "enum": [
+          "Configuration",
+          "Stored"
+        ]
+      },
       "ObservedKeyDto": {
         "required": [
           "scope",
@@ -3120,6 +3239,48 @@
             "type": "string"
           },
           "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "SaveMailSettingsRequest": {
+        "required": [
+          "host",
+          "port",
+          "security",
+          "username",
+          "password",
+          "from"
+        ],
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "security": {
+            "$ref": "#/components/schemas/SmtpSecurity"
+          },
+          "username": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "password": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "from": {
             "type": "string"
           }
         }
@@ -3537,6 +3698,14 @@
           }
         }
       },
+      "SmtpSecurity": {
+        "enum": [
+          "Automatic",
+          "None",
+          "StartTls",
+          "ImplicitTls"
+        ]
+      },
       "SubscriptionsDto": {
         "required": [
           "applicationIds",
@@ -3830,13 +3999,16 @@
       "name": "Bugler.Host"
     },
     {
-      "name": "SendTestMail"
-    },
-    {
       "name": "AuthEndpoints"
     },
     {
       "name": "ResetPasswordEndpoints"
+    },
+    {
+      "name": "SendTestMail"
+    },
+    {
+      "name": "MailSettingsEndpoints"
     },
     {
       "name": "SearchLogsEndpoint"

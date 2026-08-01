@@ -35,11 +35,11 @@ internal static class ResetPasswordEndpoints
         AccessDbContext dbContext,
         IMailQueue mail,
         IOptions<AccessOptions> options,
-        IOptions<MailOptions> mailOptions,
+        ISmtpSettingsSource smtpSettings,
         ILogger<ResetTicket> logger,
         CancellationToken cancellationToken)
     {
-        if (!IsAvailable(options.Value, mailOptions.Value))
+        if (!IsAvailable(options.Value, await smtpSettings.GetCurrentAsync(cancellationToken)))
         {
             // Nothing about any User is given away by admitting this server cannot send mail —
             // and a button that always promises a link nobody ever receives is worse.
@@ -139,8 +139,8 @@ internal static class ResetPasswordEndpoints
         return secret;
     }
 
-    internal static bool IsAvailable(AccessOptions access, MailOptions mail) =>
-        mail.Smtp.IsConfigured && access.PublicBaseUrl.Length > 0;
+    internal static bool IsAvailable(AccessOptions access, SmtpSettings smtp) =>
+        smtp.IsConfigured && access.PublicBaseUrl.Length > 0;
 
     private static async Task IssueAndSendAsync(
         User user,

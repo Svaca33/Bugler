@@ -43,6 +43,48 @@ OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."
 See [Sending telemetry](#sending-telemetry) for the details, and for the two mistakes that
 make an exporter drop everything without saying a word.
 
+## Mail
+
+Bugler mails two things: alerts to whoever subscribed, and password-reset links. Without SMTP
+both stay quietly off — Bugler runs fine, but alerts reach inboxes never and passwords cannot be
+reset by link.
+
+Configure it while running, in **Admin → Server**: server (hostname or IP), port, security mode,
+credentials if the relay wants any, and the From address. Saving applies to the very next mail —
+no restart. The same screen sends a test message to your own account address and reports what the
+SMTP server actually said; use it, because a relay that refuses Bugler otherwise surfaces only in
+the container log.
+
+A bare internal relay is a first-class citizen: an IP for the server, security `None`, credentials
+empty. The security modes:
+
+| Mode | Meaning |
+| --- | --- |
+| `Automatic` | STARTTLS when the server offers it, plaintext when it does not — the default |
+| `None` | plaintext on purpose, even if the server advertises STARTTLS |
+| `StartTls` | STARTTLS or the send fails — refuses to downgrade |
+| `ImplicitTls` | TLS from the first byte — the dedicated-port style, usually 465 |
+
+Settings saved on the screen live in the database and win **whole** — never field by field — over
+the `Mail:Smtp` configuration section from the first save until the screen's *Reset to server
+configuration*; the screen always says which side is live
+([ADR 0014](docs/adr/0014-smtp-settings-are-runtime-editable-and-stored-by-host.md)). A deployment
+that keeps SMTP in the environment keeps working unchanged; these matter only while nothing was
+ever saved in the UI:
+
+```yaml
+Mail__Smtp__Host: "smtp.example.com"  # empty = mail disabled
+Mail__Smtp__Port: "587"
+Mail__Smtp__Security: "Automatic"     # Automatic | None | StartTls | ImplicitTls
+Mail__Smtp__Username: ""              # empty = no authentication
+Mail__Smtp__Password: ""
+Mail__Smtp__From: "bugler@example.com"
+```
+
+The SMTP password is write-only: once saved it is never shown again, only replaced or removed.
+The `docker compose` of the previous section ships a mailpit that swallows everything Bugler
+sends — read it at http://localhost:8025.
+
 ## Sending telemetry
 
 Bugler is a plain OTLP endpoint. Anything that speaks the protocol can export to it — an
@@ -163,7 +205,7 @@ Architecture tests enforce the context boundaries described in [CONTEXT-MAP.md](
 
 ## Status
 
-Version line `0.1` — the whole path is implemented and runs: OTLP ingest of logs and traces,
+Version line `0.5` — the whole path is implemented and runs: OTLP ingest of logs and traces,
 the explore UI, applications, services, API keys and retention, local accounts with per-application
 grants, and the alerting watch with its mail and Google Chat notifications.
 

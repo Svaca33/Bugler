@@ -23,11 +23,9 @@ public sealed class MailOptions
     {
         public string Host { get; set; } = "";
         public int Port { get; set; } = 587;
+        public SmtpSecurity Security { get; set; } = SmtpSecurity.Automatic;
         public string Username { get; set; } = "";
         public string Password { get; set; } = "";
         public string From { get; set; } = "";
-
-        /// <summary>Unconfigured SMTP disables mail entirely; it never fails startup.</summary>
-        public bool IsConfigured => Host.Length > 0 && From.Length > 0;
     }
 }

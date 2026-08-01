@@ -79,11 +79,12 @@ internal static class AuthEndpoints
     public static async Task<AuthStatusDto> Status(
         AccessDbContext dbContext,
         IOptions<AccessOptions> options,
-        IOptions<MailOptions> mailOptions,
+        ISmtpSettingsSource smtpSettings,
         CancellationToken cancellationToken) =>
         new(
             NeedsSetup: !await dbContext.Users.AnyAsync(cancellationToken),
-            PasswordResetAvailable: ResetPasswordEndpoints.IsAvailable(options.Value, mailOptions.Value));
+            PasswordResetAvailable: ResetPasswordEndpoints.IsAvailable(
+                options.Value, await smtpSettings.GetCurrentAsync(cancellationToken)));
 
     public static async Task<IResult> Login(
         LoginRequest request,
