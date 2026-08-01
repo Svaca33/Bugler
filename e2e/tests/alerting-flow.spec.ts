@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 
-import { registerApplication, signIn } from "./helpers";
+import { registerApplication, selectFilter, signIn } from "./helpers";
 
 /**
  * Alerting end to end: subscribe to a fresh application, export telemetry with an error in it,
@@ -27,8 +27,11 @@ test("an error log opens an episode that is worked in the panel and deep-links t
     encoding: "utf8",
   });
 
-  // Episodes list newest first; earlier runs may have left older episodes behind.
+  // Earlier runs leave episodes with this very body behind, and a stale one would satisfy every
+  // locator below while being long since solved. Narrowing to this run's application makes the
+  // list contain nothing but what this run produced.
   await page.getByRole("button", { name: "Episodes" }).click();
+  await selectFilter(page, "All applications", appName);
   const rows = page.getByTestId("episode-rows");
   const newest = rows.getByText("Payment declined: insufficient funds").first();
   await expect(newest).toBeVisible({ timeout: 60_000 });
@@ -44,6 +47,22 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   const panel = page.getByRole("complementary").filter({ hasText: "VOLUME SO FAR" });
   await expect(panel.getByText("Payment declined: insufficient funds")).toBeVisible();
   await expect(panel.getByText(/Opened by an ERROR log/)).toBeVisible();
+
+  // The kind of trouble takes a Quiet Window of its own, and gives it back. What is set belongs
+  // to the (Service, Fingerprint) pair, so the wording never claims the Episode owns it.
+  const window = panel.getByLabel(/Quiet window for this kind of trouble/);
+  await expect(panel.getByText("Inherited from the service: 15 min.")).toBeVisible();
+  await window.fill("120");
+  await window.blur();
+  await expect(
+    panel.getByText(/2 h for this kind of trouble in this service/),
+  ).toBeVisible();
+  // A tuned kind is marked wherever Episodes are listed: the open-now band and the list row.
+  await expect(page.getByText("quiet window 2 h")).toHaveCount(2);
+  // Emptying the field is how the kind goes back to inheriting.
+  await window.fill("");
+  await window.blur();
+  await expect(panel.getByText("Inherited from the service: 15 min.")).toBeVisible();
 
   // Acknowledge — the mark names its holder on the lifecycle timeline.
   await panel.getByRole("button", { name: "Acknowledge", exact: true }).click();

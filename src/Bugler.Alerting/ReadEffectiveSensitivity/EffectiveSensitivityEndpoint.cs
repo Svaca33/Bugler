@@ -36,7 +36,8 @@ internal static class EffectiveSensitivityEndpoint
         var effective = EffectiveSettings.Build(
             catalog,
             await dbContext.ApplicationSettings.AsNoTracking().ToListAsync(cancellationToken),
-            await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken));
+            await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
+            await dbContext.FingerprintQuietWindows.AsNoTracking().ToListAsync(cancellationToken));
 
         return Results.Ok(new ListSensitivityResponse(services
             .Select(s => new ServiceSensitivityDto(

@@ -9,7 +9,7 @@ Which Severity Bands of a Service's Log Records may open or sustain an Episode â
 _Avoid_: alert level, threshold, trigger filter
 
 **Quiet Window**:
-The stretch of time a Service must go without a matching Log Record before its open Episode closes. An Application-wide duration a Service may override.
+The stretch of time an open Episode must go without a matching Log Record before it closes. An Application-wide duration a Service may override, and one kind of trouble in a Service may override again â€” a Service's Episodes therefore fall quiet independently of one another.
 _Avoid_: cooldown, resolve timeout, silence period
 
 **Fingerprint**:

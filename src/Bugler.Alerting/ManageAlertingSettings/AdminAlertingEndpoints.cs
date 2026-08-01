@@ -208,7 +208,12 @@ internal static class AdminAlertingEndpoints
             .Where(s => s.ApplicationId == applicationId)
             .ToListAsync(cancellationToken);
 
-        var effective = EffectiveSettings.Build(applicationServices, applicationSettings, serviceSettings);
+        var fingerprintWindows = await dbContext.FingerprintQuietWindows
+            .Where(w => w.ApplicationId == applicationId)
+            .ToListAsync(cancellationToken);
+
+        var effective = EffectiveSettings.Build(
+            applicationServices, applicationSettings, serviceSettings, fingerprintWindows);
         await SilentClose.ApplyAsync(
             dbContext, effective.ServicesEffectivelyOff(applicationId), DateTimeOffset.UtcNow,
             cancellationToken);

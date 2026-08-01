@@ -36,7 +36,8 @@ public sealed class EpisodeCloser(
         var effective = EffectiveSettings.Build(
             catalog,
             await dbContext.ApplicationSettings.AsNoTracking().ToListAsync(cancellationToken),
-            await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken));
+            await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
+            await dbContext.FingerprintQuietWindows.AsNoTracking().ToListAsync(cancellationToken));
 
         var now = DateTimeOffset.UtcNow;
         var mutedServices = new List<ServiceId>();
@@ -46,7 +47,7 @@ public sealed class EpisodeCloser(
             var reason = CloseDecision.Decide(
                 effective.SensitivityOf(episode.ServiceId),
                 episode.LastMatchAt,
-                effective.QuietWindowOf(episode.ServiceId),
+                effective.QuietWindowOf(episode.ServiceId, episode.Fingerprint),
                 now);
 
             switch (reason)

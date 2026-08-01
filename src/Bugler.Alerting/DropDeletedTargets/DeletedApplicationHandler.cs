@@ -29,6 +29,9 @@ internal sealed class DeletedApplicationHandler(
         var overrides = await dbContext.ServiceSettings
             .Where(s => s.ApplicationId == applicationId)
             .ExecuteDeleteAsync(cancellationToken);
+        overrides += await dbContext.FingerprintQuietWindows
+            .Where(w => w.ApplicationId == applicationId)
+            .ExecuteDeleteAsync(cancellationToken);
 
         if (settings + subscriptions + episodes + overrides > 0)
         {

@@ -23,6 +23,9 @@ internal sealed class DeletedServicesHandler(
         var settings = await dbContext.ServiceSettings
             .Where(s => serviceIds.Contains(s.ServiceId))
             .ExecuteDeleteAsync(cancellationToken);
+        settings += await dbContext.FingerprintQuietWindows
+            .Where(w => serviceIds.Contains(w.ServiceId))
+            .ExecuteDeleteAsync(cancellationToken);
         var subscriptions = await dbContext.Subscriptions
             .Where(s => s.ServiceId != null && serviceIds.Contains(s.ServiceId!.Value))
             .ExecuteDeleteAsync(cancellationToken);

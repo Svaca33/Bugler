@@ -1313,6 +1313,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/episodes/{id}/quiet-window": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetFingerprintQuietWindowRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alerting/subscriptions": {
         parameters: {
             query?: never;
@@ -2131,6 +2170,17 @@ export interface components {
             environment: string;
             name: string;
         };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        ChatAlertDto: {
+            /** Format: date-time */
+            deliveredAt: null | string;
+        };
+        ChatWebhookDto: {
+            domain: string;
+        };
         CreateApplicationRequest: {
             name: string;
         };
@@ -2176,6 +2226,8 @@ export interface components {
             effectiveSensitivity: components["schemas"]["Sensitivity"];
             /** Format: int32 */
             quietWindowMinutes: number | string;
+            /** Format: int32 */
+            inheritedQuietWindowMinutes: number | string;
         };
         EpisodeDto: {
             /** Format: uuid */
@@ -2211,6 +2263,8 @@ export interface components {
             solvedBy: null | string;
             /** Format: int32 */
             priorCount: number | string;
+            /** Format: int32 */
+            fingerprintQuietWindowMinutes: null | number | string;
         };
         EpisodesByServiceResponse: {
             services: components["schemas"]["ServiceEpisodesDto"][];
@@ -2241,17 +2295,6 @@ export interface components {
         GrantRequest: {
             /** Format: uuid */
             applicationId: string;
-        };
-        ChangePasswordRequest: {
-            currentPassword: string;
-            newPassword: string;
-        };
-        ChatAlertDto: {
-            /** Format: date-time */
-            deliveredAt: null | string;
-        };
-        ChatWebhookDto: {
-            domain: string;
         };
         IssuedApiKeyDto: {
             /** Format: uuid */
@@ -2437,6 +2480,10 @@ export interface components {
         };
         SetChatWebhookRequest: {
             url: null | string;
+        };
+        SetFingerprintQuietWindowRequest: {
+            /** Format: int32 */
+            quietWindowMinutes: null | number | string;
         };
         SetRetentionRequest: {
             /** Format: int32 */

@@ -11,6 +11,7 @@ import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
 import { clock, clockShort, ordinal } from "./format";
+import { QuietWindowBadge } from "./QuietWindowBadge";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
@@ -120,6 +121,7 @@ function OpenCard(props: {
           {Number(episode.warnCount) > 0 && (
             <span className="text-severity-warn">{episode.warnCount} warn</span>
           )}
+          <QuietWindowBadge episode={episode} />
         </div>
       </div>
 

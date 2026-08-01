@@ -51,6 +51,10 @@ public sealed class EpisodeDetector(
                 .ToListAsync(cancellationToken);
             var serviceSettings = await dbContext.ServiceSettings.AsNoTracking()
                 .ToListAsync(cancellationToken);
+            // Detection never asks for a Quiet Window — but the snapshot is built whole, so
+            // nobody can later read a half-resolved one.
+            var fingerprintWindows = await dbContext.FingerprintQuietWindows.AsNoTracking()
+                .ToListAsync(cancellationToken);
             var cursor = await dbContext.PollCursor.AsNoTracking()
                 .FirstOrDefaultAsync(cancellationToken);
 
@@ -73,7 +77,8 @@ public sealed class EpisodeDetector(
             }
 
             snapshot = new Snapshot(
-                EffectiveSettings.Build(catalog, applicationSettings, serviceSettings),
+                EffectiveSettings.Build(
+                    catalog, applicationSettings, serviceSettings, fingerprintWindows),
                 applicationSettings
                     .Where(s => s.ChatWebhookUrl is not null)
                     .Select(s => s.ApplicationId)

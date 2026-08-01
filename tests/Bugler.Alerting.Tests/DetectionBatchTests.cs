@@ -25,7 +25,8 @@ public class DetectionBatchTests
                     ApplicationId = App,
                     Sensitivity = s.Override,
                 })
-                .ToList());
+                .ToList(),
+            []);
 
     private static MatchingLog Log(long id, ServiceId service, short severity, string body = "boom") =>
         new(id, service.Value, DateTime.UtcNow, severity, body, Template: null, EventName: null);

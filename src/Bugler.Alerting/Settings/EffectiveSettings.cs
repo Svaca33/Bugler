@@ -5,19 +5,29 @@ namespace Bugler.Alerting.Settings;
 
 /// <summary>
 /// The settings detection actually runs under: every registered Service resolved through
-/// `service override ?? application setting ?? default`, snapshotted at one instant. Rebuilt
-/// each run, because detection always evaluates the current effective Sensitivity.
+/// `service override ?? application setting ?? default`, with the Quiet Window resolving one
+/// tier deeper still (`kind of trouble ?? that`, ADR 0004) — all snapshotted at one instant.
+/// Rebuilt each run, because detection always evaluates the current effective Sensitivity.
+/// Always built whole: one shared path, no second opinion.
 /// </summary>
 public sealed class EffectiveSettings
 {
     private readonly Dictionary<ServiceId, ResolvedService> _services;
+    private readonly Dictionary<(ServiceId, string), int> _fingerprintWindows;
 
-    private EffectiveSettings(Dictionary<ServiceId, ResolvedService> services) => _services = services;
+    private EffectiveSettings(
+        Dictionary<ServiceId, ResolvedService> services,
+        Dictionary<(ServiceId, string), int> fingerprintWindows)
+    {
+        _services = services;
+        _fingerprintWindows = fingerprintWindows;
+    }
 
     public static EffectiveSettings Build(
         IReadOnlyList<CatalogService> catalog,
         IReadOnlyList<ApplicationAlertingSettings> applicationSettings,
-        IReadOnlyList<ServiceAlertingSettings> serviceSettings)
+        IReadOnlyList<ServiceAlertingSettings> serviceSettings,
+        IReadOnlyList<FingerprintQuietWindow> fingerprintWindows)
     {
         var byApplication = applicationSettings.ToDictionary(s => s.ApplicationId);
         var byService = serviceSettings.ToDictionary(s => s.ServiceId);
@@ -34,15 +44,32 @@ public sealed class EffectiveSettings
                     ?? AlertingDefaults.QuietWindowMinutes);
         }
 
-        return new EffectiveSettings(services);
+        return new EffectiveSettings(
+            services,
+            fingerprintWindows.ToDictionary(
+                w => (w.ServiceId, w.Fingerprint), w => w.QuietWindowMinutes));
     }
 
     /// <summary>Unknown Services do not alert: telemetry without a registration is an orphan, not an outage.</summary>
     public Sensitivity SensitivityOf(ServiceId serviceId) =>
         _services.GetValueOrDefault(serviceId)?.Sensitivity ?? Sensitivity.Off;
 
-    public TimeSpan QuietWindowOf(ServiceId serviceId) => TimeSpan.FromMinutes(
-        _services.GetValueOrDefault(serviceId)?.QuietWindowMinutes ?? AlertingDefaults.QuietWindowMinutes);
+    /// <summary>
+    /// How long this kind of trouble in this Service must stay silent. The Fingerprint's own
+    /// window wins where one is set; otherwise the Service's resolved value applies.
+    /// </summary>
+    public TimeSpan QuietWindowOf(ServiceId serviceId, string fingerprint) =>
+        TimeSpan.FromMinutes(QuietWindowMinutesOf(serviceId, fingerprint));
+
+    public int QuietWindowMinutesOf(ServiceId serviceId, string fingerprint) =>
+        _fingerprintWindows.TryGetValue((serviceId, fingerprint), out var own)
+            ? own
+            : _services.GetValueOrDefault(serviceId)?.QuietWindowMinutes
+                ?? AlertingDefaults.QuietWindowMinutes;
+
+    /// <summary>What a Service's Episodes fall back to — the value a Fingerprint override replaces.</summary>
+    public int InheritedQuietWindowMinutesOf(ServiceId serviceId) =>
+        _services.GetValueOrDefault(serviceId)?.QuietWindowMinutes ?? AlertingDefaults.QuietWindowMinutes;
 
     public ApplicationId? ApplicationOf(ServiceId serviceId) =>
         _services.GetValueOrDefault(serviceId)?.ApplicationId;

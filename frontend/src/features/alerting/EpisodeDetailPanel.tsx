@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { api, type Episode, type EpisodeDetail } from "@/api/client";
 import { useCurrentUser } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DetailPanel } from "@/components/ui/detail-panel";
+import { Input } from "@/components/ui/input";
+import { canConfigureAlerting } from "@/lib/capabilities";
 import { describeMillis } from "@/lib/duration";
 import { formatTime } from "@/lib/format";
 import { severityLabel } from "@/lib/severity";
@@ -14,6 +16,7 @@ import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
 import { clock, historyStamp } from "./format";
+import { describeQuietWindow, MAX_QUIET_WINDOW_MINUTES, quietWindowError } from "./quietWindow";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
@@ -306,6 +309,17 @@ function EpisodeBody(props: {
         </p>
       </div>
 
+      {detail !== undefined && (
+        <QuietWindowSection
+          episodeId={episode.id}
+          own={episode.fingerprintQuietWindowMinutes == null
+            ? null
+            : Number(episode.fingerprintQuietWindowMinutes)}
+          inherited={Number(detail.inheritedQuietWindowMinutes)}
+          editable={canConfigureAlerting(currentUser.data)}
+        />
+      )}
+
       {/* Actions */}
       <div className="sticky -bottom-4 -mx-5 mt-auto flex items-center gap-2 border-t border-[#17293D] bg-[#0B1826] px-[18px] py-3">
         {episode.state !== "Solved" && (
@@ -359,6 +373,82 @@ function EpisodeBody(props: {
         onSolve={() => actions.solve.mutate(undefined, { onSuccess: () => setSolveOpen(false) })}
       />
     </>
+  );
+}
+
+/**
+ * The Quiet Window this kind of trouble keeps for itself (ADR 0004). It is deliberately not
+ * worded as a property of the Episode: what is saved here outlives it and governs every later
+ * Episode of the same kind — which is why the field stays live on a closed one too.
+ */
+function QuietWindowSection(props: {
+  episodeId: string;
+  own: number | null;
+  inherited: number;
+  editable: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: async (minutes: number | null) => {
+      const { response } = await api.PUT("/api/admin/episodes/{id}/quiet-window", {
+        params: { path: { id: props.episodeId } },
+        body: { quietWindowMinutes: minutes },
+      });
+      if (!response.ok) throw new Error("The quiet window was not saved.");
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["alerts"] }),
+  });
+
+  // Committed on blur and on Enter, like every other settings field here. A value the API would
+  // refuse simply does not commit: an uncommitted field is clearer than an error.
+  const commit = (raw: string) => {
+    if (quietWindowError(raw) !== null) {
+      return;
+    }
+
+    const trimmed = raw.trim();
+    const next = trimmed.length === 0 ? null : Number(trimmed);
+    if (next !== props.own) {
+      save.mutate(next);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={CAPTION}>QUIET WINDOW</p>
+      {props.editable && (
+        <div className="flex items-center gap-2">
+          <Input
+            aria-label="Quiet window for this kind of trouble, in minutes"
+            // Keyed on the saved value so a refetch — or another episode — reloads the field.
+            key={`${props.episodeId}:${props.own ?? ""}`}
+            className="h-8 w-[104px] font-mono text-[12px]"
+            type="number"
+            min={1}
+            max={MAX_QUIET_WINDOW_MINUTES}
+            placeholder={String(props.inherited)}
+            defaultValue={props.own ?? ""}
+            disabled={save.isPending}
+            onBlur={event => commit(event.currentTarget.value)}
+            onKeyDown={event => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit(event.currentTarget.value);
+              }
+            }}
+          />
+          <span className="font-mono text-[11px] text-[#7D93AA]">
+            min · empty inherits
+          </span>
+        </div>
+      )}
+      <p className="text-[11.5px] text-[#6E86A0]">
+        {describeQuietWindow({ own: props.own, inherited: props.inherited })}
+      </p>
+      {save.error != null && (
+        <p className="text-[11.5px] text-destructive">{save.error.message}</p>
+      )}
+    </div>
   );
 }
 

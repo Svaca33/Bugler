@@ -15,16 +15,19 @@ public sealed record MailAlertDto(int SubscriberCount, DateTimeOffset? FirstDeli
 public sealed record ChatAlertDto(DateTimeOffset? DeliveredAt);
 
 /// <summary>
-/// One Episode with what the timeline needs beyond the list row. The settings are the Service's
-/// effective values as configured now — detection always reads the current value, so for an open
-/// Episode they are exactly what will close it.
+/// One Episode with what the timeline needs beyond the list row. The settings are the effective
+/// values as configured now — detection always reads the current value, so for an open Episode
+/// they are exactly what will close it.
 /// </summary>
 public sealed record EpisodeDetailDto(
     EpisodeDto Episode,
     MailAlertDto? MailAlert,
     ChatAlertDto? ChatAlert,
     Sensitivity EffectiveSensitivity,
-    int QuietWindowMinutes);
+    /// <summary>What actually closes this Episode: its kind's own window where set, the Service's otherwise.</summary>
+    int QuietWindowMinutes,
+    /// <summary>What this kind would fall back to — so the panel can name the inheritance without guessing.</summary>
+    int InheritedQuietWindowMinutes);
 
 internal static class EpisodeDetailEndpoint
 {
@@ -64,10 +67,15 @@ internal static class EpisodeDetailEndpoint
         // Effective settings resolve through the whole catalog (service ?? application ?? default),
         // the same way detection builds them — one shared path, no second opinion.
         var catalog = await catalogReader.GetServicesAsync(cancellationToken);
+        var fingerprintWindows = await dbContext.FingerprintQuietWindows.AsNoTracking()
+            .ToListAsync(cancellationToken);
         var effective = EffectiveSettings.Build(
             catalog,
             await dbContext.ApplicationSettings.AsNoTracking().ToListAsync(cancellationToken),
-            await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken));
+            await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
+            fingerprintWindows);
+        var own = fingerprintWindows.FirstOrDefault(
+            w => w.ServiceId == episode.ServiceId && w.Fingerprint == episode.Fingerprint);
 
         var names = await userNames.ResolveAsync(
             new[] { episode.AcknowledgedByUserId, episode.SolvedByUserId }.OfType<Guid>().ToHashSet(),
@@ -81,7 +89,7 @@ internal static class EpisodeDetailEndpoint
             episode.FirstLogBody,
             episode.AcknowledgedAt, EpisodesEndpoint.NameOf(names, episode.AcknowledgedByUserId),
             episode.SolvedAt, EpisodesEndpoint.NameOf(names, episode.SolvedByUserId),
-            priorCount);
+            priorCount, own?.QuietWindowMinutes);
 
         return Results.Ok(new EpisodeDetailDto(
             dto,
@@ -92,6 +100,7 @@ internal static class EpisodeDetailEndpoint
                 : null,
             chat is null ? null : new ChatAlertDto(chat.DeliveredAt),
             effective.SensitivityOf(episode.ServiceId),
-            (int)effective.QuietWindowOf(episode.ServiceId).TotalMinutes));
+            effective.QuietWindowMinutesOf(episode.ServiceId, episode.Fingerprint),
+            effective.InheritedQuietWindowMinutesOf(episode.ServiceId)));
     }
 }

@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:8090/"
+      "url": "http://localhost:8080/"
     }
   ],
   "paths": {
@@ -1449,6 +1449,39 @@
         }
       }
     },
+    "/api/admin/episodes/{id}/quiet-window": {
+      "put": {
+        "tags": [
+          "FingerprintQuietWindowEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFingerprintQuietWindowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/alerting/subscriptions": {
       "get": {
         "tags": [
@@ -2338,6 +2371,47 @@
           }
         }
       },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatAlertDto": {
+        "required": [
+          "deliveredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          }
+        }
+      },
       "CreateApplicationRequest": {
         "required": [
           "name"
@@ -2503,7 +2577,8 @@
           "mailAlert",
           "chatAlert",
           "effectiveSensitivity",
-          "quietWindowMinutes"
+          "quietWindowMinutes",
+          "inheritedQuietWindowMinutes"
         ],
         "type": "object",
         "properties": {
@@ -2540,6 +2615,14 @@
               "string"
             ],
             "format": "int32"
+          },
+          "inheritedQuietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -2563,7 +2646,8 @@
           "acknowledgedBy",
           "solvedAt",
           "solvedBy",
-          "priorCount"
+          "priorCount",
+          "fingerprintQuietWindowMinutes"
         ],
         "type": "object",
         "properties": {
@@ -2671,6 +2755,15 @@
           "priorCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fingerprintQuietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -2788,47 +2881,6 @@
           "applicationId": {
             "type": "string",
             "format": "uuid"
-          }
-        }
-      },
-      "ChangePasswordRequest": {
-        "required": [
-          "currentPassword",
-          "newPassword"
-        ],
-        "type": "object",
-        "properties": {
-          "currentPassword": {
-            "type": "string"
-          },
-          "newPassword": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatAlertDto": {
-        "required": [
-          "deliveredAt"
-        ],
-        "type": "object",
-        "properties": {
-          "deliveredAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        }
-      },
-      "ChatWebhookDto": {
-        "required": [
-          "domain"
-        ],
-        "type": "object",
-        "properties": {
-          "domain": {
-            "type": "string"
           }
         }
       },
@@ -3598,6 +3650,23 @@
           }
         }
       },
+      "SetFingerprintQuietWindowRequest": {
+        "required": [
+          "quietWindowMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "SetRetentionRequest": {
         "required": [
           "retentionDays",
@@ -4036,6 +4105,9 @@
     },
     {
       "name": "AdminAlertingEndpoints"
+    },
+    {
+      "name": "FingerprintQuietWindowEndpoint"
     },
     {
       "name": "SubscriptionEndpoints"

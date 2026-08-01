@@ -1,3 +1,4 @@
+using Bugler.Access.Contracts;
 using Bugler.Alerting.ActOnEpisodes;
 using Bugler.Alerting.CloseQuietEpisodes;
 using Bugler.Alerting.DeliverMessages;
@@ -55,7 +56,9 @@ public static class AlertingModule
 
     public static IEndpointRouteBuilder MapAlerting(this IEndpointRouteBuilder endpoints)
     {
-        var admin = endpoints.MapGroup("/api/admin").RequireAuthorization("Admin");
+        // The group names the capability it needs, not the role that currently grants it (ADR 0015).
+        var admin = endpoints.MapGroup("/api/admin")
+            .RequireAuthorization(Capabilities.ConfigureAlerting);
         admin.MapGet("/applications/{applicationId:guid}/alerting",
             AdminAlertingEndpoints.GetApplicationAlerting);
         admin.MapPut("/applications/{applicationId:guid}/alerting",
@@ -64,6 +67,7 @@ public static class AlertingModule
             AdminAlertingEndpoints.SetChatWebhook);
         admin.MapPut("/services/{serviceId:guid}/alerting",
             AdminAlertingEndpoints.SetServiceAlerting);
+        admin.MapPut("/episodes/{id:guid}/quiet-window", FingerprintQuietWindowEndpoint.Set);
 
         var user = endpoints.MapGroup("/api/alerting").RequireAuthorization();
         user.MapGet("/subscriptions", SubscriptionEndpoints.GetOwn).Produces<SubscriptionsDto>();

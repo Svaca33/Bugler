@@ -21,6 +21,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
 
     public DbSet<ApplicationAlertingSettings> ApplicationSettings => Set<ApplicationAlertingSettings>();
     public DbSet<ServiceAlertingSettings> ServiceSettings => Set<ServiceAlertingSettings>();
+    public DbSet<FingerprintQuietWindow> FingerprintQuietWindows => Set<FingerprintQuietWindow>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Episode> Episodes => Set<Episode>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
@@ -48,6 +49,19 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             settings.HasIndex(s => s.ApplicationId);
             settings.ToTable(table => table.HasCheckConstraint(
                 "ck_service_settings_quiet_window", "quiet_window_minutes >= 1"));
+        });
+
+        modelBuilder.Entity<FingerprintQuietWindow>(window =>
+        {
+            // The key is the pair an Episode is told apart by — the same one detection groups on.
+            window.HasKey(w => new { w.ServiceId, w.Fingerprint });
+            window.Property(w => w.ServiceId).HasConversion(ServiceIdConverter);
+            window.Property(w => w.ApplicationId).HasConversion(ApplicationIdConverter);
+            window.Property(w => w.Fingerprint).HasMaxLength(300);
+            window.HasIndex(w => w.ApplicationId);
+            window.ToTable(table => table.HasCheckConstraint(
+                "ck_fingerprint_quiet_windows_bounds",
+                $"quiet_window_minutes BETWEEN 1 AND {FingerprintQuietWindow.MaxMinutes}"));
         });
 
         modelBuilder.Entity<Subscription>(subscription =>

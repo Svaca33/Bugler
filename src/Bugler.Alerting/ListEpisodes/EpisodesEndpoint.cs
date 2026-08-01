@@ -25,7 +25,9 @@ public sealed record EpisodeDto(
     string? AcknowledgedBy,
     DateTimeOffset? SolvedAt,
     string? SolvedBy,
-    int PriorCount);
+    int PriorCount,
+    /// <summary>The Quiet Window this kind of trouble keeps for itself; null means it inherits the Service's.</summary>
+    int? FingerprintQuietWindowMinutes);
 
 public sealed record ListEpisodesResponse(IReadOnlyList<EpisodeDto> Items);
 
@@ -107,6 +109,11 @@ internal static class EpisodesEndpoint
                     p.ServiceId == e.ServiceId
                     && p.Fingerprint == e.Fingerprint
                     && p.Id.CompareTo(e.Id) < 0),
+                // Keyed on the new table's primary key, so this is a lookup, not a scan.
+                FingerprintQuietWindowMinutes = dbContext.FingerprintQuietWindows
+                    .Where(w => w.ServiceId == e.ServiceId && w.Fingerprint == e.Fingerprint)
+                    .Select(w => (int?)w.QuietWindowMinutes)
+                    .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
@@ -127,7 +134,7 @@ internal static class EpisodesEndpoint
             r.Episode.FirstLogBody,
             r.Episode.AcknowledgedAt, NameOf(names, r.Episode.AcknowledgedByUserId),
             r.Episode.SolvedAt, NameOf(names, r.Episode.SolvedByUserId),
-            r.PriorCount)).ToList();
+            r.PriorCount, r.FingerprintQuietWindowMinutes)).ToList();
 
         return Results.Ok(new ListEpisodesResponse(items));
     }

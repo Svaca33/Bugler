@@ -23,6 +23,7 @@ import { AlertsFilterRail } from "./AlertsFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
 import { clock, dayLabel } from "./format";
 import { OpenNowBand } from "./OpenNowBand";
+import { QuietWindowBadge } from "./QuietWindowBadge";
 import { indexServices, type KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
 
@@ -339,6 +340,7 @@ function EpisodeRow(props: {
                   ×{priorCount + 1}
                 </span>
               )}
+              <QuietWindowBadge episode={episode} />
               {owner !== undefined && <span className="truncate">{owner}</span>}
             </>
           )}
