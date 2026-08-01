@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
-import { severityRailClass } from "@/lib/severity";
 
 import { StatusBadges } from "./badges";
 import { MailToggle } from "./MailToggle";
@@ -74,13 +73,6 @@ export function ServiceTable(props: {
                 </td>
                 <td className="px-1.5 align-middle">
                   <div className="flex items-center gap-2 whitespace-nowrap">
-                    <span
-                      className={`h-[15px] w-[3px] shrink-0 rounded-[2px] ${
-                        open && latest != null
-                          ? severityRailClass(Number(latest.firstLogSeverity))
-                          : "bg-[#1E344C]"
-                      }`}
-                    />
                     <StatusBadges tile={tile} />
                   </div>
                 </td>
