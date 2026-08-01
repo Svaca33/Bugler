@@ -1,5 +1,6 @@
 using Bugler.Access.Contracts;
 using Bugler.Alerting.Deliveries;
+using Bugler.Alerting.Episodes;
 using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.Settings;
 using Bugler.Registry.Contracts;
@@ -14,6 +15,9 @@ public sealed record MailAlertDto(int SubscriberCount, DateTimeOffset? FirstDeli
 /// <summary>The Alert posted to the Application's Chat Webhook; DeliveredAt null while it has not landed.</summary>
 public sealed record ChatAlertDto(DateTimeOffset? DeliveredAt);
 
+/// <summary>One Journal line (see CONTEXT.md: Journal); By is null when the User is no longer here.</summary>
+public sealed record JournalEntryDto(JournalEntryKind Kind, DateTimeOffset At, string? By);
+
 /// <summary>
 /// One Episode with what the timeline needs beyond the list row. The settings are the effective
 /// values as configured now — detection always reads the current value, so for an open Episode
@@ -27,7 +31,9 @@ public sealed record EpisodeDetailDto(
     /// <summary>What actually closes this Episode: its kind's own window where set, the Service's otherwise.</summary>
     int QuietWindowMinutes,
     /// <summary>What this kind would fall back to — so the panel can name the inheritance without guessing.</summary>
-    int InheritedQuietWindowMinutes);
+    int InheritedQuietWindowMinutes,
+    /// <summary>Every human hand laid on this Episode, oldest first (see CONTEXT.md: Journal).</summary>
+    IReadOnlyList<JournalEntryDto> Journal);
 
 internal static class EpisodeDetailEndpoint
 {
@@ -69,6 +75,13 @@ internal static class EpisodeDetailEndpoint
             .Select(p => new { p.AcknowledgedByUserId, p.AcknowledgedAt })
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Oldest first: the Journal is read as the story ran. Same-instant entries (a Solve and
+        // the withdrawals it wrote) keep insertion order via the identity key.
+        var journal = await dbContext.JournalEntries.AsNoTracking()
+            .Where(j => j.EpisodeId == id)
+            .OrderBy(j => j.At).ThenBy(j => j.Id)
+            .ToListAsync(cancellationToken);
+
         var alerts = await dbContext.Deliveries.AsNoTracking()
             .Where(d => d.EpisodeId == id && d.Kind == DeliveryKind.Alert)
             .ToListAsync(cancellationToken);
@@ -90,7 +103,9 @@ internal static class EpisodeDetailEndpoint
 
         var names = await userNames.ResolveAsync(
             new[] { episode.AcknowledgedByUserId, episode.SolvedByUserId, earlierAck?.AcknowledgedByUserId }
-                .OfType<Guid>().ToHashSet(),
+                .OfType<Guid>()
+                .Concat(journal.Select(j => j.UserId))
+                .ToHashSet(),
             cancellationToken);
 
         var dto = new EpisodeDto(
@@ -115,6 +130,8 @@ internal static class EpisodeDetailEndpoint
             chat is null ? null : new ChatAlertDto(chat.DeliveredAt),
             effective.SensitivityOf(episode.ServiceId),
             effective.QuietWindowMinutesOf(episode.ServiceId, episode.Fingerprint),
-            effective.InheritedQuietWindowMinutesOf(episode.ServiceId)));
+            effective.InheritedQuietWindowMinutesOf(episode.ServiceId),
+            journal.Select(j => new JournalEntryDto(
+                j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId))).ToList()));
     }
 }

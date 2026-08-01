@@ -52,36 +52,48 @@ public sealed class Episode
 
     /// <summary>
     /// Takes the Episode on — or over: one slot, last hand wins (see CONTEXT.md: Acknowledged).
-    /// False on a Solved Episode, which is never Acknowledged.
+    /// Refused on a Solved Episode, which is never Acknowledged; the holder re-acknowledging is
+    /// not an act — the mark keeps its original moment, so the Journal stays its full explanation.
     /// </summary>
-    public bool Acknowledge(Guid userId, DateTimeOffset now)
+    public HandOutcome Acknowledge(Guid userId, DateTimeOffset now)
     {
         if (SolvedAt is not null)
         {
-            return false;
+            return HandOutcome.Refused;
+        }
+
+        if (AcknowledgedByUserId == userId)
+        {
+            return HandOutcome.Nothing;
         }
 
         AcknowledgedByUserId = userId;
         AcknowledgedAt = now;
-        return true;
+        return HandOutcome.Acted;
     }
 
-    /// <summary>Withdraws the acknowledgement — the live claim ends, no record remains.</summary>
-    public void Unacknowledge()
+    /// <summary>Withdraws the acknowledgement — the live claim ends; what happened is the Journal's to tell.</summary>
+    public HandOutcome Unacknowledge()
     {
+        if (AcknowledgedByUserId is null)
+        {
+            return HandOutcome.Nothing;
+        }
+
         AcknowledgedByUserId = null;
         AcknowledgedAt = null;
+        return HandOutcome.Acted;
     }
 
     /// <summary>
     /// The terminal human verdict (see CONTEXT.md: Solved): ends an open Episode on the spot and
-    /// consumes any acknowledgement. False when already Solved — the verdict is rendered once.
+    /// consumes any acknowledgement. Refused when already Solved — the verdict is rendered once.
     /// </summary>
-    public bool Solve(Guid userId, DateTimeOffset now)
+    public HandOutcome Solve(Guid userId, DateTimeOffset now)
     {
         if (SolvedAt is not null)
         {
-            return false;
+            return HandOutcome.Refused;
         }
 
         if (ClosedAt is null)
@@ -93,6 +105,6 @@ public sealed class Episode
         SolvedByUserId = userId;
         SolvedAt = now;
         Unacknowledge();
-        return true;
+        return HandOutcome.Acted;
     }
 }

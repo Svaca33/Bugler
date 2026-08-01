@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Bugler.Alerting.DescribeEpisode;
 using Bugler.Alerting.Episodes;
 using Bugler.Alerting.ListEpisodes;
 
@@ -208,6 +209,53 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         var afterwards = await ListAsync();
         Assert.All(afterwards.Items, e => Assert.Null(e.AcknowledgedBy));
         Assert.Null(afterwards.Items[0].EarlierAcknowledgedBy);
+
+        // The stripped mark left its trace (ADR 0006): the older episode's Journal records the
+        // withdrawal by the solver's hand, at the verdict's moment — no mark vanishes untold.
+        var olderDetail = await _harness.Client.GetFromJsonAsync<EpisodeDetailDto>(
+            $"/api/alerting/episodes/{older}/detail");
+        Assert.Equal(
+            [(JournalEntryKind.Acknowledged, "Admin"), (JournalEntryKind.Withdrawn, "Admin")],
+            olderDetail!.Journal.Select(j => (j.Kind, j.By)));
+        var newerDetail = await _harness.Client.GetFromJsonAsync<EpisodeDetailDto>(
+            $"/api/alerting/episodes/{newer}/detail");
+        var verdict = Assert.Single(newerDetail!.Journal);
+        Assert.Equal(JournalEntryKind.Solved, verdict.Kind);
+        Assert.Equal(verdict.At, olderDetail.Journal[^1].At);
+    }
+
+    [Fact]
+    public async Task The_journal_keeps_every_hand_and_only_acts_are_written()
+    {
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom");
+        var id = (await ListAsync()).Items[0].Id;
+        var member = await _harness.CreateUserClientAsync(
+            "member@bugler.test", "MemberPass123!", _harness.ApplicationId);
+
+        // Acknowledge, re-acknowledge (not an act), take-over, a colleague withdrawing the
+        // mark, withdrawing nothing (not an act), acknowledge again, and the verdict.
+        await _harness.Client.PostAsync($"/api/alerting/episodes/{id}/acknowledge", null);
+        var firstMarkAt = (await ListAsync()).Items[0].AcknowledgedAt;
+        await _harness.Client.PostAsync($"/api/alerting/episodes/{id}/acknowledge", null);
+        // Not an act on either side: the mark kept its first moment, the Journal stays quiet.
+        Assert.Equal(firstMarkAt, (await ListAsync()).Items[0].AcknowledgedAt);
+        await member.PostAsync($"/api/alerting/episodes/{id}/acknowledge", null);
+        await _harness.Client.DeleteAsync($"/api/alerting/episodes/{id}/acknowledgement");
+        await _harness.Client.DeleteAsync($"/api/alerting/episodes/{id}/acknowledgement");
+        await member.PostAsync($"/api/alerting/episodes/{id}/acknowledge", null);
+        await _harness.Client.PostAsync($"/api/alerting/episodes/{id}/solve", null);
+
+        var detail = await _harness.Client.GetFromJsonAsync<EpisodeDetailDto>(
+            $"/api/alerting/episodes/{id}/detail");
+        Assert.Equal(
+            [
+                (JournalEntryKind.Acknowledged, "Admin"),
+                (JournalEntryKind.Acknowledged, "member@bugler.test"),
+                (JournalEntryKind.Withdrawn, "Admin"),
+                (JournalEntryKind.Acknowledged, "member@bugler.test"),
+                (JournalEntryKind.Solved, "Admin"),
+            ],
+            detail!.Journal.Select(j => (j.Kind, j.By)));
     }
 
     [Fact]

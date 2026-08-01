@@ -228,28 +228,7 @@ function EpisodeBody(props: {
             </Moment>
           )}
 
-          {episode.acknowledgedAt !== null && (
-            <Moment dot="bg-primary">
-              <p className="text-[12.5px]">
-                {heldByMe
-                  ? "You acknowledged it"
-                  : `Acknowledged by ${episode.acknowledgedBy ?? "a user no longer here"}`}
-              </p>
-              <p className="font-mono text-[11px] text-[#7D93AA]">
-                {clock(episode.acknowledgedAt)}
-                {heldByMe && currentUser.data?.email !== undefined && ` · ${currentUser.data.email}`}
-              </p>
-            </Moment>
-          )}
-
-          {episode.solvedAt !== null && (
-            <Moment dot="bg-state-solved">
-              <p className="text-[12.5px]">
-                Solved by {episode.solvedBy ?? "a user no longer here"}
-              </p>
-              <p className="font-mono text-[11px] text-[#7D93AA]">{clock(episode.solvedAt)}</p>
-            </Moment>
-          )}
+          {detail !== undefined && <JournalMoments journal={detail.journal} myName={myName} />}
 
           {episode.state === "Open" && (
             <StillMatching
@@ -485,6 +464,60 @@ function QuietWindowSection(props: {
       )}
     </div>
   );
+}
+
+/**
+ * The human hands on the timeline, read from the Journal (ADR 0006) — every act kept, nothing
+ * lost. A take-over and a withdrawal are narrated from the sequence itself: the entries carry
+ * only which hand, whose, and when.
+ */
+function JournalMoments(props: {
+  journal: EpisodeDetail["journal"];
+  myName: string | undefined;
+}) {
+  const name = (by: string | null) =>
+    by === null ? "a user no longer here" : by === props.myName ? "you" : by;
+  const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+  // Whose acknowledgement is live at this point of the story — what turns the next
+  // "acknowledged" into a take-over and names whose mark a withdrawal ended.
+  let held = false;
+  let holder: string | null = null;
+
+  return props.journal.map((entry, index) => {
+    let text: string;
+    let dot: string;
+    if (entry.kind === "Acknowledged") {
+      text = held ? `${cap(name(entry.by))} took it over` : `${cap(name(entry.by))} acknowledged it`;
+      dot = "bg-primary";
+      held = true;
+      holder = entry.by;
+    } else if (entry.kind === "Withdrawn") {
+      const own = entry.by !== null && entry.by === holder;
+      text = own
+        ? entry.by === props.myName
+          ? "You withdrew your acknowledgement"
+          : `${entry.by} withdrew their acknowledgement`
+        : `${cap(name(entry.by))} withdrew ${
+          holder === null ? "the" : holder === props.myName ? "your" : `${holder}'s`
+        } acknowledgement`;
+      dot = "bg-[#22394F]";
+      held = false;
+      holder = null;
+    } else {
+      text = `Solved by ${name(entry.by)}`;
+      dot = "bg-state-solved";
+      held = false;
+      holder = null;
+    }
+
+    return (
+      <Moment key={index} dot={dot}>
+        <p className="text-[12.5px]">{text}</p>
+        <p className="font-mono text-[11px] text-[#7D93AA]">{clock(entry.at)}</p>
+      </Moment>
+    );
+  });
 }
 
 /** One dot and its two lines on the lifecycle timeline. */

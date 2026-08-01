@@ -2219,6 +2219,7 @@ export interface components {
             quietWindowMinutes: number | string;
             /** Format: int32 */
             inheritedQuietWindowMinutes: number | string;
+            journal: components["schemas"]["JournalEntryDto"][];
         };
         EpisodeDto: {
             /** Format: uuid */
@@ -2311,6 +2312,14 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        JournalEntryDto: {
+            kind: components["schemas"]["JournalEntryKind"];
+            /** Format: date-time */
+            at: string;
+            by: null | string;
+        };
+        /** @enum {unknown} */
+        JournalEntryKind: "Acknowledged" | "Withdrawn" | "Solved";
         JsonElement: unknown;
         ListEpisodesResponse: {
             items: components["schemas"]["EpisodeDto"][];

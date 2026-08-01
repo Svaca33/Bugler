@@ -2551,7 +2551,8 @@
           "chatAlert",
           "effectiveSensitivity",
           "quietWindowMinutes",
-          "inheritedQuietWindowMinutes"
+          "inheritedQuietWindowMinutes",
+          "journal"
         ],
         "type": "object",
         "properties": {
@@ -2596,6 +2597,12 @@
               "string"
             ],
             "format": "int32"
+          },
+          "journal": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JournalEntryDto"
+            }
           }
         }
       },
@@ -2944,6 +2951,36 @@
             "format": "date-time"
           }
         }
+      },
+      "JournalEntryDto": {
+        "required": [
+          "kind",
+          "at",
+          "by"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/JournalEntryKind"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "JournalEntryKind": {
+        "enum": [
+          "Acknowledged",
+          "Withdrawn",
+          "Solved"
+        ]
       },
       "JsonElement": { },
       "ListEpisodesResponse": {

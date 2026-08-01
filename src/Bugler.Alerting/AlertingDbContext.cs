@@ -24,6 +24,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
     public DbSet<FingerprintQuietWindow> FingerprintQuietWindows => Set<FingerprintQuietWindow>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Episode> Episodes => Set<Episode>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<PollCursor> PollCursor => Set<PollCursor>();
     public DbSet<SeenLogId> SeenLogIds => Set<SeenLogId>();
@@ -97,6 +98,15 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
                 .HasDatabaseName("ix_episodes_kind_history");
             episode.HasIndex(e => e.ApplicationId);
             episode.HasIndex(e => new { e.OpenedAt, e.Id });
+        });
+
+        modelBuilder.Entity<JournalEntry>(entry =>
+        {
+            // Append-only (ADR 0006): rows are inserted and read, never updated; they die with
+            // their Episode. The one query is "this Episode's Journal, oldest first".
+            entry.HasOne<Episode>().WithMany()
+                .HasForeignKey(e => e.EpisodeId).OnDelete(DeleteBehavior.Cascade);
+            entry.HasIndex(e => e.EpisodeId);
         });
 
         modelBuilder.Entity<Delivery>(delivery =>

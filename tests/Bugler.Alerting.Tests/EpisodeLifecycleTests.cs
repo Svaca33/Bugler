@@ -54,13 +54,25 @@ public class EpisodeLifecycleTests
     {
         var episode = Episode();
 
-        Assert.True(episode.Acknowledge(Dev, Now));
+        Assert.Equal(HandOutcome.Acted, episode.Acknowledge(Dev, Now));
         Assert.Equal(Dev, episode.AcknowledgedByUserId);
         Assert.Equal(Now, episode.AcknowledgedAt);
 
         // One slot, last hand wins: a colleague takes it over, no ceremony.
-        Assert.True(episode.Acknowledge(OtherDev, Now.AddMinutes(1)));
+        Assert.Equal(HandOutcome.Acted, episode.Acknowledge(OtherDev, Now.AddMinutes(1)));
         Assert.Equal(OtherDev, episode.AcknowledgedByUserId);
+    }
+
+    [Fact]
+    public void The_holder_reacknowledging_is_not_an_act()
+    {
+        var episode = Episode();
+        episode.Acknowledge(Dev, Now);
+
+        // A no-op on both sides (ADR 0006): the mark keeps its original moment, so the live
+        // timestamp never shows a moment the Journal cannot explain.
+        Assert.Equal(HandOutcome.Nothing, episode.Acknowledge(Dev, Now.AddMinutes(5)));
+        Assert.Equal(Now, episode.AcknowledgedAt);
     }
 
     [Fact]
@@ -68,12 +80,15 @@ public class EpisodeLifecycleTests
     {
         var episode = Quieted();
 
-        Assert.True(episode.Acknowledge(Dev, Now));
+        Assert.Equal(HandOutcome.Acted, episode.Acknowledge(Dev, Now));
         Assert.Equal(EpisodeState.Quieted, episode.State);
 
-        episode.Unacknowledge();
+        Assert.Equal(HandOutcome.Acted, episode.Unacknowledge());
         Assert.Null(episode.AcknowledgedByUserId);
         Assert.Null(episode.AcknowledgedAt);
+
+        // Withdrawing nothing is nothing.
+        Assert.Equal(HandOutcome.Nothing, episode.Unacknowledge());
     }
 
     [Fact]
@@ -81,7 +96,7 @@ public class EpisodeLifecycleTests
     {
         var episode = Episode();
 
-        Assert.True(episode.Solve(Dev, Now));
+        Assert.Equal(HandOutcome.Acted, episode.Solve(Dev, Now));
 
         Assert.Equal(EpisodeState.Solved, episode.State);
         Assert.Equal(Now, episode.ClosedAt);
@@ -95,7 +110,7 @@ public class EpisodeLifecycleTests
         var episode = Quieted();
         var quietedAt = episode.ClosedAt;
 
-        Assert.True(episode.Solve(Dev, Now));
+        Assert.Equal(HandOutcome.Acted, episode.Solve(Dev, Now));
 
         // Quieted-then-solved stays distinguishable from solved-while-open (ADR 0003).
         Assert.Equal(EpisodeState.Solved, episode.State);
@@ -108,7 +123,7 @@ public class EpisodeLifecycleTests
     {
         var episode = Muted();
 
-        Assert.True(episode.Solve(Dev, Now));
+        Assert.Equal(HandOutcome.Acted, episode.Solve(Dev, Now));
 
         Assert.Equal(EpisodeState.Solved, episode.State);
         Assert.Equal(EpisodeCloseReason.SensitivityOff, episode.CloseReason);
@@ -118,9 +133,9 @@ public class EpisodeLifecycleTests
     public void The_verdict_is_rendered_once()
     {
         var episode = Episode();
-        Assert.True(episode.Solve(Dev, Now));
+        Assert.Equal(HandOutcome.Acted, episode.Solve(Dev, Now));
 
-        Assert.False(episode.Solve(OtherDev, Now.AddMinutes(1)));
+        Assert.Equal(HandOutcome.Refused, episode.Solve(OtherDev, Now.AddMinutes(1)));
         Assert.Equal(Dev, episode.SolvedByUserId);
     }
 
@@ -134,7 +149,7 @@ public class EpisodeLifecycleTests
         Assert.Null(episode.AcknowledgedByUserId);
         Assert.Null(episode.AcknowledgedAt);
 
-        Assert.False(episode.Acknowledge(OtherDev, Now.AddMinutes(2)));
+        Assert.Equal(HandOutcome.Refused, episode.Acknowledge(OtherDev, Now.AddMinutes(2)));
         Assert.Null(episode.AcknowledgedByUserId);
     }
 }

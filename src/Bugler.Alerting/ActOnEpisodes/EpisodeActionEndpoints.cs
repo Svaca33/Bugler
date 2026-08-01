@@ -11,6 +11,8 @@ namespace Bugler.Alerting.ActOnEpisodes;
 /// within whose Visibility Scope it falls — the audience the grants already chose (ADR 0003).
 /// An Episode outside that scope 404s: not yours to see, not yours to know about. All three
 /// hands land only on the newest Episode of its kind (ADR 0005) — older ones are history.
+/// Every hand that acts writes its Journal entry (ADR 0006); one that changes nothing writes
+/// nothing and answers 204 all the same.
 /// </summary>
 internal static class EpisodeActionEndpoints
 {
@@ -21,9 +23,9 @@ internal static class EpisodeActionEndpoints
         IReadVisibility readVisibility,
         CancellationToken cancellationToken) =>
         Act(id, principal, dbContext, readVisibility, cancellationToken,
-            (episode, userId, now) => episode.Acknowledge(userId, now)
-                ? null
-                : "A Solved Episode is never Acknowledged.");
+            static (episode, userId, now) => episode.Acknowledge(userId, now),
+            "A Solved Episode is never Acknowledged.",
+            JournalEntryKind.Acknowledged);
 
     public static Task<IResult> Unacknowledge(
         Guid id,
@@ -32,11 +34,9 @@ internal static class EpisodeActionEndpoints
         IReadVisibility readVisibility,
         CancellationToken cancellationToken) =>
         Act(id, principal, dbContext, readVisibility, cancellationToken,
-            (episode, _, _) =>
-            {
-                episode.Unacknowledge(); // Idempotent: withdrawing nothing is nothing.
-                return null;
-            });
+            static (episode, _, _) => episode.Unacknowledge(), // Withdrawing nothing is nothing.
+            "Withdrawing never refuses.",
+            JournalEntryKind.Withdrawn);
 
     public static Task<IResult> Solve(
         Guid id,
@@ -45,12 +45,13 @@ internal static class EpisodeActionEndpoints
         IReadVisibility readVisibility,
         CancellationToken cancellationToken) =>
         Act(id, principal, dbContext, readVisibility, cancellationToken,
-            (episode, userId, now) => episode.Solve(userId, now)
-                ? null
-                : "The Episode is already Solved; the verdict is rendered once.",
-            // Solve consumes every acknowledgement its kind of trouble has ever held (ADR 0005):
-            // the marks are live claims, not records, and the verdict ends the claim.
-            after: static async (dbContext, episode, cancellationToken) =>
+            static (episode, userId, now) => episode.Solve(userId, now),
+            "The Episode is already Solved; the verdict is rendered once.",
+            JournalEntryKind.Solved,
+            // Solve consumes every acknowledgement its kind of trouble has ever held (ADR 0005).
+            // Each Episode it strips gets a Withdrawn entry by the solver's hand (ADR 0006) —
+            // every Journal stays complete on its own.
+            after: static async (dbContext, episode, userId, now, cancellationToken) =>
             {
                 var acknowledged = await dbContext.Episodes
                     .Where(e => e.ServiceId == episode.ServiceId
@@ -59,19 +60,33 @@ internal static class EpisodeActionEndpoints
                     .ToListAsync(cancellationToken);
                 foreach (var earlier in acknowledged)
                 {
-                    earlier.Unacknowledge();
+                    // The WHERE ran on the database, so the solved Episode itself comes back too
+                    // (its consumption is unsaved yet) — as the tracked instance already stripped
+                    // by Solve. Nothing here keeps its consumption implied by the Solved entry.
+                    if (earlier.Unacknowledge() is HandOutcome.Acted)
+                    {
+                        dbContext.JournalEntries.Add(new JournalEntry
+                        {
+                            EpisodeId = earlier.Id,
+                            Kind = JournalEntryKind.Withdrawn,
+                            UserId = userId,
+                            At = now,
+                        });
+                    }
                 }
             });
 
-    /// <summary>One shape for all three: load inside the scope, act, 409 when the act refuses.</summary>
+    /// <summary>One shape for all three: load inside the scope, act, journal the act, 409 when refused.</summary>
     private static async Task<IResult> Act(
         Guid id,
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
         CancellationToken cancellationToken,
-        Func<Episode, Guid, DateTimeOffset, string?> act,
-        Func<AlertingDbContext, Episode, CancellationToken, Task>? after = null)
+        Func<Episode, Guid, DateTimeOffset, HandOutcome> act,
+        string refusal,
+        JournalEntryKind kind,
+        Func<AlertingDbContext, Episode, Guid, DateTimeOffset, CancellationToken, Task>? after = null)
     {
         if (GetUserId(principal) is not { } userId)
         {
@@ -103,14 +118,26 @@ internal static class EpisodeActionEndpoints
             return Results.Conflict("The action belongs to the newest Episode of its kind.");
         }
 
-        if (act(episode, userId, DateTimeOffset.UtcNow) is { } refusal)
+        var now = DateTimeOffset.UtcNow;
+        switch (act(episode, userId, now))
         {
-            return Results.Conflict(refusal);
+            case HandOutcome.Refused:
+                return Results.Conflict(refusal);
+            case HandOutcome.Nothing:
+                return Results.NoContent();
         }
+
+        dbContext.JournalEntries.Add(new JournalEntry
+        {
+            EpisodeId = episode.Id,
+            Kind = kind,
+            UserId = userId,
+            At = now,
+        });
 
         if (after is not null)
         {
-            await after(dbContext, episode, cancellationToken);
+            await after(dbContext, episode, userId, now, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);

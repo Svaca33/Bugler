@@ -33,8 +33,12 @@ How an Episode ends when its Service's Sensitivity turns Off: the watching stopp
 _Avoid_: silenced, dismissed
 
 **Acknowledged**:
-The live mark that somebody has taken a kind of trouble on — who and when — placed only on its newest Episode. On an open Episode it also suppresses re-alerting: an Acknowledged Episode never Quiets, staying open and counting matches until Solved or withdrawn. On a closed one it is the visible mark alone. May be withdrawn or taken over by anyone who may see the Application; Solve removes the kind's every acknowledgement — a Solved Episode is never Acknowledged, and no record of past marks remains.
+The live mark that somebody has taken a kind of trouble on — who and when — placed only on its newest Episode. On an open Episode it also suppresses re-alerting: an Acknowledged Episode never Quiets, staying open and counting matches until Solved or withdrawn. On a closed one it is the visible mark alone. May be withdrawn or taken over by anyone who may see the Application; Solve removes the kind's every acknowledgement — a Solved Episode is never Acknowledged. The mark says only what holds now; what happened stays in the Journal.
 _Avoid_: assigned, claimed, owned, snoozed
+
+**Journal**:
+The append-only record of every human hand laid on an Episode — Acknowledged, Withdrawn, Solved — who and when. Entries are only ever added, never changed or removed; the live marks say what holds now, the Journal says what happened. When a Solve consumes an acknowledgement held by an earlier Episode of its kind, that Episode's Journal records the withdrawal by the solver's hand.
+_Avoid_: audit log, history, event log, activity feed
 
 **Alert**:
 The message announcing that an Episode opened: which Service, when, and the first matching Log Record itself. Exactly one per Episode per channel.
