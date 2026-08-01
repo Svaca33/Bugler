@@ -14,7 +14,7 @@ export function MailToggle(props: {
   if (props.viaApplication) {
     return (
       <span
-        className="text-primary/70 shrink-0"
+        className="text-primary/70 inline-flex shrink-0 items-center"
         title={`Subscribed through the application ${props.applicationName}`}
         onClick={event => event.stopPropagation()}
       >
@@ -26,7 +26,9 @@ export function MailToggle(props: {
   return (
     <button
       type="button"
-      className={`shrink-0 ${props.subscribed ? "text-primary" : "text-[#4A6480] hover:text-[#8CA1B8]"}`}
+      className={`inline-flex shrink-0 items-center ${
+        props.subscribed ? "text-primary" : "text-[#4A6480] hover:text-[#8CA1B8]"
+      }`}
       title={props.subscribed ? "Subscribed — mail when a new episode opens" : "Not subscribed"}
       onClick={event => {
         event.stopPropagation();
