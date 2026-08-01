@@ -46,6 +46,7 @@ public sealed class EpisodeCloser(
         {
             var reason = CloseDecision.Decide(
                 effective.SensitivityOf(episode.ServiceId),
+                episode.AcknowledgedAt is not null,
                 episode.LastMatchAt,
                 effective.QuietWindowOf(episode.ServiceId, episode.Fingerprint),
                 now);

@@ -58,6 +58,17 @@ internal static class EpisodeDetailEndpoint
             && p.Fingerprint == episode.Fingerprint
             && p.Id.CompareTo(episode.Id) < 0, cancellationToken);
 
+        // Actions land only on the newest Episode of a kind, so the newest earlier Episode
+        // holding an acknowledgement also holds the kind's newest one.
+        var earlierAck = await dbContext.Episodes.AsNoTracking()
+            .Where(p => p.ServiceId == episode.ServiceId
+                && p.Fingerprint == episode.Fingerprint
+                && p.Id.CompareTo(episode.Id) < 0
+                && p.AcknowledgedByUserId != null)
+            .OrderByDescending(p => p.Id)
+            .Select(p => new { p.AcknowledgedByUserId, p.AcknowledgedAt })
+            .FirstOrDefaultAsync(cancellationToken);
+
         var alerts = await dbContext.Deliveries.AsNoTracking()
             .Where(d => d.EpisodeId == id && d.Kind == DeliveryKind.Alert)
             .ToListAsync(cancellationToken);
@@ -78,7 +89,8 @@ internal static class EpisodeDetailEndpoint
             w => w.ServiceId == episode.ServiceId && w.Fingerprint == episode.Fingerprint);
 
         var names = await userNames.ResolveAsync(
-            new[] { episode.AcknowledgedByUserId, episode.SolvedByUserId }.OfType<Guid>().ToHashSet(),
+            new[] { episode.AcknowledgedByUserId, episode.SolvedByUserId, earlierAck?.AcknowledgedByUserId }
+                .OfType<Guid>().ToHashSet(),
             cancellationToken);
 
         var dto = new EpisodeDto(
@@ -89,6 +101,8 @@ internal static class EpisodeDetailEndpoint
             episode.FirstLogBody,
             episode.AcknowledgedAt, EpisodesEndpoint.NameOf(names, episode.AcknowledgedByUserId),
             episode.SolvedAt, EpisodesEndpoint.NameOf(names, episode.SolvedByUserId),
+            earlierAck?.AcknowledgedAt,
+            EpisodesEndpoint.NameOf(names, earlierAck?.AcknowledgedByUserId),
             priorCount, own?.QuietWindowMinutes);
 
         return Results.Ok(new EpisodeDetailDto(

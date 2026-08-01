@@ -25,6 +25,11 @@ public sealed record EpisodeDto(
     string? AcknowledgedBy,
     DateTimeOffset? SolvedAt,
     string? SolvedBy,
+    /// <summary>The newest acknowledgement still held by an earlier Episode of this kind — the "somebody
+    /// is on it" context a fresh Episode shows. Solve wipes the kind's acknowledgements (ADR 0005), so
+    /// whatever this names is by definition unresolved work.</summary>
+    DateTimeOffset? EarlierAcknowledgedAt,
+    string? EarlierAcknowledgedBy,
     int PriorCount,
     /// <summary>The Quiet Window this kind of trouble keeps for itself; null means it inherits the Service's.</summary>
     int? FingerprintQuietWindowMinutes);
@@ -117,6 +122,16 @@ internal static class EpisodesEndpoint
                     p.ServiceId == e.ServiceId
                     && p.Fingerprint == e.Fingerprint
                     && p.Id.CompareTo(e.Id) < 0),
+                // Actions land only on the newest Episode of a kind, so the newest earlier
+                // Episode holding an acknowledgement also holds the kind's newest one.
+                EarlierAck = dbContext.Episodes
+                    .Where(p => p.ServiceId == e.ServiceId
+                        && p.Fingerprint == e.Fingerprint
+                        && p.Id.CompareTo(e.Id) < 0
+                        && p.AcknowledgedByUserId != null)
+                    .OrderByDescending(p => p.Id)
+                    .Select(p => new { p.AcknowledgedByUserId, p.AcknowledgedAt })
+                    .FirstOrDefault(),
                 // Keyed on the new table's primary key, so this is a lookup, not a scan.
                 FingerprintQuietWindowMinutes = dbContext.FingerprintQuietWindows
                     .Where(w => w.ServiceId == e.ServiceId && w.Fingerprint == e.Fingerprint)
@@ -129,6 +144,7 @@ internal static class EpisodesEndpoint
             rows.SelectMany(r => new[]
                 {
                     r.Episode.AcknowledgedByUserId, r.Episode.SolvedByUserId,
+                    r.EarlierAck?.AcknowledgedByUserId,
                 })
                 .OfType<Guid>()
                 .ToHashSet(),
@@ -142,6 +158,7 @@ internal static class EpisodesEndpoint
             r.Episode.FirstLogBody,
             r.Episode.AcknowledgedAt, NameOf(names, r.Episode.AcknowledgedByUserId),
             r.Episode.SolvedAt, NameOf(names, r.Episode.SolvedByUserId),
+            r.EarlierAck?.AcknowledgedAt, NameOf(names, r.EarlierAck?.AcknowledgedByUserId),
             r.PriorCount, r.FingerprintQuietWindowMinutes)).ToList();
 
         return Results.Ok(new ListEpisodesResponse(items));

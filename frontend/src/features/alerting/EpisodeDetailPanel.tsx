@@ -42,6 +42,7 @@ export function EpisodeDetailPanel(props: {
   services: Map<string, KnownService>;
   onClose: () => void;
   onOpenLogs: (episode: Episode) => void;
+  onSelectEpisode: (id: string) => void;
 }) {
   // The detail is fetched even when the list row is at hand: the timeline needs the deliveries
   // and the effective settings, which no list row carries. A URL-selected episode outside the
@@ -92,6 +93,7 @@ export function EpisodeDetailPanel(props: {
           detail={detail.data ?? undefined}
           known={props.services.get(episode.serviceId)}
           onOpenLogs={props.onOpenLogs}
+          onSelectEpisode={props.onSelectEpisode}
         />
       )}
     </DetailPanel>
@@ -103,6 +105,7 @@ function EpisodeBody(props: {
   detail: EpisodeDetail | undefined;
   known: KnownService | undefined;
   onOpenLogs: (episode: Episode) => void;
+  onSelectEpisode: (id: string) => void;
 }) {
   const { episode, detail, known } = props;
   const currentUser = useCurrentUser();
@@ -129,6 +132,11 @@ function EpisodeBody(props: {
   const earlier = history.data === undefined
     ? Number(episode.priorCount)
     : history.data.items.length - 1;
+
+  // The history arrives newest-first, so its head is the kind's newest episode — the only one
+  // the hands land on (ADR 0005). Undefined while loading: the actions wait rather than lie.
+  const newestOfKind = history.data?.items[0]?.id;
+  const isNewest = newestOfKind === undefined ? undefined : newestOfKind === episode.id;
 
   const errorCount = Number(episode.errorCount);
   const warnCount = Number(episode.warnCount);
@@ -173,6 +181,20 @@ function EpisodeBody(props: {
       <div className="flex flex-col gap-2">
         <p className={CAPTION}>LIFECYCLE</p>
         <div className="grid grid-cols-[9px_1fr] gap-x-[11px] gap-y-3">
+          {episode.earlierAcknowledgedBy !== null && episode.acknowledgedAt === null && (
+            <Moment dot="bg-[#22394F]">
+              <p className="text-[12.5px]">
+                An earlier episode of this kind was acknowledged by{" "}
+                {episode.earlierAcknowledgedBy === myName ? "you" : episode.earlierAcknowledgedBy}
+              </p>
+              {episode.earlierAcknowledgedAt !== null && (
+                <p className="font-mono text-[11px] text-[#7D93AA]">
+                  {clock(episode.earlierAcknowledgedAt)}
+                </p>
+              )}
+            </Moment>
+          )}
+
           <Moment dot={isError ? "bg-severity-error-rail" : "bg-severity-warn-rail"}>
             <p className="text-[12.5px]">Opened by an {severityLabel(severity)} log</p>
             <p className="font-mono text-[11px] text-[#7D93AA]">
@@ -232,6 +254,7 @@ function EpisodeBody(props: {
           {episode.state === "Open" && (
             <StillMatching
               lastMatchAt={episode.lastMatchAt}
+              acknowledged={episode.acknowledgedAt !== null}
               quietWindowMinutes={detail === undefined ? undefined : Number(detail.quietWindowMinutes)}
             />
           )}
@@ -320,9 +343,21 @@ function EpisodeBody(props: {
         />
       )}
 
-      {/* Actions */}
+      {/* Actions — the hands land only on the kind's newest episode (ADR 0005). */}
       <div className="sticky -bottom-4 -mx-5 mt-auto flex items-center gap-2 border-t border-[#17293D] bg-[#0B1826] px-[18px] py-3">
-        {episode.state !== "Solved" && (
+        {isNewest === false && (
+          <span className="text-[11.5px] text-[#8CA1B8]">
+            This episode is history — actions belong to the newest of its kind.{" "}
+            <button
+              type="button"
+              className="cursor-pointer whitespace-nowrap text-primary hover:underline"
+              onClick={() => props.onSelectEpisode(newestOfKind!)}
+            >
+              Open it ›
+            </button>
+          </span>
+        )}
+        {episode.state !== "Solved" && isNewest === true && (
           <>
             <Button size="sm" onClick={() => setSolveOpen(true)}>
               Solve
@@ -467,17 +502,27 @@ function Moment(props: { dot: string; pulse?: boolean; children: ReactNode }) {
 }
 
 /** The open episode's living tail: what makes Quieted comprehensible. Ticks on the shared clock. */
-function StillMatching(props: { lastMatchAt: string; quietWindowMinutes: number | undefined }) {
+function StillMatching(props: {
+  lastMatchAt: string;
+  acknowledged: boolean;
+  quietWindowMinutes: number | undefined;
+}) {
   const now = useNow();
   return (
     <Moment dot="bg-severity-error-rail" pulse>
       <p className="text-[12.5px]">
         Still matching — last log {describeLiveMillis(now - Date.parse(props.lastMatchAt))} ago
       </p>
-      {props.quietWindowMinutes !== undefined && (
+      {props.acknowledged ? (
         <p className="font-mono text-[11px] text-[#7D93AA]">
-          closes on its own after {props.quietWindowMinutes} min of quiet
+          held open by the acknowledgement — solve or withdraw to let it quiet
         </p>
+      ) : (
+        props.quietWindowMinutes !== undefined && (
+          <p className="font-mono text-[11px] text-[#7D93AA]">
+            closes on its own after {props.quietWindowMinutes} min of quiet
+          </p>
+        )
       )}
     </Moment>
   );

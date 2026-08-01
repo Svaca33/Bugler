@@ -21,11 +21,11 @@ One bounded stretch of one kind of trouble in one Service: opened by the first m
 _Avoid_: incident, outage, alert group, error burst
 
 **Quieted**:
-How an Episode ends on its own: its Service's Quiet Window passed without a matching Log Record. The trouble stopped; nothing is claimed to be fixed. Only the passage of time does this — no hand can.
+How an unacknowledged Episode ends on its own: its Quiet Window passed without a matching Log Record. The trouble stopped; nothing is claimed to be fixed. Only the passage of time does this — no hand can, and an Acknowledged open Episode never does.
 _Avoid_: auto-resolved, expired, closed by quiet window
 
 **Solved**:
-The one human verdict on an Episode: the cause was fixed. May be rendered on any Episode not yet Solved and ends an open one on the spot. Terminal and irreversible — trouble that returns is a new Episode. Consumes any acknowledgement.
+The one human verdict on a kind of trouble: the cause was fixed. Rendered only on the newest Episode of its kind and ends an open one on the spot. Terminal and irreversible — trouble that returns is a new Episode. Consumes every acknowledgement the kind of trouble holds, on any of its Episodes.
 _Avoid_: resolved, fixed, closed
 
 **Muted**:
@@ -33,8 +33,8 @@ How an Episode ends when its Service's Sensitivity turns Off: the watching stopp
 _Avoid_: silenced, dismissed
 
 **Acknowledged**:
-The live mark that somebody has taken an Episode on — who and when. A flag beside the lifecycle, not a state of it: it survives Quieting, may be withdrawn or taken over by anyone who may see the Application, and is removed by Solve — a Solved Episode is never Acknowledged.
-_Avoid_: assigned, claimed, owned
+The live mark that somebody has taken a kind of trouble on — who and when — placed only on its newest Episode. On an open Episode it also suppresses re-alerting: an Acknowledged Episode never Quiets, staying open and counting matches until Solved or withdrawn. On a closed one it is the visible mark alone. May be withdrawn or taken over by anyone who may see the Application; Solve removes the kind's every acknowledgement — a Solved Episode is never Acknowledged, and no record of past marks remains.
+_Avoid_: assigned, claimed, owned, snoozed
 
 **Alert**:
 The message announcing that an Episode opened: which Service, when, and the first matching Log Record itself. Exactly one per Episode per channel.

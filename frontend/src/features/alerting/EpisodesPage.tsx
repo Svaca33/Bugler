@@ -227,6 +227,7 @@ export function EpisodesPage(props: {
             services={services}
             onClose={() => onSelect(undefined)}
             onOpenLogs={openLogs}
+            onSelectEpisode={onSelect}
           />
         )}
       </ResizablePanelGroup>
@@ -323,11 +324,17 @@ function EpisodeRow(props: {
   const heldByMe = episode.acknowledgedBy !== null && episode.acknowledgedBy === props.myName;
   const priorCount = Number(episode.priorCount);
 
+  // A fresh, unclaimed episode still tells who sat on the earlier one of its kind — Solve wipes
+  // those marks, so whatever this names is unresolved work someone believed they were on.
   const owner = episode.acknowledgedBy !== null
     ? heldByMe ? "you" : episode.acknowledgedBy
     : episode.solvedBy !== null
       ? `solved by ${episode.solvedBy}`
-      : undefined;
+      : episode.earlierAcknowledgedBy !== null
+        ? `earlier ack: ${
+          episode.earlierAcknowledgedBy === props.myName ? "you" : episode.earlierAcknowledgedBy
+        }`
+        : undefined;
 
   // The recurrence badge doubles as the fold: the count is the reason the history exists, so it
   // is also the handle to it. Groups with nothing earlier get no handle at all.

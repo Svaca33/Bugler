@@ -2619,6 +2619,8 @@
           "acknowledgedBy",
           "solvedAt",
           "solvedBy",
+          "earlierAcknowledgedAt",
+          "earlierAcknowledgedBy",
           "priorCount",
           "fingerprintQuietWindowMinutes"
         ],
@@ -2720,6 +2722,19 @@
             "format": "date-time"
           },
           "solvedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "earlierAcknowledgedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "earlierAcknowledgedBy": {
             "type": [
               "null",
               "string"

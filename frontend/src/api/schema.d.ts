@@ -2252,6 +2252,9 @@ export interface components {
             /** Format: date-time */
             solvedAt: null | string;
             solvedBy: null | string;
+            /** Format: date-time */
+            earlierAcknowledgedAt: null | string;
+            earlierAcknowledgedBy: null | string;
             /** Format: int32 */
             priorCount: number | string;
             /** Format: int32 */

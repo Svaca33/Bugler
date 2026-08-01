@@ -13,10 +13,12 @@ export function useEpisodeActions(episodeId: string) {
 
   const acknowledge = useMutation({
     mutationFn: async () => {
-      const { response } = await api.POST("/api/alerting/episodes/{id}/acknowledge", {
+      const { error, response } = await api.POST("/api/alerting/episodes/{id}/acknowledge", {
         params: { path: { id: episodeId } },
       });
-      if (response.status === 409) throw new Error("Already solved — a Solved Episode is never acknowledged.");
+      if (response.status === 409) {
+        throw new Error(refusal(error, "Already solved — a Solved Episode is never acknowledged."));
+      }
       if (!response.ok) throw new Error("The acknowledgement was not saved.");
     },
     onSettled: refresh,
@@ -24,9 +26,12 @@ export function useEpisodeActions(episodeId: string) {
 
   const withdraw = useMutation({
     mutationFn: async () => {
-      const { response } = await api.DELETE("/api/alerting/episodes/{id}/acknowledgement", {
+      const { error, response } = await api.DELETE("/api/alerting/episodes/{id}/acknowledgement", {
         params: { path: { id: episodeId } },
       });
+      if (response.status === 409) {
+        throw new Error(refusal(error, "The acknowledgement was not withdrawn."));
+      }
       if (!response.ok) throw new Error("The acknowledgement was not withdrawn.");
     },
     onSettled: refresh,
@@ -34,10 +39,10 @@ export function useEpisodeActions(episodeId: string) {
 
   const solve = useMutation({
     mutationFn: async () => {
-      const { response } = await api.POST("/api/alerting/episodes/{id}/solve", {
+      const { error, response } = await api.POST("/api/alerting/episodes/{id}/solve", {
         params: { path: { id: episodeId } },
       });
-      if (response.status === 409) throw new Error("Already solved by someone else.");
+      if (response.status === 409) throw new Error(refusal(error, "Already solved by someone else."));
       if (!response.ok) throw new Error("The verdict was not saved.");
     },
     onSettled: refresh,
@@ -45,4 +50,9 @@ export function useEpisodeActions(episodeId: string) {
 
   const failure = acknowledge.error ?? withdraw.error ?? solve.error;
   return { acknowledge, withdraw, solve, failure };
+}
+
+/** A 409 carries the model's own sentence (e.g. "The action belongs to the newest Episode of its kind."). */
+function refusal(error: unknown, fallback: string): string {
+  return typeof error === "string" && error.length > 0 ? error : fallback;
 }

@@ -174,6 +174,43 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Hands_land_only_on_the_newest_episode_and_solve_wipes_the_kinds_acknowledgements()
+    {
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky", quieted: true);
+        var older = (await ListAsync()).Items[0].Id;
+
+        // The mark lands on the newest of its kind — currently the quieted one, mark alone.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{older}/acknowledge", null)).StatusCode);
+
+        // The trouble returns: a newer episode arrives and the older one becomes history.
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky");
+        var newer = (await ListAsync()).Items[0].Id;
+        Assert.NotEqual(older, newer);
+
+        // History takes no hands: not the mark, not its withdrawal, not the verdict.
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{older}/acknowledge", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await _harness.Client.DeleteAsync($"/api/alerting/episodes/{older}/acknowledgement")).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{older}/solve", null)).StatusCode);
+
+        // The newest carries the frozen mark as context while being unacknowledged itself.
+        var face = (await ListAsync()).Items[0];
+        Assert.Null(face.AcknowledgedBy);
+        Assert.Equal("Admin", face.EarlierAcknowledgedBy);
+        Assert.NotNull(face.EarlierAcknowledgedAt);
+
+        // Solve consumes every acknowledgement the kind holds — the older, frozen mark included.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{newer}/solve", null)).StatusCode);
+        var afterwards = await ListAsync();
+        Assert.All(afterwards.Items, e => Assert.Null(e.AcknowledgedBy));
+        Assert.Null(afterwards.Items[0].EarlierAcknowledgedBy);
+    }
+
+    [Fact]
     public async Task An_episode_outside_the_visibility_scope_is_nobodys_to_act_on()
     {
         await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom");
