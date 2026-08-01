@@ -5,6 +5,7 @@ using Bugler.Exploration.ObservedKeys;
 using Bugler.Exploration.Scoping;
 using Bugler.Exploration.SearchLogs;
 using Bugler.Exploration.SummarizeLogVolume;
+using Bugler.Exploration.SummarizeLogVolumeByService;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -27,6 +28,8 @@ public static class ExplorationModule
         group.MapGet("/api/logs", SearchLogsEndpoint.Handle).Produces<SearchLogsResponse>();
         group.MapGet("/api/logs/count", SearchLogsEndpoint.HandleCount).Produces<LogCountResponse>();
         group.MapGet("/api/logs/volume", SummarizeLogVolumeEndpoint.Handle).Produces<LogVolumeResponse>();
+        group.MapGet("/api/logs/volume/by-service", SummarizeLogVolumeByServiceEndpoint.Handle)
+            .Produces<LogVolumeByServiceResponse>();
         group.MapGet("/api/logs/keys", ObservedKeysEndpoint.HandleLogs).Produces<ObservedKeysResponse>();
         group.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail).Produces<LogRecordDto>();
         group.MapGet("/api/traces", ListTracesEndpoint.Handle).Produces<ListTracesResponse>();

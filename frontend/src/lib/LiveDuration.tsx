@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import { describeLiveMillis } from "./format";
+import { describeLiveMillis } from "./duration";
 
 // One page-wide clock: however many durations tick, there is a single interval, and every
 // subscriber re-renders on the same beat. The interval dies with its last subscriber.

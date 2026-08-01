@@ -76,6 +76,20 @@ export function describeDuration(iso: string): string {
   return parts.length > 0 ? `Last ${parts.join(" ")}` : iso;
 }
 
+/**
+ * A running span in words that tick every second: bare seconds under a minute, "M min SS s"
+ * under an hour, "H h MM min" above it. `describeMillis` stays for closed spans, where seconds
+ * would be noise.
+ */
+export function describeLiveMillis(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  if (totalSeconds < 60) return `${totalSeconds} s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  if (minutes < 60) return `${minutes} min ${String(totalSeconds % 60).padStart(2, "0")} s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} h ${String(minutes % 60).padStart(2, "0")} min`;
+}
+
 /** A span measured in milliseconds, in words: "1 h 15 min", "42 min", "under a minute". */
 export function describeMillis(milliseconds: number): string {
   if (milliseconds < MINUTE) return "under a minute";

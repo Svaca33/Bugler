@@ -1,24 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { dayLabel, describeLiveMillis, ordinal } from "./format";
-
-describe("describeLiveMillis", () => {
-  test("bare seconds under a minute", () => {
-    expect(describeLiveMillis(0)).toBe("0 s");
-    expect(describeLiveMillis(36_000)).toBe("36 s");
-    expect(describeLiveMillis(-500)).toBe("0 s");
-  });
-
-  test("minutes carry padded seconds under an hour", () => {
-    expect(describeLiveMillis(61_000)).toBe("1 min 01 s");
-    expect(describeLiveMillis(22 * 60_000 + 36_000)).toBe("22 min 36 s");
-  });
-
-  test("hours carry padded minutes and drop the seconds", () => {
-    expect(describeLiveMillis(60 * 60_000)).toBe("1 h 00 min");
-    expect(describeLiveMillis(3 * 3_600_000 + 5 * 60_000 + 59_000)).toBe("3 h 05 min");
-  });
-});
+import { dayLabel, ordinal } from "./format";
 
 describe("ordinal", () => {
   test("speaks English", () => {

@@ -6,7 +6,9 @@ using Bugler.Exploration.GetTraceWaterfall;
 using Bugler.Exploration.ListTraces;
 using Bugler.Exploration.ObservedKeys;
 using Bugler.Exploration.SearchLogs;
+using Bugler.Exploration.Querying;
 using Bugler.Exploration.SummarizeLogVolume;
+using Bugler.Exploration.SummarizeLogVolumeByService;
 using Google.Protobuf;
 using OpenTelemetry.Proto.Collector.Logs.V1;
 using OpenTelemetry.Proto.Collector.Trace.V1;
@@ -205,6 +207,52 @@ public sealed class ExplorationApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Volume_by_service_keeps_services_apart_and_shares_one_axis()
+    {
+        var (workerId, workerKey) = await _harness.SeedServiceAsync(
+            _harness.ApplicationId, "acme", "prod", "worker");
+        await IngestOneLogAsync(workerKey, "Queue jammed", severity: SeverityNumber.Error);
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 4);
+
+        var volume = await GetAsync<LogVolumeByServiceResponse>("/api/logs/volume/by-service?range=PT1H");
+
+        Assert.Equal(2, volume.Services.Count);
+        var web = volume.Services.Single(s => s.ServiceId == _harness.ServiceId);
+        var worker = volume.Services.Single(s => s.ServiceId == workerId);
+
+        // The sample is 2 Info + 1 Warn on web; the worker's error must not leak into web's bands.
+        Assert.Equal((0, 1, 2), (web.Error, web.Warn, web.Info));
+        Assert.Equal((1, 0, 0), (worker.Error, worker.Warn, worker.Info));
+
+        // One shared axis: same count, same edges — that is what makes two entries comparable.
+        Assert.Equal(web.Buckets.Count, worker.Buckets.Count);
+        Assert.All(web.Buckets.Zip(worker.Buckets), pair => Assert.Equal(pair.First.Start, pair.Second.Start));
+
+        // PT1H at the default 24 asked-for Buckets: 2.5 min rounds up to the 5 min rung.
+        Assert.Equal(TimeSpan.FromMinutes(5), XmlConvert.ToTimeSpan(volume.Bucket));
+        Assert.InRange(web.Buckets.Count, 12, 13);
+
+        // Asking for fewer Buckets widens the rung; the clamp floors a pathological ask at 8.
+        var coarse = await GetAsync<LogVolumeByServiceResponse>(
+            "/api/logs/volume/by-service?range=PT1H&buckets=8");
+        Assert.Equal(TimeSpan.FromMinutes(15), XmlConvert.ToTimeSpan(coarse.Bucket));
+        var clamped = await GetAsync<LogVolumeByServiceResponse>(
+            "/api/logs/volume/by-service?range=PT1H&buckets=1");
+        Assert.Equal(TimeSpan.FromMinutes(15), XmlConvert.ToTimeSpan(clamped.Bucket));
+    }
+
+    [Fact]
+    public async Task Volume_by_service_shows_a_stranger_nothing_rather_than_someone_elses_services()
+    {
+        var stranger = await _harness.CreateUserClientAsync("stranger@bugler.test", "Stranger123!");
+
+        var response = await stranger.GetFromJsonAsync<LogVolumeByServiceResponse>(
+            "/api/logs/volume/by-service?range=PT1H", Json);
+
+        Assert.Empty(response!.Services);
+    }
+
+    [Fact]
     public async Task Impossible_time_filters_are_refused_instead_of_returning_nothing()
     {
         await AssertBadRequestAsync("/api/logs/volume?range=PT1H&from=2026-07-28T09:00:00Z");
@@ -292,7 +340,8 @@ public sealed class ExplorationApiTests : IAsyncLifetime
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private async Task IngestOneLogAsync(string apiKey, string body, DateTime? at = null)
+    private async Task IngestOneLogAsync(
+        string apiKey, string body, DateTime? at = null, SeverityNumber severity = SeverityNumber.Info)
     {
         var logs = new ExportLogsServiceRequest();
         var resourceLogs = new ResourceLogs();
@@ -300,7 +349,7 @@ public sealed class ExplorationApiTests : IAsyncLifetime
         scopeLogs.LogRecords.Add(new LogRecord
         {
             TimeUnixNano = ToNano(at ?? DateTime.UtcNow),
-            SeverityNumber = SeverityNumber.Info,
+            SeverityNumber = severity,
             Body = new AnyValue { StringValue = body },
         });
         resourceLogs.ScopeLogs.Add(scopeLogs);

@@ -10,8 +10,10 @@ import { formatTime } from "@/lib/format";
 import { severityLabel } from "@/lib/severity";
 import { serviceLabel } from "@/lib/serviceLabel";
 
-import { clock, describeLiveMillis, historyStamp } from "./format";
-import { LiveDuration, useNow } from "./LiveDuration";
+import { describeLiveMillis } from "@/lib/duration";
+import { LiveDuration, useNow } from "@/lib/LiveDuration";
+
+import { clock, historyStamp } from "./format";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";

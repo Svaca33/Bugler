@@ -36,7 +36,7 @@ function LoginForm(props: { resetAvailable: boolean }) {
       submitLabel={login.isPending ? "Signing in…" : "Sign in"}
       disabled={login.isPending}
       onSubmit={() =>
-        login.mutate({ email, password, staySignedIn }, { onSuccess: () => navigate({ to: "/" }) })
+        login.mutate({ email, password, staySignedIn }, { onSuccess: () => navigate({ to: "/dashboard" }) })
       }
       footer={
         // Hidden on a server without SMTP: a link that always promises a mail nobody receives
@@ -91,7 +91,7 @@ function SetupForm() {
       onSubmit={() =>
         setup.mutate(
           { email, password, displayName: displayName || undefined },
-          { onSuccess: () => navigate({ to: "/" }) },
+          { onSuccess: () => navigate({ to: "/dashboard" }) },
         )
       }
     >

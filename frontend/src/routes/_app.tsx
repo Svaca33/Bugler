@@ -36,6 +36,7 @@ function AppShell() {
         </div>
 
         <nav className="flex items-stretch gap-0.5">
+          <NavTab to="/dashboard" label="Dashboard" />
           <NavTab to="/" label="Logs" />
           <NavTab to="/traces" label="Traces" />
           <NavTab to="/alerts" label="Alerts" badge={openEpisodes} />

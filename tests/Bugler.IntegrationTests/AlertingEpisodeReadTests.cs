@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Bugler.Alerting.DescribeEpisode;
+using Bugler.Alerting.Episodes;
 using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.ReadEffectiveSensitivity;
+using Bugler.Alerting.SummarizeEpisodesByService;
 
 namespace Bugler.IntegrationTests;
 
@@ -98,6 +100,63 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task By_service_quotes_the_newest_open_episode_or_the_newest_closed_one()
+    {
+        var (secondService, _) = await _harness.SeedServiceAsync(
+            _harness.ApplicationId, "acme", "prod", "worker");
+        var (foreignApp, foreignService, _) = await _harness.SeedApplicationAsync(
+            "Crm", "acme", "prod", "backend");
+
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "older open trouble");
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "quiet stretch", quieted: true);
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "newest open trouble");
+        await SeedEpisodeAsync(secondService, _harness.ApplicationId, "worker settled", quieted: true);
+        await SeedEpisodeAsync(foreignService, foreignApp, "foreign trouble");
+
+        var all = await ByServiceAsync("");
+        Assert.Equal(3, all.Services.Count);
+
+        var web = all.Services.Single(s => s.ServiceId == _harness.ServiceId);
+        Assert.Equal((2, 1, 0, 0), (web.Open, web.Quieted, web.Solved, web.Muted));
+        // An open episode outranks any closed one, and among the open the newest wins.
+        Assert.Equal(EpisodeState.Open, web.Latest!.State);
+        Assert.Equal("newest open trouble", web.Latest.FirstLogBody);
+
+        // Nothing open on the worker, so it is quoted by when its last stretch ended.
+        var worker = all.Services.Single(s => s.ServiceId == secondService);
+        Assert.Equal((0, 1, 0, 0), (worker.Open, worker.Quieted, worker.Solved, worker.Muted));
+        Assert.Equal(EpisodeState.Quieted, worker.Latest!.State);
+        Assert.NotNull(worker.Latest.ClosedAt);
+
+        // A member's board holds only their applications' services; a foreign one never leaks in.
+        var member = await _harness.CreateUserClientAsync(
+            "member@bugler.test", "MemberPass123!", _harness.ApplicationId);
+        var scoped = await member.GetFromJsonAsync<EpisodesByServiceResponse>(
+            "/api/alerting/episodes/by-service");
+        Assert.Equal(2, scoped!.Services.Count);
+        Assert.DoesNotContain(scoped.Services, s => s.ServiceId == foreignService);
+    }
+
+    [Fact]
+    public async Task By_service_narrows_by_the_window_and_shows_a_stranger_nothing()
+    {
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "ancient trouble", daysAgo: 10);
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "fresh trouble");
+
+        var window = Uri.EscapeDataString(DateTimeOffset.UtcNow.AddDays(-7).ToString("O"));
+        var recent = await ByServiceAsync($"?from={window}");
+        var web = Assert.Single(recent.Services);
+        // The ancient one is still open, but it opened before the window: not this board's story.
+        Assert.Equal(1, web.Open);
+        Assert.Equal("fresh trouble", web.Latest!.FirstLogBody);
+
+        var stranger = await _harness.CreateUserClientAsync("stranger@bugler.test", "Stranger123!");
+        var nothing = await stranger.GetFromJsonAsync<EpisodesByServiceResponse>(
+            "/api/alerting/episodes/by-service");
+        Assert.Empty(nothing!.Services);
+    }
+
+    [Fact]
     public async Task The_detail_reads_deliveries_recurrence_and_the_effective_settings()
     {
         await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom", quieted: true);
@@ -176,6 +235,10 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
     private async Task<EpisodeCountsResponse> CountsAsync(string query) =>
         (await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
             $"/api/alerting/episodes/counts{query}"))!;
+
+    private async Task<EpisodesByServiceResponse> ByServiceAsync(string query) =>
+        (await _harness.Client.GetFromJsonAsync<EpisodesByServiceResponse>(
+            $"/api/alerting/episodes/by-service{query}"))!;
 
     private Task SeedEpisodeAsync(
         Guid serviceId, Guid applicationId, string body,

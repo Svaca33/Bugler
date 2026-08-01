@@ -57,6 +57,25 @@ public class BucketWidthTests
         Assert.Equal(TimeSpan.FromDays(30), width);
     }
 
+    [Theory]
+    [InlineData(0, 0, 150, 0, 5, 0)]   // 1 h / 24 -> 2.5 min rounds up to the 5 min rung
+    [InlineData(1, 0, 0, 1, 0, 0)]     // Already a rung: stays put rather than jumping past it
+    [InlineData(7, 0, 0, 12, 0, 0)]    // ceil(7 d / 24) = 7 h -> the 12 h rung
+    [InlineData(0, 0, 0, 0, 0, 1)]     // Nothing asked for still lands on the bottom rung
+    public void A_requested_width_rounds_up_to_the_ladder_never_down(
+        int minHours, int minMinutes, int minSeconds, int hours, int minutes, int seconds)
+    {
+        var width = BucketWidth.AtLeast(new TimeSpan(0, minHours, minMinutes, minSeconds));
+
+        Assert.Equal(new TimeSpan(0, hours, minutes, seconds), width);
+    }
+
+    [Fact]
+    public void A_width_past_the_top_rung_settles_for_the_top_rung()
+    {
+        Assert.Equal(TimeSpan.FromDays(30), BucketWidth.AtLeast(TimeSpan.FromDays(90)));
+    }
+
     [Fact]
     public void Edges_fall_on_multiples_of_the_width_counted_in_utc()
     {

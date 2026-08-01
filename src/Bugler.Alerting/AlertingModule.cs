@@ -9,6 +9,7 @@ using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.ManageAlertingSettings;
 using Bugler.Alerting.ManageSubscriptions;
 using Bugler.Alerting.ReadEffectiveSensitivity;
+using Bugler.Alerting.SummarizeEpisodesByService;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -69,6 +70,8 @@ public static class AlertingModule
         user.MapPut("/subscriptions", SubscriptionEndpoints.SetOwn);
         user.MapGet("/episodes", EpisodesEndpoint.Handle).Produces<ListEpisodesResponse>();
         user.MapGet("/episodes/counts", EpisodeCountsEndpoint.Handle).Produces<EpisodeCountsResponse>();
+        user.MapGet("/episodes/by-service", EpisodesByServiceEndpoint.Handle)
+            .Produces<EpisodesByServiceResponse>();
         user.MapGet("/episodes/{id:guid}/detail", EpisodeDetailEndpoint.Handle).Produces<EpisodeDetailDto>();
         user.MapGet("/sensitivity", EffectiveSensitivityEndpoint.Handle).Produces<ListSensitivityResponse>();
         user.MapPost("/episodes/{id:guid}/acknowledge", EpisodeActionEndpoints.Acknowledge);

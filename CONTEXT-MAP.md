@@ -22,3 +22,4 @@
 - **Alerting → Mail**: Alerting sends through `IMailSender` and waits for the outcome, because a Delivery has to record whether the message left and pursue it again if it did not.
 - **Shared identifiers**: `ApplicationId`, `ServiceId` and the integration event contracts are the only types shared across contexts.
 - **Telemetry storage is shared for reading**: Ingestion alone writes and migrates the `telemetry` schema; Exploration reads it directly (ADR 0009) and Alerting polls it for detection (ADR 0010) — neither ever writes. Every other context keeps its store to itself.
+- **Exploration and Alerting stay unrelated even on the Dashboard**: the per-service board reads one aggregate from each and joins them by `ServiceId` in the browser (ADR 0013); no server-side endpoint ever answers for both.

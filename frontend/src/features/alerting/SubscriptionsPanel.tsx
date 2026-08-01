@@ -7,14 +7,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { serviceLabel } from "@/lib/serviceLabel";
-
 import {
   isApplicationSubscribed,
   isServiceSubscribed,
   toggleApplication,
   toggleService,
   type SubscriptionSet,
-} from "./subscriptionSet";
+} from "@/lib/subscriptionSet";
 
 /**
  * The viewer's own Subscriptions: an application checkbox covers all its services, present and

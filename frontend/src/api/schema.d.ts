@@ -529,6 +529,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/logs/volume/by-service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    namespace?: string;
+                    environment?: string;
+                    service?: string;
+                    severityMin?: number | string;
+                    range?: string;
+                    from?: string;
+                    to?: string;
+                    q?: string;
+                    traceId?: string;
+                    attr?: string[];
+                    res?: string[];
+                    buckets?: number | string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LogVolumeByServiceResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/logs/keys": {
         parameters: {
             query?: never;
@@ -1321,6 +1370,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alerting/episodes/by-service": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    applicationId?: string;
+                    serviceId?: string[];
+                    fingerprint?: string;
+                    from?: string;
+                    q?: string;
+                    acknowledged?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EpisodesByServiceResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/alerting/episodes/{id}/detail": {
         parameters: {
             query?: never;
@@ -2035,8 +2126,29 @@ export interface components {
             /** Format: int32 */
             priorCount: number | string;
         };
+        EpisodesByServiceResponse: {
+            services: components["schemas"]["ServiceEpisodesDto"][];
+        };
         /** @enum {unknown} */
         EpisodeState: "Open" | "Quieted" | "Solved" | "Muted";
+        EpisodeSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            state: components["schemas"]["EpisodeState"];
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: null | string;
+            /** Format: date-time */
+            lastMatchAt: string;
+            /** Format: int32 */
+            errorCount: number | string;
+            /** Format: int32 */
+            warnCount: number | string;
+            /** Format: int16 */
+            firstLogSeverity: number | string;
+            firstLogBody: null | string;
+        };
         ForgotPasswordRequest: {
             email: string;
         };
@@ -2105,6 +2217,14 @@ export interface components {
             resourceAttributes: components["schemas"]["JsonElement"];
             attributes: components["schemas"]["JsonElement"];
         };
+        LogVolumeByServiceResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            bucket: string;
+            services: components["schemas"]["ServiceVolumeDto"][];
+        };
         LogVolumeResponse: {
             /** Format: date-time */
             from: string;
@@ -2165,6 +2285,19 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        ServiceEpisodesDto: {
+            /** Format: uuid */
+            serviceId: string;
+            /** Format: int32 */
+            open: number | string;
+            /** Format: int32 */
+            quieted: number | string;
+            /** Format: int32 */
+            solved: number | string;
+            /** Format: int32 */
+            muted: number | string;
+            latest: null | components["schemas"]["EpisodeSummaryDto"];
+        };
         ServiceListDto: {
             /** Format: int32 */
             defaultRetentionDays: number | string;
@@ -2176,6 +2309,19 @@ export interface components {
             /** Format: uuid */
             serviceId: string;
             off: boolean;
+        };
+        ServiceVolumeDto: {
+            /** Format: uuid */
+            serviceId: string;
+            /** Format: int32 */
+            error: number | string;
+            /** Format: int32 */
+            warn: number | string;
+            /** Format: int32 */
+            info: number | string;
+            /** Format: int32 */
+            debug: number | string;
+            buckets: components["schemas"]["VolumeBucketDto"][];
         };
         SetApplicationAlertingRequest: {
             sensitivity: null | components["schemas"]["Sensitivity"];

@@ -7,8 +7,10 @@ import { describeMillis } from "@/lib/duration";
 import { serviceLabel } from "@/lib/serviceLabel";
 import { severityRailClass } from "@/lib/severity";
 
-import { clock, clockShort, describeLiveMillis, ordinal } from "./format";
-import { LiveDuration, useNow } from "./LiveDuration";
+import { describeLiveMillis } from "@/lib/duration";
+import { LiveDuration, useNow } from "@/lib/LiveDuration";
+
+import { clock, clockShort, ordinal } from "./format";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";

@@ -1,6 +1,22 @@
 import { expect, test } from "bun:test";
 
-import { describeDuration, describeMillis, durationMs, toDuration } from "./duration";
+import {
+  describeDuration,
+  describeLiveMillis,
+  describeMillis,
+  durationMs,
+  toDuration,
+} from "./duration";
+
+test("a live span ticks in bare seconds, padded minutes, then padded hours", () => {
+  expect(describeLiveMillis(0)).toBe("0 s");
+  expect(describeLiveMillis(36_000)).toBe("36 s");
+  expect(describeLiveMillis(-500)).toBe("0 s");
+  expect(describeLiveMillis(61_000)).toBe("1 min 01 s");
+  expect(describeLiveMillis(22 * 60_000 + 36_000)).toBe("22 min 36 s");
+  expect(describeLiveMillis(60 * 60_000)).toBe("1 h 00 min");
+  expect(describeLiveMillis(3 * 3_600_000 + 5 * 60_000 + 59_000)).toBe("3 h 05 min");
+});
 
 test("a week is seven days and a month thirty, matching the server", () => {
   expect(toDuration(2, "minutes")).toBe("PT2M");

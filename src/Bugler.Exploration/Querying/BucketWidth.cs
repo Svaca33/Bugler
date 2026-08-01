@@ -50,6 +50,24 @@ public static class BucketWidth
     }
 
     /// <summary>
+    /// The narrowest rung no narrower than <paramref name="minimum"/> — for a caller that asked
+    /// for "about N Buckets" of a window it names. Rounding lands on the ladder rather than on an
+    /// arbitrary division, so the edges stay still (ADR 0003) and the reported width stays truthful.
+    /// </summary>
+    public static TimeSpan AtLeast(TimeSpan minimum)
+    {
+        foreach (var rung in Ladder)
+        {
+            if (minimum <= rung)
+            {
+                return rung;
+            }
+        }
+
+        return Ladder[^1];
+    }
+
+    /// <summary>
     /// The start of the Bucket holding <paramref name="instant"/>. Edges fall on multiples of the
     /// width counted from the Unix epoch in UTC, never in the viewer's zone: a zone-aligned Bucket
     /// would be a calendar day, and daylight saving would hand one Bucket a year an extra hour of

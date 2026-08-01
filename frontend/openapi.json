@@ -618,6 +618,135 @@
         }
       }
     },
+    "/api/logs/volume/by-service": {
+      "get": {
+        "tags": [
+          "SummarizeLogVolumeByServiceEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "service",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "severityMin",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int16"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "traceId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attr",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "res",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "buckets",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogVolumeByServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/logs/keys": {
       "get": {
         "tags": [
@@ -1447,6 +1576,75 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EpisodeCountsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/by-service": {
+      "get": {
+        "tags": [
+          "EpisodesByServiceEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "serviceId",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "fingerprint",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "acknowledged",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EpisodesByServiceResponse"
                 }
               }
             }
@@ -2407,6 +2605,20 @@
           }
         }
       },
+      "EpisodesByServiceResponse": {
+        "required": [
+          "services"
+        ],
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceEpisodesDto"
+            }
+          }
+        }
+      },
       "EpisodeState": {
         "enum": [
           "Open",
@@ -2414,6 +2626,74 @@
           "Solved",
           "Muted"
         ]
+      },
+      "EpisodeSummaryDto": {
+        "required": [
+          "id",
+          "state",
+          "openedAt",
+          "closedAt",
+          "lastMatchAt",
+          "errorCount",
+          "warnCount",
+          "firstLogSeverity",
+          "firstLogBody"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/EpisodeState"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastMatchAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "warnCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "firstLogSeverity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int16"
+          },
+          "firstLogBody": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "ForgotPasswordRequest": {
         "required": [
@@ -2679,6 +2959,34 @@
           }
         }
       },
+      "LogVolumeByServiceResponse": {
+        "required": [
+          "from",
+          "to",
+          "bucket",
+          "services"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceVolumeDto"
+            }
+          }
+        }
+      },
       "LogVolumeResponse": {
         "required": [
           "from",
@@ -2925,6 +3233,65 @@
           }
         }
       },
+      "ServiceEpisodesDto": {
+        "required": [
+          "serviceId",
+          "open",
+          "quieted",
+          "solved",
+          "muted",
+          "latest"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "open": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "quieted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "solved": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "muted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "latest": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EpisodeSummaryDto"
+              }
+            ]
+          }
+        }
+      },
       "ServiceListDto": {
         "required": [
           "defaultRetentionDays",
@@ -2970,6 +3337,61 @@
           },
           "off": {
             "type": "boolean"
+          }
+        }
+      },
+      "ServiceVolumeDto": {
+        "required": [
+          "serviceId",
+          "error",
+          "warn",
+          "info",
+          "debug",
+          "buckets"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "error": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "warn": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "info": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "debug": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VolumeBucketDto"
+            }
           }
         }
       },
@@ -3423,6 +3845,9 @@
       "name": "SummarizeLogVolumeEndpoint"
     },
     {
+      "name": "SummarizeLogVolumeByServiceEndpoint"
+    },
+    {
       "name": "ObservedKeysEndpoint"
     },
     {
@@ -3448,6 +3873,9 @@
     },
     {
       "name": "EpisodeCountsEndpoint"
+    },
+    {
+      "name": "EpisodesByServiceEndpoint"
     },
     {
       "name": "EpisodeDetailEndpoint"

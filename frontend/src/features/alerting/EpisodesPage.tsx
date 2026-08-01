@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { describeMillis } from "@/lib/duration";
+import { LiveDuration } from "@/lib/LiveDuration";
 import { severityRailClass } from "@/lib/severity";
 
 import {
@@ -21,7 +22,6 @@ import {
 import { AlertsFilterRail } from "./AlertsFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
 import { clock, dayLabel } from "./format";
-import { LiveDuration } from "./LiveDuration";
 import { OpenNowBand } from "./OpenNowBand";
 import { indexServices, type KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";

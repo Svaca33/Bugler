@@ -18,7 +18,7 @@ export function useCurrentUser() {
 }
 
 /** The caller's visible applications and services — feeds Source Filters and admin pickers. */
-export function useCatalog() {
+export function useCatalog(options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ["catalog"],
     queryFn: async () => {
@@ -26,5 +26,6 @@ export function useCatalog() {
       if (error !== undefined) throw new Error("Failed to load catalog");
       return data;
     },
+    refetchInterval: options?.refetchInterval,
   });
 }
