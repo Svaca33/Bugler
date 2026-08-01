@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
 import { severityRailClass } from "@/lib/severity";
@@ -15,6 +16,9 @@ import { Sparkline } from "./Sparkline";
  * A real table, not a grid: auto layout sizes every column to its widest value across all rows,
  * so counts and badges are never clipped and never wrapped. The one flexible column is LATEST
  * EPISODE — free log text is the only content allowed to truncate.
+ *
+ * Rows are not click targets: the hand-off to Logs, Traces and Episodes rides the same button
+ * trio the cards carry.
  */
 export function ServiceTable(props: {
   tiles: ServiceTile[];
@@ -23,7 +27,9 @@ export function ServiceTable(props: {
   isSubscribed: (tile: ServiceTile) => boolean;
   isViaApplication: (tile: ServiceTile) => boolean;
   onToggleMail: (tile: ServiceTile) => void;
-  onOpen: (tile: ServiceTile) => void;
+  onLogs: (tile: ServiceTile) => void;
+  onTraces: (tile: ServiceTile) => void;
+  onEpisodes: (tile: ServiceTile) => void;
 }) {
   const heading = "px-1.5 text-left font-normal whitespace-nowrap";
 
@@ -42,6 +48,8 @@ export function ServiceTable(props: {
             <th className={`${heading} text-right`}>LOGS</th>
             {props.showVolume && <th className={heading}>VOLUME</th>}
             <th className={`${heading} w-full`}>LATEST EPISODE</th>
+            {/* The button trio's column — the buttons say where they go, a caption would repeat them. */}
+            <th className={heading} />
             <th className={`${heading} pr-4`}>MAIL</th>
           </tr>
         </thead>
@@ -57,10 +65,9 @@ export function ServiceTable(props: {
               <tr
                 key={tile.serviceId}
                 data-testid="service-row"
-                className={`h-10 cursor-pointer border-b border-[#101F31] hover:bg-[#12243A] ${
+                className={`h-10 border-b border-[#101F31] ${
                   open ? "bg-[rgba(229,84,74,0.07)]" : ""
                 }`}
-                onClick={() => props.onOpen(tile)}
               >
                 <td className="py-0 pr-1.5 pl-4 align-middle font-mono text-xs whitespace-nowrap">
                   {tile.label}
@@ -101,6 +108,19 @@ export function ServiceTable(props: {
                     ) : (
                       <span className="text-[#8CA1B8]">no episode in {props.windowPhrase}</span>
                     )}
+                  </div>
+                </td>
+                <td className="px-1.5 align-middle whitespace-nowrap">
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onLogs(tile)}>
+                      To logs
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onTraces(tile)}>
+                      To traces
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onEpisodes(tile)}>
+                      To episodes
+                    </Button>
                   </div>
                 </td>
                 <td className="py-0 pr-4 pl-1.5 text-right align-middle whitespace-nowrap">

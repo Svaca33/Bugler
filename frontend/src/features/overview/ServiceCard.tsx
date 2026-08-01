@@ -11,8 +11,8 @@ import { clock, windowStamp } from "./stamps";
 /**
  * One Service on the board. It never becomes an Episode row: at most one open Episode is quoted
  * (severity rail, meta line, first log body) with nothing to act on — no Acknowledge, no Solve.
- * The moment a reader wants to act, the Alerts page owns that; everything here hands off to
- * Logs and Traces with the service and the window already applied.
+ * The moment a reader wants to act, the Alerts page owns that; the buttons hand off to Logs,
+ * Traces and Episodes with the service already applied — the card itself is not a click target.
  */
 export function ServiceCard(props: {
   tile: ServiceTile;
@@ -22,6 +22,7 @@ export function ServiceCard(props: {
   onToggleMail: () => void;
   onLogs: () => void;
   onTraces: () => void;
+  onEpisodes: () => void;
 }) {
   const { tile } = props;
   const open = tile.episodes !== undefined && tile.episodes.open > 0;
@@ -35,8 +36,7 @@ export function ServiceCard(props: {
   return (
     <div
       data-testid="service-card"
-      className="relative flex cursor-pointer flex-col rounded-[11px] border border-[#1E344C] bg-card p-3.5 hover:border-[#2A415C]"
-      onClick={props.onLogs}
+      className="relative flex flex-col rounded-[11px] border border-[#1E344C] bg-card p-3.5"
     >
       {/* An overlay ring instead of a changed border, so the layout never shifts. */}
       {open && (
@@ -102,25 +102,14 @@ export function ServiceCard(props: {
       )}
 
       <div className="mt-3 flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={event => {
-            event.stopPropagation();
-            props.onLogs();
-          }}
-        >
+        <Button variant="ghost" size="sm" onClick={props.onLogs}>
           To logs
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={event => {
-            event.stopPropagation();
-            props.onTraces();
-          }}
-        >
+        <Button variant="ghost" size="sm" onClick={props.onTraces}>
           To traces
+        </Button>
+        <Button variant="ghost" size="sm" onClick={props.onEpisodes}>
+          To episodes
         </Button>
       </div>
     </div>

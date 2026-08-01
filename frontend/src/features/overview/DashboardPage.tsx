@@ -238,6 +238,20 @@ export function DashboardPage(props: {
       },
     });
 
+  // Only the SOURCE facets ride along: lifecycle and the opened window keep the Alerts
+  // defaults, and the dashboard's window (which knows 1 h) does not map onto them anyway.
+  const openEpisodes = (tile: ServiceTile) =>
+    navigate({
+      to: "/alerts",
+      search: {
+        section: "episodes",
+        applicationId: tile.applicationId,
+        namespace: tile.namespace,
+        environment: tile.environment,
+        service: tile.name,
+      },
+    });
+
   const toggleMail = (tile: ServiceTile) => {
     if (subscriptions.data === undefined) return;
     update.mutate(toggleService(set, tile.serviceId));
@@ -302,7 +316,9 @@ export function DashboardPage(props: {
             isSubscribed={tile => isServiceSubscribed(set, tile.applicationId, tile.serviceId)}
             isViaApplication={tile => isApplicationSubscribed(set, tile.applicationId)}
             onToggleMail={toggleMail}
-            onOpen={openLogs}
+            onLogs={openLogs}
+            onTraces={openTraces}
+            onEpisodes={openEpisodes}
           />
         ) : (
           <div className="flex flex-col gap-5">
@@ -329,6 +345,7 @@ export function DashboardPage(props: {
                       onToggleMail={() => toggleMail(tile)}
                       onLogs={() => openLogs(tile)}
                       onTraces={() => openTraces(tile)}
+                      onEpisodes={() => openEpisodes(tile)}
                     />
                   ))}
                 </div>
