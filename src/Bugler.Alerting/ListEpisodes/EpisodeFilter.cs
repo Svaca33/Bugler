@@ -66,4 +66,17 @@ internal static class EpisodeFilter
             _ => query,
         };
     }
+
+    /// <summary>
+    /// Keeps only each kind of trouble's latest Episode — the face the grouped list shows. The
+    /// face is absolute: newest of its (Service, Fingerprint) over <paramref name="everything"/>,
+    /// regardless of any narrowing already applied, so this composes with Apply in either order.
+    /// UUIDv7 ids compare bytewise in PostgreSQL, so "newer" is one id comparison.
+    /// </summary>
+    public static IQueryable<Episode> WhereLatestPerFingerprint(
+        this IQueryable<Episode> query, IQueryable<Episode> everything) =>
+        query.Where(e => !everything.Any(n =>
+            n.ServiceId == e.ServiceId
+            && n.Fingerprint == e.Fingerprint
+            && n.Id.CompareTo(e.Id) > 0));
 }

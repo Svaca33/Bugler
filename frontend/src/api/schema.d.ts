@@ -1425,6 +1425,7 @@ export interface paths {
                     from?: string;
                     q?: string;
                     acknowledged?: string;
+                    latestPerFingerprint?: boolean;
                     beforeId?: string;
                     limit?: number | string;
                 };
@@ -1469,6 +1470,7 @@ export interface paths {
                     from?: string;
                     q?: string;
                     acknowledged?: string;
+                    latestPerFingerprint?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -2170,17 +2172,6 @@ export interface components {
             environment: string;
             name: string;
         };
-        ChangePasswordRequest: {
-            currentPassword: string;
-            newPassword: string;
-        };
-        ChatAlertDto: {
-            /** Format: date-time */
-            deliveredAt: null | string;
-        };
-        ChatWebhookDto: {
-            domain: string;
-        };
         CreateApplicationRequest: {
             name: string;
         };
@@ -2295,6 +2286,17 @@ export interface components {
         GrantRequest: {
             /** Format: uuid */
             applicationId: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        ChatAlertDto: {
+            /** Format: date-time */
+            deliveredAt: null | string;
+        };
+        ChatWebhookDto: {
+            domain: string;
         };
         IssuedApiKeyDto: {
             /** Format: uuid */
@@ -2478,12 +2480,12 @@ export interface components {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
         };
-        SetChatWebhookRequest: {
-            url: null | string;
-        };
         SetFingerprintQuietWindowRequest: {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+        };
+        SetChatWebhookRequest: {
+            url: null | string;
         };
         SetRetentionRequest: {
             /** Format: int32 */

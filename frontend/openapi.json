@@ -1586,6 +1586,13 @@
             }
           },
           {
+            "name": "latestPerFingerprint",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "beforeId",
             "in": "query",
             "schema": {
@@ -1672,6 +1679,13 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "latestPerFingerprint",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -2371,47 +2385,6 @@
           }
         }
       },
-      "ChangePasswordRequest": {
-        "required": [
-          "currentPassword",
-          "newPassword"
-        ],
-        "type": "object",
-        "properties": {
-          "currentPassword": {
-            "type": "string"
-          },
-          "newPassword": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatAlertDto": {
-        "required": [
-          "deliveredAt"
-        ],
-        "type": "object",
-        "properties": {
-          "deliveredAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        }
-      },
-      "ChatWebhookDto": {
-        "required": [
-          "domain"
-        ],
-        "type": "object",
-        "properties": {
-          "domain": {
-            "type": "string"
-          }
-        }
-      },
       "CreateApplicationRequest": {
         "required": [
           "name"
@@ -2881,6 +2854,47 @@
           "applicationId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatAlertDto": {
+        "required": [
+          "deliveredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
           }
         }
       },
@@ -3636,20 +3650,6 @@
           }
         }
       },
-      "SetChatWebhookRequest": {
-        "required": [
-          "url"
-        ],
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "SetFingerprintQuietWindowRequest": {
         "required": [
           "quietWindowMinutes"
@@ -3664,6 +3664,20 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "SetChatWebhookRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

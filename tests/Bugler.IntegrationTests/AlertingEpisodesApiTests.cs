@@ -82,6 +82,46 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_grouped_list_shows_each_kind_of_trouble_as_its_latest_episode()
+    {
+        // "flaky" three times over (the newest open), "other trouble" once, quieted.
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky", quieted: true);
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky", quieted: true);
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky");
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "other trouble", quieted: true);
+
+        // One face per kind, newest first, each knowing its predecessors.
+        var faces = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?latestPerFingerprint=true");
+        Assert.Equal(2, faces!.Items.Count);
+        Assert.Equal("other trouble", faces.Items[0].FirstLogBody);
+        Assert.Equal("flaky", faces.Items[1].FirstLogBody);
+        Assert.Equal(2, faces.Items[1].PriorCount);
+
+        // The state filter judges the face: the flaky group has quieted episodes, but its face
+        // is open, so only "other trouble" answers to Quieted.
+        var quieted = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?latestPerFingerprint=true&state=Quieted");
+        var quietFace = Assert.Single(quieted!.Items);
+        Assert.Equal("other trouble", quietFace.FirstLogBody);
+
+        // Keyset paging walks faces, skipping the history between them.
+        var firstPage = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?latestPerFingerprint=true&limit=1");
+        var secondPage = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            $"/api/alerting/episodes?latestPerFingerprint=true&limit=1&beforeId={firstPage!.Items[0].Id}");
+        Assert.Equal("flaky", Assert.Single(secondPage!.Items).FirstLogBody);
+
+        // Counts follow the faces (1 open + 1 quieted), not the episodes (1 + 3).
+        var grouped = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
+            "/api/alerting/episodes/counts?latestPerFingerprint=true");
+        Assert.Equal(new EpisodeCountsResponse(1, 1, 0, 0), grouped);
+        var flat = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
+            "/api/alerting/episodes/counts");
+        Assert.Equal(new EpisodeCountsResponse(1, 3, 0, 0), flat);
+    }
+
+    [Fact]
     public async Task An_episode_is_acknowledged_taken_over_and_solved_by_hand()
     {
         await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom");

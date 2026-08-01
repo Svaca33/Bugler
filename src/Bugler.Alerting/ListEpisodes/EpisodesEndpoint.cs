@@ -47,6 +47,7 @@ internal static class EpisodesEndpoint
         DateTimeOffset? from,
         string? q,
         string? acknowledged,
+        bool? latestPerFingerprint,
         Guid? beforeId,
         int? limit,
         ClaimsPrincipal principal,
@@ -73,6 +74,13 @@ internal static class EpisodesEndpoint
 
         var query = dbContext.Episodes.AsNoTracking()
             .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId);
+
+        if (latestPerFingerprint == true)
+        {
+            // The grouped list: one row per kind of trouble, faced by its latest Episode. Every
+            // filter above and below then judges the face — a group is shown or hidden whole.
+            query = query.WhereLatestPerFingerprint(dbContext.Episodes);
+        }
 
         if (state is { Length: > 0 })
         {

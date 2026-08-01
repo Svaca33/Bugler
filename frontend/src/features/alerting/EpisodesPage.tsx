@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { api, type Episode } from "@/api/client";
 import { useCatalog, useCurrentUser } from "@/api/queries";
@@ -21,13 +21,14 @@ import {
 } from "./alertsFilter";
 import { AlertsFilterRail } from "./AlertsFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
-import { clock, dayLabel } from "./format";
+import { clock, dayLabel, historyStamp } from "./format";
 import { OpenNowBand } from "./OpenNowBand";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { indexServices, type KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
 
 const PAGE_SIZE = 100;
+const HISTORY_PAGE = 25;
 const REFETCH_MS = 30_000;
 
 const GRID = "grid grid-cols-[3px_1fr_128px_86px] items-center gap-3.5 px-5";
@@ -62,9 +63,12 @@ export function EpisodesPage(props: {
   const episodes = useInfiniteQuery({
     queryKey: ["alerts", "episodes", filters],
     queryFn: async ({ pageParam }) => {
+      // One row per kind of trouble, faced by its latest episode; every filter — the shared
+      // ones here and the lifecycle above — judges the face, so a group shows or hides whole.
       const { data, error } = await api.GET("/api/alerting/episodes", {
         params: {
           query: {
+            latestPerFingerprint: true,
             limit: PAGE_SIZE,
             beforeId: pageParam,
             state: lifecycle,
@@ -105,7 +109,9 @@ export function EpisodesPage(props: {
     queryKey: ["alerts", "counts", nonLifecycle],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/episodes/counts", {
-        params: { query: { from: openedFrom(filters), ...shared } },
+        params: {
+          query: { latestPerFingerprint: true, from: openedFrom(filters), ...shared },
+        },
       });
       if (error !== undefined) throw new Error("Failed to count episodes");
       return data;
@@ -144,7 +150,9 @@ export function EpisodesPage(props: {
   const windowPhrase = openedPhrase(filters);
   const counted = total === undefined
     ? `${items.length} loaded`
-    : `${items.length} of ${total} episodes${windowPhrase !== undefined ? ` ${windowPhrase}` : ""}`;
+    : `${items.length} of ${total} kinds of trouble${
+      windowPhrase !== undefined ? ` ${windowPhrase}` : ""
+    }`;
 
   const narrowed = [
     filters.lifecycle, filters.ack, filters.applicationId, filters.namespace,
@@ -206,7 +214,7 @@ export function EpisodesPage(props: {
                 ? "Loading…"
                 : episodes.hasNextPage
                   ? "Load older"
-                  : "No older episodes"}
+                  : "Nothing older"}
             </Button>
             <span className="font-mono text-[11px] whitespace-nowrap text-[#6E86A0]">{counted}</span>
           </div>
@@ -226,7 +234,7 @@ export function EpisodesPage(props: {
   );
 }
 
-/** The history rows with one separator per calendar day in the loaded set. */
+/** One kind of trouble per row — its latest episode — with one separator per calendar day. */
 function EpisodeRows(props: {
   items: Episode[];
   services: Map<string, KnownService>;
@@ -237,6 +245,16 @@ function EpisodeRows(props: {
   // Day labels only move at midnight — a render-time clock is enough, no ticking here. The only
   // things that tick per second are the LiveDuration leaves inside the open rows.
   const now = Date.now();
+
+  // The unfolded kinds of trouble. Keyed by the group, not the face, so a fold survives the
+  // refetch that replaces the face with a newer episode.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (key: string) =>
+    setUnfolded(previous => {
+      const next = new Set(previous);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
 
   const dayCounts = new Map<string, number>();
   for (const episode of props.items) {
@@ -261,6 +279,8 @@ function EpisodeRows(props: {
         </div>,
       );
     }
+    const groupKey = `${episode.serviceId} ${episode.fingerprint}`;
+    const expanded = unfolded.has(groupKey);
     rows.push(
       <EpisodeRow
         key={episode.id}
@@ -268,9 +288,21 @@ function EpisodeRows(props: {
         known={props.services.get(episode.serviceId)}
         selected={episode.id === props.selectedId}
         myName={props.myName}
+        expanded={expanded}
+        onToggleHistory={Number(episode.priorCount) > 0 ? () => toggle(groupKey) : undefined}
         onSelect={props.onSelect}
       />,
     );
+    if (expanded) {
+      rows.push(
+        <GroupHistory
+          key={`history-${groupKey}`}
+          face={episode}
+          selectedId={props.selectedId}
+          onSelect={props.onSelect}
+        />,
+      );
+    }
   }
 
   return rows;
@@ -281,6 +313,8 @@ function EpisodeRow(props: {
   known: KnownService | undefined;
   selected: boolean;
   myName: string | undefined;
+  expanded: boolean;
+  onToggleHistory: (() => void) | undefined;
   onSelect: (id: string) => void;
 }) {
   const { episode, known, selected } = props;
@@ -294,6 +328,26 @@ function EpisodeRow(props: {
     : episode.solvedBy !== null
       ? `solved by ${episode.solvedBy}`
       : undefined;
+
+  // The recurrence badge doubles as the fold: the count is the reason the history exists, so it
+  // is also the handle to it. Groups with nothing earlier get no handle at all.
+  const historyToggle = props.onToggleHistory !== undefined && (
+    <button
+      type="button"
+      className="cursor-pointer rounded-sm border border-[#2C4159] px-[5px] text-[#A9BDD1] hover:border-[#44607F] hover:text-[#DCE8F3]"
+      title={props.expanded
+        ? "Hide the earlier episodes"
+        : `This kind of trouble burned ${
+          priorCount === 1 ? "once" : `${priorCount} times`
+        } before — show them`}
+      onClick={event => {
+        event.stopPropagation();
+        props.onToggleHistory?.();
+      }}
+    >
+      ×{priorCount + 1} {props.expanded ? "▴" : "▾"}
+    </button>
+  );
 
   return (
     <div
@@ -325,21 +379,17 @@ function EpisodeRow(props: {
           <span className={muted ? undefined : "text-[#A9BDD1]"}>{known?.facets.name ?? "—"}</span>
           <span>{clock(episode.openedAt)}</span>
           {muted ? (
-            <span>alerting turned off during the episode</span>
+            <>
+              <span>alerting turned off during the episode</span>
+              {historyToggle}
+            </>
           ) : (
             <>
               <span className="text-severity-error">{episode.errorCount} err</span>
               {Number(episode.warnCount) > 0 && (
                 <span className="text-severity-warn">{episode.warnCount} warn</span>
               )}
-              {priorCount > 0 && (
-                <span
-                  className="rounded-sm border border-[#2C4159] px-[5px] text-[#A9BDD1]"
-                  title={`This kind of trouble burned ${priorCount === 1 ? "once" : `${priorCount} times`} before`}
-                >
-                  ×{priorCount + 1}
-                </span>
-              )}
+              {historyToggle}
               <QuietWindowBadge episode={episode} />
               {owner !== undefined && <span className="truncate">{owner}</span>}
             </>
@@ -357,6 +407,113 @@ function EpisodeRow(props: {
       ) : (
         <span className="text-right font-mono text-[11.5px] text-[#7D93AA]">
           {describeMillis(Date.parse(episode.closedAt!) - Date.parse(episode.openedAt))}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The unfolded past of one kind of trouble: every episode before the face, newest first.
+ * Deliberately outside the table's filters — the fold shows the group's whole history, not the
+ * current narrowing — and paged by the same keyset the table rides on.
+ */
+function GroupHistory(props: {
+  face: Episode;
+  selectedId: string | undefined;
+  onSelect: (id: string) => void;
+}) {
+  const { face } = props;
+  const history = useInfiniteQuery({
+    queryKey: ["alerts", "group-history", face.serviceId, face.fingerprint],
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await api.GET("/api/alerting/episodes", {
+        params: {
+          query: {
+            serviceId: [face.serviceId],
+            fingerprint: face.fingerprint,
+            beforeId: pageParam,
+            limit: HISTORY_PAGE,
+          },
+        },
+      });
+      if (error !== undefined) throw new Error("Failed to load the episode history");
+      return data;
+    },
+    // Starting the keyset at the face keeps it out of its own history.
+    initialPageParam: face.id as string | undefined,
+    getNextPageParam: lastPage =>
+      lastPage.items.length === HISTORY_PAGE ? lastPage.items.at(-1)!.id : undefined,
+  });
+
+  const items = history.data?.pages.flatMap(page => page.items) ?? [];
+  const now = Date.now();
+
+  return (
+    <div data-testid="episode-history" className="border-b border-[#101F31] bg-[#0A1725]">
+      {items.map(episode => (
+        <HistoryRow
+          key={episode.id}
+          episode={episode}
+          now={now}
+          selected={episode.id === props.selectedId}
+          onSelect={props.onSelect}
+        />
+      ))}
+      {history.isPending && (
+        <p className="px-5 py-2 pl-[52px] font-mono text-[11px] text-[#5F7590]">Loading…</p>
+      )}
+      {history.hasNextPage && (
+        <button
+          type="button"
+          className="flex h-[30px] w-full cursor-pointer items-center px-5 pl-[52px] font-mono text-[11px] text-[#6E86A0] hover:text-[#A9BDD1]"
+          disabled={history.isFetchingNextPage}
+          onClick={() => history.fetchNextPage()}
+        >
+          {history.isFetchingNextPage ? "Loading…" : "Load older"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One earlier episode of the kind, in the table's columns but a quieter voice: when it opened,
+ * what it burned through, and how it ended. The body is not repeated — it is on the face above.
+ */
+function HistoryRow(props: {
+  episode: Episode;
+  now: number;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const { episode, selected } = props;
+  return (
+    <div
+      data-testid="history-row"
+      className={`${GRID} cursor-pointer py-[7px] ${
+        selected ? "bg-[#12243A] shadow-[inset_2px_0_0_#E9A43C]" : "hover:bg-[#12243A]"
+      }`}
+      onClick={() => props.onSelect(episode.id)}
+    >
+      <span />
+      <span className="flex min-w-0 items-center gap-[9px] overflow-hidden pl-4 font-mono text-[11px] whitespace-nowrap text-[#7D93AA]">
+        <span>{historyStamp(episode.openedAt, props.now)}</span>
+        <span className="text-severity-error">{episode.errorCount} err</span>
+        {Number(episode.warnCount) > 0 && (
+          <span className="text-severity-warn">{episode.warnCount} warn</span>
+        )}
+        {episode.solvedBy !== null && <span className="truncate">solved by {episode.solvedBy}</span>}
+      </span>
+      <StateBadge state={episode.state} />
+      {episode.closedAt == null ? (
+        <LiveDuration
+          since={episode.openedAt}
+          className="text-right font-mono text-[11.5px] text-[#DCE8F3]"
+        />
+      ) : (
+        <span className="text-right font-mono text-[11.5px] text-[#7D93AA]">
+          {describeMillis(Date.parse(episode.closedAt) - Date.parse(episode.openedAt))}
         </span>
       )}
     </div>

@@ -22,6 +22,7 @@ internal static class EpisodeCountsEndpoint
         DateTimeOffset? from,
         string? q,
         string? acknowledged,
+        bool? latestPerFingerprint,
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
@@ -45,8 +46,17 @@ internal static class EpisodeCountsEndpoint
 
         // One pass over the filtered set: each state as its defining predicate (ADR 0003 — the
         // state is derived, never stored), folded into COUNT FILTER by the provider.
-        var counts = await dbContext.Episodes.AsNoTracking()
-            .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId)
+        var filtered = dbContext.Episodes.AsNoTracking()
+            .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId);
+
+        if (latestPerFingerprint == true)
+        {
+            // Counting kinds of trouble by the state of their face — the same rows the grouped
+            // list shows, so the rail's numbers can never drift from the table.
+            filtered = filtered.WhereLatestPerFingerprint(dbContext.Episodes);
+        }
+
+        var counts = await filtered
             .GroupBy(_ => 1)
             .Select(g => new
             {
