@@ -106,11 +106,12 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var message = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
+        var alert = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
         await AttemptAsync(
             delivery,
             () => mailSender.SendAsync(
-                new MailMessage(email, message.Subject, message.Text), cancellationToken));
+                new MailMessage(email, alert.Subject, alert.TextBody, alert.HtmlBody),
+                cancellationToken));
     }
 
     private async Task AttemptChatAsync(
@@ -128,10 +129,10 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var message = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
+        var alert = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
         await AttemptAsync(
             delivery,
-            () => chatSender.SendAsync(webhookUrl, message.Text, cancellationToken));
+            () => chatSender.SendAsync(webhookUrl, alert, cancellationToken));
     }
 
     private async Task AttemptAsync(Delivery delivery, Func<Task> send)

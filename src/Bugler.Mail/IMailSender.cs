@@ -11,4 +11,5 @@ public interface IMailSender
     Task SendAsync(MailMessage message, CancellationToken cancellationToken);
 }
 
-public sealed record MailMessage(string ToEmail, string Subject, string TextBody);
+/// <summary>With an HtmlBody the mail goes out multipart/alternative; without, plain text alone.</summary>
+public sealed record MailMessage(string ToEmail, string Subject, string TextBody, string? HtmlBody = null);

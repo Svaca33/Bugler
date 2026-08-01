@@ -40,11 +40,11 @@ internal sealed class RecordingMailSender : IMailSender
 /// <summary>Records what would have been posted to a Google Chat webhook.</summary>
 internal sealed class RecordingChatSender : IChatSender
 {
-    private readonly List<(string WebhookUrl, string Text)> _sent = [];
+    private readonly List<(string WebhookUrl, ComposedAlert Alert)> _sent = [];
 
     public bool Fail { get; set; }
 
-    public IReadOnlyList<(string WebhookUrl, string Text)> Sent
+    public IReadOnlyList<(string WebhookUrl, ComposedAlert Alert)> Sent
     {
         get
         {
@@ -55,7 +55,7 @@ internal sealed class RecordingChatSender : IChatSender
         }
     }
 
-    public Task SendAsync(string webhookUrl, string text, CancellationToken cancellationToken)
+    public Task SendAsync(string webhookUrl, ComposedAlert alert, CancellationToken cancellationToken)
     {
         if (Fail)
         {
@@ -64,7 +64,7 @@ internal sealed class RecordingChatSender : IChatSender
 
         lock (_sent)
         {
-            _sent.Add((webhookUrl, text));
+            _sent.Add((webhookUrl, alert));
         }
 
         return Task.CompletedTask;

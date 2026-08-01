@@ -1,10 +1,25 @@
 using System.Globalization;
+using System.Net;
 using Bugler.Alerting.Episodes;
 using Bugler.Registry.Contracts;
 
 namespace Bugler.Alerting.DeliverMessages;
 
-public sealed record ComposedMessage(string Subject, string Text);
+/// <summary>
+/// The Alert in every shape it leaves Bugler in. The named fields are the facts; TextBody and
+/// HtmlBody are those facts rendered for mail, and the chat sender renders them again into its
+/// own card. EpisodeUrl is null when no PublicBaseUrl is configured — messages then carry no
+/// links rather than broken ones.
+/// </summary>
+public sealed record ComposedAlert(
+    string Subject,
+    string Place,
+    string SeverityLabel,
+    string FirstLogInstant,
+    string FirstLogBody,
+    string? EpisodeUrl,
+    string TextBody,
+    string HtmlBody);
 
 /// <summary>
 /// Turns an Episode into the words that leave Bugler — the Alert only, since ADR 0003 retired
@@ -13,34 +28,75 @@ public sealed record ComposedMessage(string Subject, string Text);
 /// </summary>
 public static class MessageComposer
 {
-    public static ComposedMessage ComposeAlert(
+    public static ComposedAlert ComposeAlert(
         Episode episode, CatalogService identity, string publicBaseUrl)
     {
         var place = $"{identity.ApplicationName} {identity.Namespace}/{identity.Environment}/{identity.Name}";
+        var severity = SeverityLabel(episode.FirstLogSeverity);
+        var instant = Instant(episode.FirstLogTimestamp);
+        var body = episode.FirstLogBody ?? "(no body)";
+        var episodeUrl = publicBaseUrl.Length == 0
+            ? null
+            : $"{publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}";
+
+        return new ComposedAlert(
+            Subject: $"[Bugler] Trouble in {place}",
+            Place: place,
+            SeverityLabel: severity,
+            FirstLogInstant: instant,
+            FirstLogBody: body,
+            EpisodeUrl: episodeUrl,
+            TextBody: ComposeText(place, severity, instant, body, episodeUrl),
+            HtmlBody: ComposeHtml(place, severity, instant, body, episodeUrl));
+    }
+
+    private static string ComposeText(
+        string place, string severity, string instant, string body, string? episodeUrl)
+    {
         var lines = new List<string>
         {
             $"{place} started logging trouble.",
             "",
-            $"First log ({SeverityLabel(episode.FirstLogSeverity)}, {Instant(episode.FirstLogTimestamp)}):",
-            episode.FirstLogBody ?? "(no body)",
+            $"First log ({severity}, {instant}):",
+            body,
         };
-        AppendLink(lines, episode, publicBaseUrl);
 
-        return new ComposedMessage($"[Bugler] Trouble in {place}", string.Join("\n", lines));
-    }
-
-    // One link, and it points at the Episode, not the evidence: the Episode page is where the
-    // trouble is acknowledged and solved, quotes the first log itself, and is one click from the
-    // logs — a log-filter link would land the reader somewhere with nothing to act on.
-    private static void AppendLink(List<string> lines, Episode episode, string publicBaseUrl)
-    {
-        if (publicBaseUrl.Length == 0)
+        // One link, and it points at the Episode, not the evidence: the Episode page is where the
+        // trouble is acknowledged and solved, quotes the first log itself, and is one click from
+        // the logs — a log-filter link would land the reader somewhere with nothing to act on.
+        if (episodeUrl is not null)
         {
-            return; // No PublicBaseUrl configured: messages carry no links rather than broken ones.
+            lines.Add("");
+            lines.Add($"Episode: {episodeUrl}");
         }
 
-        lines.Add("");
-        lines.Add($"Episode: {publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}");
+        return string.Join("\n", lines);
+    }
+
+    // The same message for eyes that render HTML: brass on warm paper, matching the UI's light
+    // theme. Inline styles only — mail clients strip everything else.
+    private static string ComposeHtml(
+        string place, string severity, string instant, string body, string? episodeUrl)
+    {
+        var button = episodeUrl is null
+            ? ""
+            : $"""
+               <p style="margin:20px 0 0;">
+               <a href="{WebUtility.HtmlEncode(episodeUrl)}" style="display:inline-block;background:#B26E0E;color:#FFF8EC;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px;">Open episode</a>
+               </p>
+               """;
+
+        return $"""
+                <html>
+                <body style="margin:0;padding:24px;background:#F4EDDD;">
+                <div style="max-width:560px;margin:0 auto;background:#FFFCF4;border:1px solid #E3D5B4;border-radius:8px;padding:24px;font-family:'Segoe UI',Arial,sans-serif;color:#2B2416;">
+                <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> started logging trouble.</p>
+                <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">First log ({WebUtility.HtmlEncode(severity)}, {WebUtility.HtmlEncode(instant)}):</p>
+                <pre style="margin:0;padding:12px 14px;background:#F4EDDD;border-radius:6px;font-family:Consolas,Menlo,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;color:#2B2416;">{WebUtility.HtmlEncode(body)}</pre>{button}
+                </div>
+                </body>
+                </html>
+                """;
     }
 
     private static string SeverityLabel(short severityNumber) => severityNumber switch

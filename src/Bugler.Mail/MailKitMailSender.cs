@@ -29,7 +29,10 @@ internal sealed class MailKitMailSender(
         mime.From.Add(MailboxAddress.Parse(smtp.From));
         mime.To.Add(MailboxAddress.Parse(message.ToEmail));
         mime.Subject = message.Subject;
-        mime.Body = new TextPart("plain") { Text = message.TextBody };
+        mime.Body = message.HtmlBody is null
+            ? new TextPart("plain") { Text = message.TextBody }
+            : new BodyBuilder { TextBody = message.TextBody, HtmlBody = message.HtmlBody }
+                .ToMessageBody();
 
         // The deadline covers connecting, authenticating and sending together, so a server that
         // accepts the socket and then falls silent cannot hold this call open.

@@ -50,9 +50,12 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
         Assert.Equal(BuglerHarness.AdminEmail, alertMail.ToEmail);
         Assert.Equal("[Bugler] Trouble in Eshop acme/prod/web", alertMail.Subject);
         Assert.Contains("boom", alertMail.TextBody);
-        Assert.Contains("&log=", alertMail.TextBody);
+        Assert.Contains("/episodes?episode=", alertMail.TextBody);
+        Assert.NotNull(alertMail.HtmlBody);
+        Assert.Contains("boom", alertMail.HtmlBody);
         var alertChat = Assert.Single(_chat.Sent);
         Assert.Contains("chat.googleapis.com", alertChat.WebhookUrl);
+        Assert.Contains("boom", alertChat.Alert.FirstLogBody);
 
         // The service falls quiet: backdate the last match past the 15-minute default window.
         // The Episode becomes Quieted — and nobody is told (ADR 0003): the Alert is the only

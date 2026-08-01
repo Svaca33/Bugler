@@ -29,4 +29,8 @@
     <Using Include="Bugler.SharedKernel.ApplicationId" Alias="ApplicationId" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Bugler.Alerting.Tests" />
+  </ItemGroup>
+
 </Project>
