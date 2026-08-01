@@ -6,6 +6,7 @@ import {
   asOpened,
   type EpisodesFilters,
 } from "@/features/alerting/episodesFilter";
+import { EpisodesHelpDialog } from "@/features/alerting/EpisodesHelpDialog";
 import { EpisodesPage } from "@/features/alerting/EpisodesPage";
 import { SubscriptionsPanel } from "@/features/alerting/SubscriptionsPanel";
 
@@ -43,7 +44,10 @@ function EpisodesRoute() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-end gap-6 border-b border-[#17293D] bg-[#0B1826] px-6 pt-4">
         <div className="flex flex-col gap-[3px] pb-[13px]">
-          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">Episodes</h1>
+          <div className="flex items-center gap-[9px]">
+            <h1 className="text-[19px] font-semibold tracking-[-0.4px]">Episodes</h1>
+            <EpisodesHelpDialog />
+          </div>
           <p className="text-[12.5px] text-[#8CA1B8]">
             Episodes of trouble in the services you can see, and which of them mail you.
           </p>
