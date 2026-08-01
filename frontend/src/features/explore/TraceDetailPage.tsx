@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -28,7 +28,7 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
   const catalog = useCatalog();
   const labels = serviceLabels(catalog.data?.applications ?? []);
 
-  // A span magnifier filters the traces LIST â€” apply the chip to the carried filters and go back.
+  // A span magnifier filters the traces LIST — apply the chip to the carried filters and go back.
   const toggle = (filter: AttributeFilter, active: boolean) => {
     const current = listFilters.filters ?? [];
     const next = active ? removeFilter(current, filter) : upsertFilter(current, filter);
@@ -51,7 +51,7 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
   });
 
   if (trace.isPending) {
-    return <p className="p-6 text-muted-foreground">Loading traceâ€¦</p>;
+    return <p className="p-6 text-muted-foreground">Loading trace…</p>;
   }
 
   if (trace.data == null) {
@@ -87,10 +87,10 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
           <span className="text-[#2C4560]">/</span>
           <h1 className="min-w-0 truncate font-mono text-[13px] text-[#B6C8DA]">{props.traceId}</h1>
           <span className="ml-auto whitespace-nowrap font-mono text-[11.5px] text-[#6E86A0]">
-            {totalMs.toFixed(0)} ms Â· {spans.length} spans
+            {totalMs.toFixed(0)} ms · {spans.length} spans
             {errorCount > 0 && (
               <>
-                {" Â· "}
+                {" · "}
                 <span className="text-[#F0685A]">
                   {errorCount} {errorCount === 1 ? "error" : "errors"}
                 </span>
@@ -109,7 +109,7 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
             className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
           >
             <span>SPAN</span>
-            <span>TIMELINE Â· 0 â†’ {totalMs.toFixed(0)} ms</span>
+            <span>TIMELINE · 0 → {totalMs.toFixed(0)} ms</span>
             <span className="text-right">DURATION</span>
           </div>
           {rows.map(row => {
@@ -137,7 +137,7 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
                   style={{ paddingLeft: `${row.depth * 16}px` }}
                   title={row.span.name}
                 >
-                  {isError && <span className="mr-1 text-[10px] text-[#F0685A]">â—</span>}
+                  {isError && <span className="mr-1 text-[10px] text-[#F0685A]">●</span>}
                   {row.span.name}
                 </span>
                 <span className="relative h-4 rounded bg-[#16283C]">
@@ -171,9 +171,9 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
         >
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[5px]">
             <DetailRow label="Span" value={selected.spanId} />
-            <DetailRow label="Parent" value={selected.parentSpanId ?? "â€”"} />
+            <DetailRow label="Parent" value={selected.parentSpanId ?? "—"} />
             <DetailRow label="Kind" value={KIND_LABELS[Number(selected.kind)] ?? String(selected.kind)} />
-            <DetailRow label="Service" value={labels.get(selected.serviceId) ?? "â€”"} />
+            <DetailRow label="Service" value={labels.get(selected.serviceId) ?? "—"} />
             <DetailRow label="Start" value={formatTime(selected.startTime)} />
             <DetailRow
               label="Status"

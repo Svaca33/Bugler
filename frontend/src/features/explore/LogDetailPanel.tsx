@@ -1,4 +1,4 @@
-﻿import { Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import type { LogRecord } from "@/api/client";
 import { useCatalog } from "@/api/queries";
@@ -40,15 +40,15 @@ export function LogDetailPanel(props: {
           value={log.severityText || severityLabel(severity)}
           valueClass={severityClass(severity)}
         />
-        <Row label="Service" value={service ?? "â€”"} />
-        <Row label="Scope" value={log.scopeName ?? "â€”"} />
-        <Row label="Span" value={log.spanId ?? "â€”"} />
+        <Row label="Service" value={service ?? "—"} />
+        <Row label="Scope" value={log.scopeName ?? "—"} />
+        <Row label="Span" value={log.spanId ?? "—"} />
       </dl>
 
       {log.traceId != null && (
         <Button asChild variant="secondary" size="sm" className="w-full">
           <Link to="/traces/$traceId" params={{ traceId: log.traceId }}>
-            View trace {log.traceId.slice(0, 8)}â€¦
+            View trace {log.traceId.slice(0, 8)}…
           </Link>
         </Button>
       )}

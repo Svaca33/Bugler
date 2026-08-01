@@ -1,4 +1,4 @@
-﻿import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, type LogRecord } from "@/api/client";
@@ -82,7 +82,7 @@ export function LogsPage(props: {
   });
 
   // The total belongs to the Filter, not to how far the reader has paged, so it is asked once per
-  // Filter rather than once per page â€” and not at all while Live keeps moving the answer.
+  // Filter rather than once per page — and not at all while Live keeps moving the answer.
   const total = useQuery({
     queryKey: ["logs-count", filters],
     queryFn: async () => {
@@ -113,8 +113,8 @@ export function LogsPage(props: {
   const applications = catalog.data?.applications ?? [];
   const labels = serviceLabels(applications);
 
-  // The selected record usually sits in the loaded pages; a deep-linked one may not â€” the
-  // current Filter can exclude it â€” so it is fetched alone rather than clipped away.
+  // The selected record usually sits in the loaded pages; a deep-linked one may not — the
+  // current Filter can exclude it — so it is fetched alone rather than clipped away.
   const selectedFromList =
     selectedLogId === undefined ? undefined : items.find(log => Number(log.id) === selectedLogId);
   const selectedFetch = useQuery({
@@ -132,7 +132,7 @@ export function LogsPage(props: {
   const selected = selectedFromList ?? selectedFetch.data ?? null;
 
   // Never "N records": that reads as the total while it only ever counts what has been paged in.
-  // Past the cap the total reads "1000+" â€” the count stops there rather than scanning a window of
+  // Past the cap the total reads "1000+" — the count stops there rather than scanning a window of
   // millions to put an exact digit on the end of a number read as "a lot" either way.
   const counted = live
     ? `${items.length} loaded`
@@ -157,7 +157,7 @@ export function LogsPage(props: {
               removeLabel="Leave the trace"
               onRemove={() => onChange({ ...filters, traceId: undefined })}
             >
-              Trace: {filters.traceId.slice(0, 8)}â€¦
+              Trace: {filters.traceId.slice(0, 8)}…
             </FilterChip>
           </FilterGroup>
         )}
@@ -232,7 +232,7 @@ export function LogsPage(props: {
             }}
           >
             <Input
-              placeholder="Search in messageâ€¦"
+              placeholder="Search in message…"
               value={search}
               onChange={event => setSearch(event.target.value)}
             />
@@ -267,7 +267,7 @@ export function LogsPage(props: {
                 refreshing every 5 s
               </span>
             )}
-            {/* Live is not a filter â€” it is how often this list refetches, so it lives on the list. */}
+            {/* Live is not a filter — it is how often this list refetches, so it lives on the list. */}
             <div className="ml-auto flex items-center gap-3">
               <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>
               <Button
@@ -276,7 +276,7 @@ export function LogsPage(props: {
                 size="sm"
                 onClick={() => setLive(!live)}
               >
-                {live ? "Live â—" : "Live"}
+                {live ? "Live ●" : "Live"}
               </Button>
             </div>
           </div>
@@ -334,10 +334,10 @@ export function LogsPage(props: {
                     <span
                       className={`truncate font-mono text-[11.5px] ${isSelected ? "text-[#C6D6E6]" : "text-[#A9BDD1]"}`}
                     >
-                      {labels.get(log.serviceId) ?? "â€”"}
+                      {labels.get(log.serviceId) ?? "—"}
                     </span>
                     <span className="truncate font-mono text-[11.5px] text-[#7D93AA]">
-                      {tenantOf(log) || "â€”"}
+                      {tenantOf(log) || "—"}
                     </span>
                     <span
                       className={`truncate font-mono text-[12.5px] ${
@@ -379,7 +379,7 @@ export function LogsPage(props: {
               disabled={!logs.hasNextPage || logs.isFetchingNextPage}
               onClick={() => logs.fetchNextPage()}
             >
-              {logs.isFetchingNextPage ? "Loadingâ€¦" : logs.hasNextPage ? "Load older" : "No older records"}
+              {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
             </Button>
             <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
           </div>

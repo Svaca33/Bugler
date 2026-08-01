@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { api } from "@/api/client";
@@ -179,7 +179,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                     )}
                   </span>
                   <span className="truncate font-mono text-[11.5px] text-[#A9BDD1]">
-                    {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "â€”"}
+                    {(trace.rootServiceId != null ? labels.get(trace.rootServiceId) : undefined) ?? "—"}
                   </span>
                   <span className="whitespace-nowrap font-mono text-[11.5px] text-[#7D93AA]">
                     {formatTime(trace.startTime)}
