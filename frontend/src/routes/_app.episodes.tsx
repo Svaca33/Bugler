@@ -4,21 +4,21 @@ import {
   asAck,
   asLifecycle,
   asOpened,
-  type AlertsFilters,
-} from "@/features/alerting/alertsFilter";
+  type EpisodesFilters,
+} from "@/features/alerting/episodesFilter";
 import { EpisodesPage } from "@/features/alerting/EpisodesPage";
 import { SubscriptionsPanel } from "@/features/alerting/SubscriptionsPanel";
 
-type AlertsSection = "episodes" | "subscriptions";
+type EpisodesSection = "episodes" | "subscriptions";
 
 /** The page's URL state: the section, the rail's filters, and which Episode is open in the panel. */
-export interface AlertsSearch extends AlertsFilters {
-  section: AlertsSection;
+export interface EpisodesSearch extends EpisodesFilters {
+  section: EpisodesSection;
   episode?: string;
 }
 
-export const Route = createFileRoute("/_app/alerts")({
-  validateSearch: (search: Record<string, unknown>): AlertsSearch => ({
+export const Route = createFileRoute("/_app/episodes")({
+  validateSearch: (search: Record<string, unknown>): EpisodesSearch => ({
     section: search.section === "subscriptions" ? "subscriptions" : "episodes",
     lifecycle: asLifecycle(search.lifecycle),
     ack: asAck(search.ack),
@@ -30,10 +30,10 @@ export const Route = createFileRoute("/_app/alerts")({
     q: asString(search.q),
     episode: asString(search.episode),
   }),
-  component: AlertsRoute,
+  component: EpisodesRoute,
 });
 
-function AlertsRoute() {
+function EpisodesRoute() {
   // `episode` stays outside the filters object: it selects an Episode, it narrows nothing,
   // and it must not invalidate the list, band or counts queries keyed on the filters.
   const { section, episode, ...filters } = Route.useSearch();
@@ -43,7 +43,7 @@ function AlertsRoute() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-end gap-6 border-b border-[#17293D] bg-[#0B1826] px-6 pt-4">
         <div className="flex flex-col gap-[3px] pb-[13px]">
-          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">Alerts</h1>
+          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">Episodes</h1>
           <p className="text-[12.5px] text-[#8CA1B8]">
             Episodes of trouble in the services you can see, and which of them mail you.
           </p>

@@ -39,7 +39,7 @@ function AppShell() {
           <NavTab to="/dashboard" label="Dashboard" />
           <NavTab to="/" label="Logs" />
           <NavTab to="/traces" label="Traces" />
-          <NavTab to="/alerts" label="Alerts" badge={openEpisodes} />
+          <NavTab to="/episodes" label="Episodes" badge={openEpisodes} />
           {user.data.isAdmin && <NavTab to="/admin" label="Admin" />}
         </nav>
 

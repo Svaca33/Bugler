@@ -29,14 +29,14 @@ public class MessageComposerTests
     [Fact]
     public void The_alert_names_the_service_and_shows_the_first_log()
     {
-        var message = MessageComposer.ComposeAlert(Episode(), Identity, "https://bugler.example.com");
+        var episode = Episode();
+        var message = MessageComposer.ComposeAlert(episode, Identity, "https://bugler.example.com");
 
         Assert.Equal("[Bugler] Trouble in Eshop acme/prod/web", message.Subject);
         Assert.Contains("First log (ERROR, 2026-07-29 09:59:58 UTC):", message.Text);
         Assert.Contains("Payment gateway timed out", message.Text);
         Assert.Contains(
-            $"https://bugler.example.com/?applicationId={Identity.ApplicationId.Value}", message.Text);
-        Assert.Contains("&log=42", message.Text);
+            $"Episode: https://bugler.example.com/episodes?episode={episode.Id}", message.Text);
     }
 
     [Fact]

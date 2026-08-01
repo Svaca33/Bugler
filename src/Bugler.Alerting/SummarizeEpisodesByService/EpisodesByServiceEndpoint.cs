@@ -38,7 +38,7 @@ internal static class EpisodesByServiceEndpoint
 {
     /// <summary>
     /// The counts' breakdown turned sideways: one row per Service instead of one row of states,
-    /// through the same filter chain, so a per-service board and the Alerts rail can never
+    /// through the same filter chain, so a per-service board and the Episodes rail can never
     /// disagree about what the window holds.
     /// </summary>
     public static async Task<IResult> Handle(

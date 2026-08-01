@@ -5,7 +5,7 @@ import { registerApplication, selectFilter, signIn } from "./helpers";
 
 /**
  * Alerting end to end: subscribe to a fresh application, export telemetry with an error in it,
- * watch the detection loop open an Episode on the Alerts tab, work it in the detail panel —
+ * watch the detection loop open an Episode on the Episodes tab, work it in the detail panel —
  * acknowledge, solve — and follow the deep link to the exact Log Record that opened it.
  */
 test("an error log opens an episode that is worked in the panel and deep-links to its record", async ({ page }) => {
@@ -16,7 +16,7 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   const apiKey = await registerApplication(page, appName);
 
   // Subscribe to the whole application — services present and future.
-  await page.getByRole("link", { name: "Alerts" }).click();
+  await page.getByRole("link", { name: "Episodes" }).click();
   await page.getByRole("button", { name: "Subscriptions" }).click();
   await page.getByLabel(appName, { exact: true }).click();
   await expect(page.getByLabel(appName, { exact: true })).toBeChecked();

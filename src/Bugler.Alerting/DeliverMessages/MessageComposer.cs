@@ -24,39 +24,23 @@ public static class MessageComposer
             $"First log ({SeverityLabel(episode.FirstLogSeverity)}, {Instant(episode.FirstLogTimestamp)}):",
             episode.FirstLogBody ?? "(no body)",
         };
-        AppendLinks(lines, episode, identity, publicBaseUrl, includeLogLink: true);
+        AppendLink(lines, episode, publicBaseUrl);
 
         return new ComposedMessage($"[Bugler] Trouble in {place}", string.Join("\n", lines));
     }
 
-    private static void AppendLinks(
-        List<string> lines, Episode episode, CatalogService identity, string publicBaseUrl,
-        bool includeLogLink)
+    // One link, and it points at the Episode, not the evidence: the Episode page is where the
+    // trouble is acknowledged and solved, quotes the first log itself, and is one click from the
+    // logs — a log-filter link would land the reader somewhere with nothing to act on.
+    private static void AppendLink(List<string> lines, Episode episode, string publicBaseUrl)
     {
         if (publicBaseUrl.Length == 0)
         {
             return; // No PublicBaseUrl configured: messages carry no links rather than broken ones.
         }
 
-        var origin = publicBaseUrl.TrimEnd('/');
-        // The window starts a little before the opening: the first log's own timestamp predates
-        // the detection that opened the Episode, and a link that hides its own subject is worse
-        // than a slightly wider one.
-        var windowStart = episode.OpenedAt - TimeSpan.FromMinutes(5);
-        var filter =
-            $"{origin}/?applicationId={identity.ApplicationId.Value}"
-            + $"&namespace={Uri.EscapeDataString(identity.Namespace)}"
-            + $"&environment={Uri.EscapeDataString(identity.Environment)}"
-            + $"&service={Uri.EscapeDataString(identity.Name)}"
-            + "&severityMin=13"
-            + $"&from={Uri.EscapeDataString(windowStart.UtcDateTime.ToString("o"))}";
-
         lines.Add("");
-        lines.Add($"Logs: {filter}");
-        if (includeLogLink)
-        {
-            lines.Add($"Log record: {filter}&log={episode.FirstLogId}");
-        }
+        lines.Add($"Episode: {publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}");
     }
 
     private static string SeverityLabel(short severityNumber) => severityNumber switch

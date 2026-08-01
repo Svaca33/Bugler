@@ -8,7 +8,7 @@ export type EpisodeStateName = Episode["state"];
  * trio; an explicit empty array means nothing is checked. Absent `opened` means the default
  * window; the literal "all" means no window at all.
  */
-export interface AlertsFilters {
+export interface EpisodesFilters {
   lifecycle?: EpisodeStateName[];
   ack?: "none" | "me";
   applicationId?: string;
@@ -35,17 +35,17 @@ export const OPENED_PRESETS = [
   { value: "P30D", label: "Last 30 d", phrase: "in the last 30 d" },
 ] as const;
 
-export function effectiveLifecycle(filters: AlertsFilters): EpisodeStateName[] {
+export function effectiveLifecycle(filters: EpisodesFilters): EpisodeStateName[] {
   return filters.lifecycle ?? DEFAULT_LIFECYCLE;
 }
 
-export function effectiveOpened(filters: AlertsFilters): string | undefined {
+export function effectiveOpened(filters: EpisodesFilters): string | undefined {
   const opened = filters.opened ?? DEFAULT_OPENED;
   return opened === OPENED_ALL ? undefined : opened;
 }
 
 /** The instant the OPENED window starts at — computed at call time, so the window rolls. */
-export function openedFrom(filters: AlertsFilters): string | undefined {
+export function openedFrom(filters: EpisodesFilters): string | undefined {
   const opened = effectiveOpened(filters);
   if (opened === undefined) return undefined;
   const length = durationMs(opened);
@@ -53,12 +53,12 @@ export function openedFrom(filters: AlertsFilters): string | undefined {
 }
 
 /** "in the last 7 d" — the footer's window phrase; undefined when no window narrows. */
-export function openedPhrase(filters: AlertsFilters): string | undefined {
+export function openedPhrase(filters: EpisodesFilters): string | undefined {
   const opened = effectiveOpened(filters);
   return OPENED_PRESETS.find(preset => preset.value === opened)?.phrase;
 }
 
-export function hasSourceFilter(filters: AlertsFilters): boolean {
+export function hasSourceFilter(filters: EpisodesFilters): boolean {
   return (
     filters.applicationId !== undefined
     || filters.namespace !== undefined
@@ -75,7 +75,7 @@ type CatalogApplication = Catalog["applications"][number];
  */
 export function resolveServiceIds(
   applications: readonly CatalogApplication[],
-  filters: AlertsFilters,
+  filters: EpisodesFilters,
 ): string[] | undefined {
   if (!hasSourceFilter(filters)) return undefined;
   return applications

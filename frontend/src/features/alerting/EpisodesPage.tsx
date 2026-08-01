@@ -17,9 +17,9 @@ import {
   openedFrom,
   openedPhrase,
   resolveServiceIds,
-  type AlertsFilters,
-} from "./alertsFilter";
-import { AlertsFilterRail } from "./AlertsFilterRail";
+  type EpisodesFilters,
+} from "./episodesFilter";
+import { EpisodesFilterRail } from "./EpisodesFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
 import { clock, dayLabel, historyStamp } from "./format";
 import { OpenNowBand } from "./OpenNowBand";
@@ -35,8 +35,8 @@ const GRID = "grid grid-cols-[3px_1fr_128px_86px] items-center gap-3.5 px-5";
 
 /** The Episodes within the viewer's Visibility Scope: the burning ones on top, history below. */
 export function EpisodesPage(props: {
-  filters: AlertsFilters;
-  onChange: (filters: AlertsFilters) => void;
+  filters: EpisodesFilters;
+  onChange: (filters: EpisodesFilters) => void;
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
 }) {
@@ -161,7 +161,7 @@ export function EpisodesPage(props: {
 
   return (
     <div className="flex h-full min-h-0">
-      <AlertsFilterRail filters={filters} counts={counts.data} onChange={onChange} />
+      <EpisodesFilterRail filters={filters} counts={counts.data} onChange={onChange} />
 
       <ResizablePanelGroup className="min-w-0 flex-1">
         <ResizablePanel
@@ -280,7 +280,7 @@ function EpisodeRows(props: {
         </div>,
       );
     }
-    const groupKey = `${episode.serviceId} ${episode.fingerprint}`;
+    const groupKey = `${episode.serviceId}\u0000${episode.fingerprint}`;
     const expanded = unfolded.has(groupKey);
     rows.push(
       <EpisodeRow

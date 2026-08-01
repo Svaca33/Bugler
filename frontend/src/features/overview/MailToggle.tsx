@@ -1,5 +1,5 @@
 /**
- * The subscription state the Alerts › Subscriptions tab owns, readable and settable in place —
+ * The subscription state the Episodes › Subscriptions tab owns, readable and settable in place —
  * this is the screen where a reader notices they are not being told about a service that keeps
  * burning. A service covered by an application-wide subscription is shown but not clickable:
  * un-checking it here would mean silently dropping the application subscription, which is a

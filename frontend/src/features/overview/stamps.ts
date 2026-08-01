@@ -7,7 +7,7 @@ export function windowStamp(instant: string): string {
   return `${day} ${hours}:${minutes}`;
 }
 
-/** "12:04:41" — local wall clock of an instant, the same voice as the Alerts meta lines. */
+/** "12:04:41" — local wall clock of an instant, the same voice as the Episodes meta lines. */
 export function clock(timestamp: string): string {
   return new Date(timestamp).toTimeString().slice(0, 8);
 }

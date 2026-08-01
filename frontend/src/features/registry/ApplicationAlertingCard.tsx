@@ -103,7 +103,7 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
       )}
       <p className="text-[11.5px] text-[#7D93AA]">
         Off closes open episodes immediately and silently. Who gets mailed is each person's own
-        choice under Alerts → Subscriptions; the webhook posts every episode of this application
+        choice under Episodes → Subscriptions; the webhook posts every episode of this application
         to one Google Chat space.
       </p>
     </div>

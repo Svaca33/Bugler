@@ -15,8 +15,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
-import { Route as AppAlertsRouteImport } from './routes/_app.alerts'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppEpisodesRouteImport } from './routes/_app.episodes'
 import { Route as AppTracesIndexRouteImport } from './routes/_app.traces.index'
 import { Route as AppTracesTraceIdRouteImport } from './routes/_app.traces.$traceId'
 
@@ -49,14 +49,14 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAlertsRoute = AppAlertsRouteImport.update({
-  id: '/alerts',
-  path: '/alerts',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEpisodesRoute = AppEpisodesRouteImport.update({
+  id: '/episodes',
+  path: '/episodes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTracesIndexRoute = AppTracesIndexRouteImport.update({
@@ -76,8 +76,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AppAdminRoute
-  '/alerts': typeof AppAlertsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/episodes': typeof AppEpisodesRoute
   '/traces/$traceId': typeof AppTracesTraceIdRoute
   '/traces/': typeof AppTracesIndexRoute
 }
@@ -86,8 +86,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AppAdminRoute
-  '/alerts': typeof AppAlertsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/episodes': typeof AppEpisodesRoute
   '/': typeof AppIndexRoute
   '/traces/$traceId': typeof AppTracesTraceIdRoute
   '/traces': typeof AppTracesIndexRoute
@@ -99,8 +99,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_app/admin': typeof AppAdminRoute
-  '/_app/alerts': typeof AppAlertsRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/episodes': typeof AppEpisodesRoute
   '/_app/': typeof AppIndexRoute
   '/_app/traces/$traceId': typeof AppTracesTraceIdRoute
   '/_app/traces/': typeof AppTracesIndexRoute
@@ -113,8 +113,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/admin'
-    | '/alerts'
     | '/dashboard'
+    | '/episodes'
     | '/traces/$traceId'
     | '/traces/'
   fileRoutesByTo: FileRoutesByTo
@@ -123,8 +123,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/admin'
-    | '/alerts'
     | '/dashboard'
+    | '/episodes'
     | '/'
     | '/traces/$traceId'
     | '/traces'
@@ -135,8 +135,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/_app/admin'
-    | '/_app/alerts'
     | '/_app/dashboard'
+    | '/_app/episodes'
     | '/_app/'
     | '/_app/traces/$traceId'
     | '/_app/traces/'
@@ -193,18 +193,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/alerts': {
-      id: '/_app/alerts'
-      path: '/alerts'
-      fullPath: '/alerts'
-      preLoaderRoute: typeof AppAlertsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/episodes': {
+      id: '/_app/episodes'
+      path: '/episodes'
+      fullPath: '/episodes'
+      preLoaderRoute: typeof AppEpisodesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/traces/': {
@@ -226,8 +226,8 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
-  AppAlertsRoute: typeof AppAlertsRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppEpisodesRoute: typeof AppEpisodesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppTracesTraceIdRoute: typeof AppTracesTraceIdRoute
   AppTracesIndexRoute: typeof AppTracesIndexRoute
@@ -235,8 +235,8 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
-  AppAlertsRoute: AppAlertsRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppEpisodesRoute: AppEpisodesRoute,
   AppIndexRoute: AppIndexRoute,
   AppTracesTraceIdRoute: AppTracesTraceIdRoute,
   AppTracesIndexRoute: AppTracesIndexRoute,

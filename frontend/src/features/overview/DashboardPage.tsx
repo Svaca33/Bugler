@@ -30,14 +30,14 @@ import { ServiceTable } from "./ServiceTable";
 const DEFAULT_RANGE = "P1D";
 const DEFAULT_GROUP_BY: Facet[] = ["app", "namespace", "environment"];
 
-/** Both aggregates poll at 30 s, matching Alerts; nothing here refetches on focus more often. */
+/** Both aggregates poll at 30 s, matching the Episodes page; nothing refetches on focus more often. */
 const REFETCH_MS = 30_000;
 
 /**
  * One tile per Service the caller may see, sorted so trouble is never below the fold: how loud
  * it is in the chosen window, whether an Episode is open on it right now, what shape its traffic
  * has, and whether the caller is mailed about it. A status board, not a triage tool — the moment
- * a reader wants to act on an Episode, the Alerts page owns that.
+ * a reader wants to act on an Episode, the Episodes page owns that.
  */
 export function DashboardPage(props: {
   search: DashboardSearch;
@@ -238,11 +238,11 @@ export function DashboardPage(props: {
       },
     });
 
-  // Only the SOURCE facets ride along: lifecycle and the opened window keep the Alerts
-  // defaults, and the dashboard's window (which knows 1 h) does not map onto them anyway.
+  // Only the SOURCE facets ride along: lifecycle and the opened window keep the Episodes
+  // page's defaults, and the dashboard's window (which knows 1 h) does not map onto them anyway.
   const openEpisodes = (tile: ServiceTile) =>
     navigate({
-      to: "/alerts",
+      to: "/episodes",
       search: {
         section: "episodes",
         applicationId: tile.applicationId,

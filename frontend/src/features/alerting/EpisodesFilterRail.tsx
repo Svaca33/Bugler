@@ -16,18 +16,18 @@ import {
   OPENED_PRESETS,
   effectiveLifecycle,
   normalizeLifecycle,
-  type AlertsFilters,
+  type EpisodesFilters,
   type EpisodeStateName,
-} from "./alertsFilter";
+} from "./episodesFilter";
 
 /**
  * The left rail of the Episodes tab. Everything it writes round-trips through the URL, so a
  * triage view is linkable; Clear all returns to the defaults, not to emptiness.
  */
-export function AlertsFilterRail(props: {
-  filters: AlertsFilters;
+export function EpisodesFilterRail(props: {
+  filters: EpisodesFilters;
   counts: EpisodeCounts | undefined;
-  onChange: (filters: AlertsFilters) => void;
+  onChange: (filters: EpisodesFilters) => void;
 }) {
   const { filters, counts, onChange } = props;
   const catalog = useCatalog();

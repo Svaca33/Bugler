@@ -8,7 +8,7 @@ import {
   normalizeLifecycle,
   openedFrom,
   resolveServiceIds,
-} from "./alertsFilter";
+} from "./episodesFilter";
 
 const applications = [
   {

@@ -11,7 +11,7 @@ import { clock, windowStamp } from "./stamps";
 /**
  * One Service on the board. It never becomes an Episode row: at most one open Episode is quoted
  * (severity rail, meta line, first log body) with nothing to act on — no Acknowledge, no Solve.
- * The moment a reader wants to act, the Alerts page owns that; the buttons hand off to Logs,
+ * The moment a reader wants to act, the Episodes page owns that; the buttons hand off to Logs,
  * Traces and Episodes with the service already applied — the card itself is not a click target.
  */
 export function ServiceCard(props: {
