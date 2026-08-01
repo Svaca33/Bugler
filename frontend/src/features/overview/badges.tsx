@@ -9,25 +9,19 @@ export const BADGE_QUIETED = "border-[rgba(233,164,60,0.32)] bg-[rgba(233,164,60
 export const BADGE_CLEAR = "border-state-solved/25 bg-state-solved/10 text-state-solved";
 
 /**
- * The card's and the row's status: a 7 px dot, then the badge. Open pulses; a service that is
- * both open and quieted shows the open badge and appends the quieted count. The calm green is
- * `--state-solved`, never brass — brass means interactive, not "good news".
+ * The card's and the row's status badge. A service that is both open and quieted shows the open
+ * badge and appends the quieted count. The calm green is `--state-solved`, never brass — brass
+ * means interactive, not "good news". The badge tones carry the state alone: no dots.
  */
 export function StatusBadges(props: { tile: ServiceTile }) {
   const episodes = props.tile.episodes;
   if (episodes === undefined) {
-    return (
-      <>
-        <span className="size-[7px] shrink-0 rounded-full bg-[#4A6480]" />
-        <span className="font-mono text-[10.5px] text-[#4A6480]">—</span>
-      </>
-    );
+    return <span className="font-mono text-[10.5px] text-[#4A6480]">—</span>;
   }
 
   if (episodes.open > 0) {
     return (
       <>
-        <span className="size-[7px] shrink-0 rounded-full bg-[#E5544A] animate-[bpulse_1.6s_ease-in-out_infinite]" />
         <span className={`${BADGE} ${BADGE_TROUBLE}`}>
           {episodes.open === 1 ? "open episode" : `${episodes.open} open episodes`}
         </span>
@@ -40,21 +34,13 @@ export function StatusBadges(props: { tile: ServiceTile }) {
 
   if (episodes.quieted > 0) {
     return (
-      <>
-        <span className="size-[7px] shrink-0 rounded-full bg-[#C97B12]" />
-        <span className={`${BADGE} ${BADGE_QUIETED}`}>
-          {episodes.quieted === 1 ? "quieted episode" : `${episodes.quieted} quieted episodes`}
-        </span>
-      </>
+      <span className={`${BADGE} ${BADGE_QUIETED}`}>
+        {episodes.quieted === 1 ? "quieted episode" : `${episodes.quieted} quieted episodes`}
+      </span>
     );
   }
 
-  return (
-    <>
-      <span className="bg-state-solved size-[7px] shrink-0 rounded-full" />
-      <span className={`${BADGE} ${BADGE_CLEAR}`}>all clear</span>
-    </>
-  );
+  return <span className={`${BADGE} ${BADGE_CLEAR}`}>all clear</span>;
 }
 
 /** The group heading's worst-state chip: any open → in trouble, else quieted, else all clear. */
