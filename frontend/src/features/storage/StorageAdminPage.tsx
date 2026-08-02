@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 
 import { api } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
 import {
   Select,
   SelectContent,
@@ -15,7 +17,6 @@ import { formatBytes } from "@/lib/format";
 
 import {
   RATE_UNITS,
-  byCost,
   ratePer,
   rateStep,
   settledBytes,
@@ -27,24 +28,28 @@ import {
 
 /**
  * The admin's ledger of what the stored telemetry costs: every registered Service, priced in
- * bytes beside the Effective Retention that bounds it, costliest first. Bytes marked ≈ are
- * estimates — Services share tables, so the report divides what the tables really hold — and
- * the Ingest Rate is measured over the last day, whatever unit it is quoted in.
+ * bytes beside the Effective Retention that bounds it, costliest first until a heading says
+ * otherwise. Bytes marked ≈ are estimates — Services share tables, so the report divides what
+ * the tables really hold — and the Ingest Rate is measured over the last day, whatever unit it
+ * is quoted in.
  */
 export function StorageAdminPage() {
   const report = useStorageReport();
   const catalog = useCatalog();
   const [unit, setUnit] = useState<RateUnit>("day");
 
-  const names = new Map<string, string>();
-  for (const application of catalog.data?.applications ?? []) {
-    for (const service of application.services) {
-      names.set(
-        service.id,
-        `${application.name} · ${service.namespace}/${service.environment} · ${service.name}`,
-      );
+  const names = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const application of catalog.data?.applications ?? []) {
+      for (const service of application.services) {
+        map.set(
+          service.id,
+          `${application.name} · ${service.namespace}/${service.environment} · ${service.name}`,
+        );
+      }
     }
-  }
+    return map;
+  }, [catalog.data]);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
@@ -107,7 +112,7 @@ export function StorageAdminPage() {
         <p className="text-[12.5px] text-[#8CA1B8]">Nothing is registered yet.</p>
       ) : (
         <StorageTable
-          rows={[...report.data.services].sort(byCost)}
+          rows={byServiceId(report.data.services)}
           names={names}
           unit={unit}
           windowMs={report.data.windowMs}
@@ -117,53 +122,139 @@ export function StorageAdminPage() {
   );
 }
 
+/** The rows' incoming order is what ties fall back to in every column — keep it deterministic. */
+function byServiceId(services: StorageRow[]): StorageRow[] {
+  return [...services].sort((a, b) => a.serviceId.localeCompare(b.serviceId));
+}
+
 function StorageTable(props: {
   rows: StorageRow[];
   names: Map<string, string>;
   unit: RateUnit;
   windowMs: number;
 }) {
-  const heading = "px-1.5 text-left font-normal whitespace-nowrap";
-  const unitLabel = rateStep(props.unit);
+  const { names, unit, windowMs } = props;
+  const unitLabel = rateStep(unit);
+
+  const columns = useMemo<ColumnDef<StorageRow>[]>(() => {
+    const label = (row: StorageRow) => names.get(row.serviceId) ?? row.serviceId;
+    return [
+      {
+        id: "service",
+        accessorFn: label,
+        header: "SERVICE",
+        sortDescFirst: false,
+        sortingFn: (a, b) => label(a.original).localeCompare(label(b.original)),
+        meta: { headerClassName: "w-full pl-4", cellClassName: "w-full pl-4 text-xs" },
+        cell: context => {
+          const row = context.row.original;
+          return names.get(row.serviceId) ?? (
+            <span className="text-[#4A6480]">{row.serviceId}</span>
+          );
+        },
+      },
+      {
+        id: "logs",
+        accessorFn: row => row.logs.footprintBytes,
+        header: "LOGS",
+        sortDescFirst: true,
+        meta: { headerClassName: "text-right", cellClassName: "text-right" },
+        cell: context => <ByteValue bytes={context.row.original.logs.footprintBytes} />,
+      },
+      {
+        id: "traces",
+        accessorFn: row => row.traces.footprintBytes,
+        header: "TRACES",
+        sortDescFirst: true,
+        meta: { headerClassName: "text-right", cellClassName: "text-right" },
+        cell: context => <ByteValue bytes={context.row.original.traces.footprintBytes} />,
+      },
+      {
+        id: "total",
+        accessorFn: totalFootprint,
+        header: "TOTAL",
+        sortDescFirst: true,
+        meta: { headerClassName: "text-right", cellClassName: "text-right" },
+        cell: context => <ByteValue bytes={totalFootprint(context.row.original)} emphasis />,
+      },
+      {
+        id: "kept",
+        accessorFn: row => row.logs.retentionDays,
+        header: "KEPT",
+        sortDescFirst: true,
+        // The pair the cell shows, read left to right: log retention first, traces break ties.
+        sortingFn: (a, b) =>
+          a.original.logs.retentionDays - b.original.logs.retentionDays ||
+          a.original.traces.retentionDays - b.original.traces.retentionDays,
+        meta: {
+          headerClassName: "text-right",
+          headerTitle: "Log retention / trace retention",
+          cellClassName: "text-right text-[#B6C8DA]",
+        },
+        cell: context => {
+          const row = context.row.original;
+          return (
+            <span title="Log retention / trace retention">
+              {row.logs.retentionDays} d / {row.traces.retentionDays} d
+            </span>
+          );
+        },
+      },
+      {
+        id: "ingest",
+        accessorFn: row => row.logs.windowBytes + row.traces.windowBytes,
+        header: `INGEST ${unitLabel.label.toUpperCase().replace(" (PROJECTED)", "*")}`,
+        sortDescFirst: true,
+        meta: { headerClassName: "text-right", cellClassName: "text-right" },
+        cell: context => {
+          const row = context.row.original;
+          const logRate = ratePer(row.logs.windowBytes, windowMs, unit);
+          const traceRate = ratePer(row.traces.windowBytes, windowMs, unit);
+          return (
+            <ByteValue
+              bytes={logRate + traceRate}
+              title={`logs ≈ ${formatBytes(logRate)} · traces ≈ ${formatBytes(traceRate)}`}
+            />
+          );
+        },
+      },
+      {
+        id: "settles",
+        accessorFn: row => settledBytes(row, windowMs),
+        header: "SETTLES AT",
+        sortDescFirst: true,
+        meta: {
+          headerClassName: "pr-4 text-right",
+          headerTitle:
+            "Where the Footprint comes to rest if the last day's pace holds, each retention clock on its own",
+          cellClassName: "pr-4 text-right",
+        },
+        cell: context => {
+          const row = context.row.original;
+          return (
+            <ByteValue
+              bytes={settledBytes(row, windowMs)}
+              emphasis
+              title={`at the last day's pace, holding logs ${row.logs.retentionDays} d and traces ${row.traces.retentionDays} d`}
+            />
+          );
+        },
+      },
+    ];
+  }, [names, unit, unitLabel, windowMs]);
 
   return (
     <div
       data-testid="storage-rows"
-      className="overflow-x-auto rounded-[11px] border border-[#1E344C] bg-card"
+      className="overflow-hidden rounded-[11px] border border-[#1E344C] bg-card"
     >
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="h-8 border-b border-[#17293D] bg-[#0B1826] font-mono text-[10px] tracking-[0.12em] text-[#5F7590]">
-            <th className={`${heading} w-full pl-4`}>SERVICE</th>
-            <th className={`${heading} text-right`}>LOGS</th>
-            <th className={`${heading} text-right`}>TRACES</th>
-            <th className={`${heading} text-right`}>TOTAL</th>
-            <th className={`${heading} text-right`} title="Log retention / trace retention">
-              KEPT
-            </th>
-            <th className={`${heading} text-right`}>
-              INGEST {unitLabel.label.toUpperCase().replace(" (PROJECTED)", "*")}
-            </th>
-            <th
-              className={`${heading} pr-4 text-right`}
-              title="Where the Footprint comes to rest if the last day's pace holds, each retention clock on its own"
-            >
-              SETTLES AT
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.rows.map(row => (
-            <StorageRowLine
-              key={row.serviceId}
-              row={row}
-              label={props.names.get(row.serviceId)}
-              unit={props.unit}
-              windowMs={props.windowMs}
-            />
-          ))}
-        </tbody>
-      </table>
+      <DataTable
+        columns={columns}
+        data={props.rows}
+        defaultSort={[{ id: "total", desc: true }]}
+        persistKey="bugler.admin.storage-sort"
+        rowTestId="storage-row"
+      />
       {unitLabel.projected && (
         <p className="border-t border-[#101F31] px-4 py-2 text-[11px] text-[#5F7590]">
           * projected from the last day's measurement — nothing is measured beyond it.
@@ -173,60 +264,17 @@ function StorageTable(props: {
   );
 }
 
-function StorageRowLine(props: {
-  row: StorageRow;
-  label: string | undefined;
-  unit: RateUnit;
-  windowMs: number;
-}) {
-  const { row } = props;
-  const logRate = ratePer(row.logs.windowBytes, props.windowMs, props.unit);
-  const traceRate = ratePer(row.traces.windowBytes, props.windowMs, props.unit);
-
-  return (
-    <tr data-testid="storage-row" className="h-10 border-b border-[#101F31]">
-      <td className="w-full py-0 pr-1.5 pl-4 align-middle font-mono text-xs whitespace-nowrap">
-        {props.label ?? <span className="text-[#4A6480]">{row.serviceId}</span>}
-      </td>
-      <ByteCell bytes={row.logs.footprintBytes} />
-      <ByteCell bytes={row.traces.footprintBytes} />
-      <ByteCell bytes={totalFootprint(row)} emphasis />
-      <td
-        className="px-1.5 text-right align-middle font-mono text-[11.5px] whitespace-nowrap text-[#B6C8DA]"
-        title="Log retention / trace retention"
-      >
-        {row.logs.retentionDays} d / {row.traces.retentionDays} d
-      </td>
-      <ByteCell
-        bytes={logRate + traceRate}
-        title={`logs ≈ ${formatBytes(logRate)} · traces ≈ ${formatBytes(traceRate)}`}
-      />
-      <ByteCell
-        bytes={settledBytes(row, props.windowMs)}
-        emphasis
-        className="pr-4"
-        title={`at the last day's pace, holding logs ${row.logs.retentionDays} d and traces ${row.traces.retentionDays} d`}
-      />
-    </tr>
-  );
-}
-
-function ByteCell(props: {
-  bytes: number;
-  emphasis?: boolean;
-  className?: string;
-  title?: string;
-}) {
+function ByteValue(props: { bytes: number; emphasis?: boolean; title?: string }) {
   const empty = props.bytes <= 0;
   return (
-    <td
+    <span
       title={props.title}
-      className={`px-1.5 text-right align-middle font-mono text-[11.5px] whitespace-nowrap ${
+      className={
         empty ? "text-[#4A6480]" : props.emphasis === true ? "text-[#DCE8F3]" : "text-[#B6C8DA]"
-      } ${props.className ?? ""}`}
+      }
     >
       {empty ? "—" : `≈ ${formatBytes(props.bytes)}`}
-    </td>
+    </span>
   );
 }
 

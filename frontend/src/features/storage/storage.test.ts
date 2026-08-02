@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 
 import { formatBytes } from "@/lib/format";
 
-import { byCost, ratePer, settledBytes, totalFootprint, type StorageRow } from "./storage";
+import { ratePer, settledBytes, totalFootprint, type StorageRow } from "./storage";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -44,17 +44,11 @@ test("the Settled Footprint holds each kind for its own retention", () => {
   expect(settledBytes(service, DAY_MS)).toBe(700 * 7 + 300 * 3);
 });
 
-test("the table ranks by total footprint, costliest first", () => {
-  const cheap = row({
-    serviceId: "cheap",
-    logs: { footprintBytes: 10, retentionDays: 7, windowBytes: 0 },
-  });
-  const dear = row({
-    serviceId: "dear",
+test("the Total Footprint is both kinds together", () => {
+  const service = row({
     logs: { footprintBytes: 5, retentionDays: 7, windowBytes: 0 },
     traces: { footprintBytes: 100, retentionDays: 3, windowBytes: 0 },
   });
 
-  expect(totalFootprint(dear)).toBe(105);
-  expect([cheap, dear].sort(byCost).map(r => r.serviceId)).toEqual(["dear", "cheap"]);
+  expect(totalFootprint(service)).toBe(105);
 });

@@ -1,6 +1,6 @@
 /**
  * The arithmetic behind the Storage view, kept apart from rendering: unit conversion for the
- * Ingest Rate, the Settled Footprint projection, and the row shaping the table sorts by.
+ * Ingest Rate, the Settled Footprint projection, and the row shape the table prices.
  * Everything here works on one measured window — nothing is measured beyond it, so a week or
  * a month is an extrapolation and the UI must say so (`projected`).
  */
@@ -64,9 +64,4 @@ export function settledBytes(row: StorageRow, windowMs: number): number {
 
 export function totalFootprint(row: StorageRow): number {
   return row.logs.footprintBytes + row.traces.footprintBytes;
-}
-
-/** Costliest first — the ranking is the whole point of the table. Ties fall back to the id. */
-export function byCost(a: StorageRow, b: StorageRow): number {
-  return totalFootprint(b) - totalFootprint(a) || a.serviceId.localeCompare(b.serviceId);
 }
