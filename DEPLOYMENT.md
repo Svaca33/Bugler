@@ -134,6 +134,12 @@ docker compose -f docker-compose.prod.yml up -d
 Only three files need to reach the server: `docker-compose.prod.yml`, the `.env` built from
 `.env.example`, and this document. Everything else arrives in the image.
 
+Upgrading **to 0.15** signs everyone out once, and only once: on a server reached over HTTPS the
+Session cookie changes name to `__Host-bugler.session` (ADR 0019), and cookies under the old name
+are simply not sent any more. Signing in again is the whole of it. That same upgrade also makes
+`BUGLER_PUBLIC_BASE_URL` mandatory — the compose file now refuses to start without it, rather than
+starting with password reset silently switched off.
+
 ## What is exposed where
 
 Bugler serves three surfaces on three ports, and [ListenerSurfaces.cs](src/Bugler.Host/ListenerSurfaces.cs)
@@ -190,9 +196,16 @@ Two things to get right, because neither fails loudly:
 - **TLS in front of the OTLP surfaces is not optional.** A Service API key travels in the
   `Authorization` header of every single export. Without TLS it is readable by anything on the path,
   and an IP allowlist is a filter, not encryption.
-- **The session cookie needs the proxy to be honest.** Bugler sees plain HTTP behind a TLS proxy, so
-  set `Cookie.SecurePolicy` accordingly if the deployment ever serves the UI over anything but the
-  internal network.
+- **The Session cookie's protection is read off `BUGLER_PUBLIC_BASE_URL`.** Bugler sees plain HTTP
+  behind a TLS proxy, so it cannot tell from a request whether the browser reached it over HTTPS —
+  it goes by the address you told it it answers at. Name the **https** address there and the Session
+  cookie is minted `Secure` and named `__Host-bugler.session`, which is the browser refusing to send
+  it over plain HTTP at all. Name an http address, or leave it out, and it is not: a bookmark, a
+  mistyped scheme or an `<img>` on any page anywhere then puts a full sign-in on the wire, and a
+  proxy redirecting to HTTPS does not save it — the cookie already left in the request. There is no
+  separate switch, and there deliberately is not one: two settings describing the same fact would
+  eventually disagree (ADR 0019). Bugler says which of the two it chose in its startup log, and
+  warns when the answer is the wrong one.
 
 An IP allowlist in front of the ingest paths is worth having where the senders are known and few.
 Treat it as a second lock: the API key is what actually proves who is exporting.

@@ -14,6 +14,9 @@ public sealed class AccessOptions
     /// <summary>
     /// Public origin of this Bugler (e.g. https://bugler.example.com). The reset link in a mail is
     /// built from it; empty means Bugler does not know where it is reachable and offers no reset.
+    /// It is also the server's only statement about whether TLS stands in front of it, and so
+    /// decides whether the Session cookie is minted with <c>Secure</c> (ADR 0019) — which makes an
+    /// http address here, or a wrong one, a security setting rather than a cosmetic one.
     /// </summary>
     public string PublicBaseUrl { get; set; } = "";
 

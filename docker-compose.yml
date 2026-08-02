@@ -43,7 +43,10 @@ services:
       # Mail__Smtp__Password: "…"
       # Saving SMTP settings in the UI (Administration → Server) overrides all of the above
       # until reset there (ADR 0014).
-      # Where this Bugler is reachable from outside; links in mail and chat point at it.
+      # Where this Bugler is reachable from outside; links in mail and chat point at it, and its
+      # scheme decides whether the Session cookie carries `Secure` (ADR 0019). Left unset here on
+      # purpose: the default is http://localhost:8080, a loopback address that asks the browser for
+      # no TLS this stack can offer. Naming an https address here would sign you out of :8080.
       # Server__PublicBaseUrl: "https://bugler.example.com"
     ports:
       - "8080:8080" # UI + REST API

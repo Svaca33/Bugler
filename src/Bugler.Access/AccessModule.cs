@@ -49,10 +49,21 @@ public static class AccessModule
         services.AddScoped<AccessOutbox>();
         services.AddScoped<IIntegrationEventOutbox>(p => p.GetRequiredService<AccessOutbox>());
 
+        // Bugler sees plain HTTP behind the proxy that terminates TLS, so the request cannot say
+        // whether the Session cookie needs protecting. The address the server declares itself at
+        // can, and does (ADR 0019).
+        var cookieSecurity = SessionCookieSecurity.Read(configuration);
+        services.AddSingleton(cookieSecurity);
+        services.AddHostedService<SessionCookieAnnouncement>();
+
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(options =>
             {
-                options.Cookie.Name = "bugler.session";
+                options.Cookie.Name = cookieSecurity.CookieName;
+                options.Cookie.SecurePolicy = cookieSecurity.SecurePolicy;
+                // Spelled out rather than left to the default, because the __Host- prefix the name
+                // may carry is refused by the browser without it.
+                options.Cookie.Path = "/";
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
                 options.SlidingExpiration = true;

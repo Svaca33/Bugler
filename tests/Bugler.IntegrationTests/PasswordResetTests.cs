@@ -24,13 +24,14 @@ public sealed class PasswordResetTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _harness = await BuglerHarness.StartAsync(builder =>
-        {
-            builder.UseSetting("Mail:Smtp:Host", "smtp.test");
-            builder.UseSetting("Mail:Smtp:From", "bugler@test.local");
-            builder.UseSetting("Server:PublicBaseUrl", "https://bugler.test");
-            builder.ConfigureTestServices(services => services.AddSingleton<IMailQueue>(_mail));
-        });
+        _harness = await BuglerHarness.StartAsync(
+            builder =>
+            {
+                builder.UseSetting("Mail:Smtp:Host", "smtp.test");
+                builder.UseSetting("Mail:Smtp:From", "bugler@test.local");
+                builder.ConfigureTestServices(services => services.AddSingleton<IMailQueue>(_mail));
+            },
+            publicBaseUrl: "https://bugler.test");
         await _harness.CreateUserClientAsync(Email, OldPassword, _harness.ApplicationId);
     }
 

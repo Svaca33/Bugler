@@ -30,7 +30,7 @@ Modular monolith of bounded contexts — see [CONTEXT-MAP.md](CONTEXT-MAP.md) an
 - `src/Bugler.Mail` — shared mail transport, not a context (ADR 0011): `IMailSender` awaits its outcome, `IMailQueue` hands off to a background loop. SMTP under `Mail` in appsettings; unset SMTP disables mail everywhere
 - `src/Bugler.Host` — composition root; owns deployment topology
 
-`Server:PublicBaseUrl` (how this Bugler is reachable from outside) is configured once and read by every module that puts a link in a message.
+`Server:PublicBaseUrl` (how this Bugler is reachable from outside) is configured once and read by every module that puts a link in a message — and, because Bugler sees only plain HTTP behind the proxy that terminates TLS, it is also the server's sole statement about whether TLS stands in front of it: an https address there is what mints the Session cookie `Secure` and host-locked (ADR 0019).
 
 `docker compose` runs a **mailpit** alongside Bugler: everything Bugler mails is read at http://localhost:8025 instead of being delivered.
 

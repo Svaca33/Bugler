@@ -20,17 +20,18 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _harness = await BuglerHarness.StartAsync(builder =>
-        {
-            builder.UseSetting("Mail:Smtp:Host", "smtp.test");
-            builder.UseSetting("Mail:Smtp:From", "bugler@test.local");
-            builder.UseSetting("Server:PublicBaseUrl", "https://bugler.test");
-            builder.ConfigureTestServices(services =>
+        _harness = await BuglerHarness.StartAsync(
+            builder =>
             {
-                services.AddSingleton<IMailSender>(_mail);
-                services.AddSingleton<IChatSender>(_chat);
-            });
-        });
+                builder.UseSetting("Mail:Smtp:Host", "smtp.test");
+                builder.UseSetting("Mail:Smtp:From", "bugler@test.local");
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton<IMailSender>(_mail);
+                    services.AddSingleton<IChatSender>(_chat);
+                });
+            },
+            publicBaseUrl: "https://bugler.test");
         _detector = _harness.GetRequiredService<EpisodeDetector>();
         _closer = _harness.GetRequiredService<EpisodeCloser>();
         _runner = _harness.GetRequiredService<DeliveryRunner>();

@@ -268,6 +268,21 @@ public sealed class AccessTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// This harness is a loopback http server, so it is the other half of the pair
+    /// <see cref="SessionCookieTests"/> states: a Bugler that cannot offer TLS must not ask the
+    /// browser for it, because a Secure cookie here — or the __Host- prefix that demands one —
+    /// would be dropped and sign-in would stop working altogether (ADR 0019).
+    /// </summary>
+    [Fact]
+    public async Task A_server_without_TLS_asks_for_none()
+    {
+        var setCookie = await SignInAndReadSessionCookieAsync(staySignedIn: null);
+
+        Assert.StartsWith("bugler.session=", setCookie, StringComparison.Ordinal);
+        Assert.DoesNotContain("secure", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Signs in on a fresh cookie jar and returns the raw Set-Cookie value of the session cookie.</summary>
     private async Task<string> SignInAndReadSessionCookieAsync(bool? staySignedIn)
     {

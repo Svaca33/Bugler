@@ -24,8 +24,11 @@ services:
       ConnectionStrings__bugler: "Host=${BUGLER_DB_HOST};Port=${BUGLER_DB_PORT:-5432};Database=${BUGLER_DB_NAME};Username=${BUGLER_DB_USER};Password=${BUGLER_DB_PASSWORD};Maximum Pool Size=20"
 
       # Where this Bugler is reachable from outside. Every link Bugler puts in a mail or a chat
-      # message is built from it, and password reset is offered only when it is set.
-      Server__PublicBaseUrl: "${BUGLER_PUBLIC_BASE_URL}"
+      # message is built from it, password reset is offered only when it is set — and its scheme
+      # is what decides whether the Session cookie is minted `Secure`, since Bugler sees only
+      # plain HTTP behind the proxy holding the certificate (ADR 0019). Required, rather than
+      # defaulted: a server that starts without knowing its own address starts exposed.
+      Server__PublicBaseUrl: "${BUGLER_PUBLIC_BASE_URL:?set BUGLER_PUBLIC_BASE_URL in .env to the address this Bugler answers at, e.g. https://bugler.example.com}"
 
       Mail__Smtp__Host: "${BUGLER_SMTP_HOST}"
       Mail__Smtp__Port: "${BUGLER_SMTP_PORT:-25}"

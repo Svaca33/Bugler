@@ -22,6 +22,7 @@ public sealed class BuglerHarness : IAsyncDisposable
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private WebApplicationFactory<Program> _factory = null!;
+    private WebApplicationFactoryClientOptions _clientOptions = new();
 
     /// <summary>Authenticated as the first Admin.</summary>
     public HttpClient Client { get; private set; } = null!;
@@ -30,14 +31,24 @@ public sealed class BuglerHarness : IAsyncDisposable
     public Guid ApplicationId { get; private set; }
     public Guid ServiceId { get; private set; }
 
-    public static async Task<BuglerHarness> StartAsync(Action<IWebHostBuilder>? configure = null)
+    /// <param name="publicBaseUrl">
+    /// The address this Bugler is to believe it answers at. It reaches the server as
+    /// <c>Server:PublicBaseUrl</c> <em>and</em> becomes the base address of every client the harness
+    /// hands out, because the two cannot disagree: a server told it lives at an https address mints
+    /// a Secure Session cookie, and <see cref="System.Net.CookieContainer"/> will not send one back
+    /// over <c>http://</c>. Left null, the server keeps its configured address and clients keep the
+    /// default <c>http://localhost</c>.
+    /// </param>
+    public static async Task<BuglerHarness> StartAsync(
+        Action<IWebHostBuilder>? configure = null,
+        string? publicBaseUrl = null)
     {
         var harness = new BuglerHarness();
-        await harness.InitializeAsync(configure);
+        await harness.InitializeAsync(configure, publicBaseUrl);
         return harness;
     }
 
-    private async Task InitializeAsync(Action<IWebHostBuilder>? configure)
+    private async Task InitializeAsync(Action<IWebHostBuilder>? configure, string? publicBaseUrl)
     {
         await _postgres.StartAsync();
 
@@ -47,9 +58,20 @@ public sealed class BuglerHarness : IAsyncDisposable
             // Tests drive the alerting units directly; a live scheduler would race them. Its
             // startup tick still runs once, harmlessly, before any test seeds telemetry.
             builder.UseSetting("Alerting:PollIntervalSeconds", "3600");
+            if (publicBaseUrl is not null)
+            {
+                builder.UseSetting("Server:PublicBaseUrl", publicBaseUrl);
+            }
+
             configure?.Invoke(builder);
         });
-        Client = _factory.CreateClient();
+
+        if (publicBaseUrl is not null)
+        {
+            _clientOptions.BaseAddress = new Uri(new Uri(publicBaseUrl).GetLeftPart(UriPartial.Authority));
+        }
+
+        Client = _factory.CreateClient(_clientOptions);
 
         var setup = await Client.PostAsJsonAsync(
             "/api/auth/setup",
@@ -118,7 +140,7 @@ public sealed class BuglerHarness : IAsyncDisposable
     }
 
     /// <summary>A fresh client with its own cookie jar, not signed in.</summary>
-    public HttpClient CreateAnonymousClient() => _factory.CreateClient();
+    public HttpClient CreateAnonymousClient() => _factory.CreateClient(_clientOptions);
 
     /// <summary>Creates a non-admin user with the given grants and returns a client signed in as them.</summary>
     public async Task<HttpClient> CreateUserClientAsync(
@@ -135,7 +157,7 @@ public sealed class BuglerHarness : IAsyncDisposable
             grant.EnsureSuccessStatusCode();
         }
 
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(_clientOptions);
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
         login.EnsureSuccessStatusCode();
         return client;
