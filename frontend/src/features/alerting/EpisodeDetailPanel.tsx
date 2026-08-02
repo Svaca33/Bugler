@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { canConfigureAlerting } from "@/lib/capabilities";
 import { describeMillis } from "@/lib/duration";
 import { formatTime } from "@/lib/format";
+import { versionAt, type ReleaseTimelines, type VersionAtInstant } from "@/lib/releases";
 import { severityLabel } from "@/lib/severity";
 import { serviceLabel } from "@/lib/serviceLabel";
 
@@ -41,6 +42,7 @@ export function EpisodeDetailPanel(props: {
   id: string;
   fromList: Episode | undefined;
   services: Map<string, KnownService>;
+  timelines: ReleaseTimelines;
   onClose: () => void;
   onOpenLogs: (episode: Episode) => void;
   onSelectEpisode: (id: string) => void;
@@ -93,6 +95,7 @@ export function EpisodeDetailPanel(props: {
           episode={episode}
           detail={detail.data ?? undefined}
           known={props.services.get(episode.serviceId)}
+          version={versionAt(props.timelines, episode.serviceId, episode.openedAt)}
           onOpenLogs={props.onOpenLogs}
           onSelectEpisode={props.onSelectEpisode}
         />
@@ -105,10 +108,11 @@ function EpisodeBody(props: {
   episode: Episode;
   detail: EpisodeDetail | undefined;
   known: KnownService | undefined;
+  version: VersionAtInstant | undefined;
   onOpenLogs: (episode: Episode) => void;
   onSelectEpisode: (id: string) => void;
 }) {
-  const { episode, detail, known } = props;
+  const { episode, detail, known, version } = props;
   const currentUser = useCurrentUser();
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
@@ -205,6 +209,21 @@ function EpisodeBody(props: {
             </Moment>
           )}
 
+          {/* Before the opening, because it happened before it. Only a Release close enough to be
+              worth reading side by side earns a moment of its own; the version itself is on the
+              opening line below whether anything was deployed or not (ADR 0016). */}
+          {version?.releasedMsBefore !== undefined && (
+            <Moment dot="bg-primary">
+              <p className="text-[12.5px]">
+                <span className="text-primary">{version.version}</span> released{" "}
+                {describeMillis(version.releasedMsBefore)} earlier
+              </p>
+              <p className="font-mono text-[11px] text-[#7D93AA]">
+                {clock(new Date(Date.parse(episode.openedAt) - version.releasedMsBefore).toISOString())}
+              </p>
+            </Moment>
+          )}
+
           <Moment dot={isError ? "bg-severity-error-rail" : "bg-severity-warn-rail"}>
             <p className="text-[12.5px]">
               {isHealthCheck
@@ -213,6 +232,7 @@ function EpisodeBody(props: {
             </p>
             <p className="font-mono text-[11px] text-[#7D93AA]">
               {clock(episode.openedAt)}
+              {version !== undefined && ` · on ${version.version}`}
               {/* Sensitivity is the logs watch's setting and governs nothing here. */}
               {!isHealthCheck && detail !== undefined
                 && ` · sensitivity ${sensitivityWords(detail.effectiveSensitivity)}`}

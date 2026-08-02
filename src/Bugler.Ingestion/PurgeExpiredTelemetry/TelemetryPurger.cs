@@ -58,6 +58,10 @@ public sealed class TelemetryPurger(
             }
         }
 
+        // Releases are deliberately absent from both loops: retention bounds volume, and a Release
+        // has none — one row per deployment, against millions per hour of Signals. They are kept
+        // for good so an Episode can still name the version it opened on long after the Log Records
+        // that proved it were purged (ADR 0016).
         await ReclaimOrphansAsync(retentions, catalogReadAt, cancellationToken);
     }
 
@@ -79,11 +83,18 @@ public sealed class TelemetryPurger(
         var spans = await DeleteAsync(
             "telemetry.spans", "service_id <> ALL(@services) AND start_time < @cutoff",
             knownServices, catalogReadAt, cancellationToken);
+        // Nothing else ever removes an orphaned Release — retention does not reach them — so this
+        // is their only sweep. It cuts on `recorded_at`, the server's clock: `observed_at` is the
+        // sender's, and one running ahead would leave its rows here for good.
+        var releases = await DeleteAsync(
+            "telemetry.releases", "service_id <> ALL(@services) AND recorded_at < @cutoff",
+            knownServices, catalogReadAt, cancellationToken);
 
-        if (logs + spans > 0)
+        if (logs + spans + releases > 0)
         {
             logger.LogInformation(
-                "Reclaimed {Logs} log records and {Spans} spans of services no longer registered", logs, spans);
+                "Reclaimed {Logs} log records, {Spans} spans and {Releases} releases of services no longer registered",
+                logs, spans, releases);
         }
     }
 

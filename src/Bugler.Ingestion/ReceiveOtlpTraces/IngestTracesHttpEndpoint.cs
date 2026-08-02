@@ -1,3 +1,4 @@
+using Bugler.Ingestion.ObserveReleases;
 using Bugler.Ingestion.OtlpMapping;
 using Bugler.Ingestion.Storage;
 using Bugler.Registry.Contracts;
@@ -15,6 +16,7 @@ internal static class IngestTracesHttpEndpoint
     public static async Task<IResult> Handle(
         HttpRequest request,
         TelemetryBuffer buffer,
+        ReleaseObservations releases,
         IApiKeyValidator apiKeys,
         CancellationToken cancellationToken)
     {
@@ -46,7 +48,10 @@ internal static class IngestTracesHttpEndpoint
             return Results.BadRequest();
         }
 
-        var (rows, dropped) = OtlpTraceMapper.Map(export, serviceId.Value);
+        var (rows, dropped, versions) = OtlpTraceMapper.Map(export, serviceId.Value);
+        // Before the buffer, and unaffected by it: the export arrived and declared that version,
+        // so the Release stands even where a full buffer turns its Signals away (ADR 0016).
+        releases.Observe(serviceId.Value, versions);
         var overflow = rows.Count(row => !buffer.TryEnqueue(row));
 
         if (overflow == rows.Count && rows.Count > 0)

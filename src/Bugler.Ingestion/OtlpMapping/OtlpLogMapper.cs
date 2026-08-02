@@ -1,3 +1,4 @@
+using Bugler.Ingestion.ObserveReleases;
 using Bugler.Ingestion.Storage;
 using Bugler.SharedKernel;
 using OpenTelemetry.Proto.Collector.Logs.V1;
@@ -12,14 +13,23 @@ namespace Bugler.Ingestion.OtlpMapping;
 /// </summary>
 public static class OtlpLogMapper
 {
-    public static List<LogRecordRow> Map(ExportLogsServiceRequest request, ServiceId serviceId)
+    /// <returns>
+    /// The mapped rows plus what each Resource block declared its version to be. Read here rather
+    /// than in a pass of its own: the earliest Signal of a block is only known by walking the
+    /// block's records, and this already walks them (ADR 0016).
+    /// </returns>
+    public static (List<LogRecordRow> Rows, List<DeclaredVersionSighting> Versions) Map(
+        ExportLogsServiceRequest request, ServiceId serviceId)
     {
         var rows = new List<LogRecordRow>();
+        var versions = new List<DeclaredVersionSighting>();
         var receivedAt = DateTime.UtcNow;
 
         foreach (var resourceLogs in request.ResourceLogs)
         {
             var resourceJson = OtlpJson.AttributesToJson(resourceLogs.Resource?.Attributes);
+            var declaredVersion = DeclaredVersion.Read(resourceLogs.Resource?.Attributes);
+            DateTime? earliest = null;
 
             foreach (var scopeLogs in resourceLogs.ScopeLogs)
             {
@@ -29,6 +39,11 @@ public static class OtlpLogMapper
                 {
                     var observed = OtlpJson.ToUtc(log.ObservedTimeUnixNano);
                     var timestamp = OtlpJson.ToUtc(log.TimeUnixNano) ?? observed ?? receivedAt;
+
+                    if (earliest is null || timestamp < earliest)
+                    {
+                        earliest = timestamp;
+                    }
 
                     rows.Add(new LogRecordRow(
                         serviceId.Value,
@@ -44,9 +59,16 @@ public static class OtlpLogMapper
                         OtlpJson.AttributesToJson(log.Attributes)));
                 }
             }
+
+            // A block declaring a version but carrying no Signal has nothing to be dated by, and a
+            // Release with no instant is not one.
+            if (declaredVersion is not null && earliest is { } earliestSignal)
+            {
+                versions.Add(new DeclaredVersionSighting(declaredVersion, earliestSignal));
+            }
         }
 
-        return rows;
+        return (rows, versions);
     }
 
     private static string? BodyToString(AnyValue? body) => body?.ValueCase switch

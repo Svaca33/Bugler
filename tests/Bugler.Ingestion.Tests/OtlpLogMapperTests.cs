@@ -50,7 +50,7 @@ public class OtlpLogMapperTests
             Attributes = { new KeyValue { Key = "order.id", Value = new AnyValue { IntValue = 42 } } },
         };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service).Rows);
 
         Assert.Equal(Service.Value, row.ServiceId);
         Assert.Equal(KnownTime, row.Timestamp);
@@ -72,7 +72,7 @@ public class OtlpLogMapperTests
     {
         var record = new LogRecord { ObservedTimeUnixNano = ToUnixNano(KnownTime) };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service).Rows);
 
         Assert.Equal(KnownTime, row.Timestamp);
         Assert.Equal(KnownTime, row.ObservedTimestamp);
@@ -96,7 +96,7 @@ public class OtlpLogMapperTests
             },
         };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service).Rows);
 
         Assert.Equal("""{"code":7,"fatal":true}""", row.Body);
     }
@@ -110,7 +110,7 @@ public class OtlpLogMapperTests
             SpanId = ByteString.Empty,
         };
 
-        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service));
+        var row = Assert.Single(OtlpLogMapper.Map(Request(record), Service).Rows);
 
         Assert.Null(row.TraceId);
         Assert.Null(row.SpanId);

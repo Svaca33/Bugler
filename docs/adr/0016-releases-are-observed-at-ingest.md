@@ -1,0 +1,28 @@
+---
+status: accepted
+---
+
+# Releases are observed at ingest, and prefer silence to noise
+
+The first question asked of an Episode is "what changed?", and the answer is usually a release. Senders already state `service.version` on every OTLP Resource, so a change of it is a deployment Bugler can observe rather than be told about. `Bugler.Ingestion` reads that attribute as an Export Request arrives, and appends a row to `telemetry.releases` whenever a Service begins reporting a version it was not already running. Exploration serves those rows at `GET /api/releases`; the UI lays them over the Volume and beside the Episodes that opened after them.
+
+**Why the write path and not a poll.** Alerting reads telemetry by polling (ADR 0010) and could have been copied. But its poll is cheap because a floor on severity excludes almost every row, and no such floor exists here: finding version changes by polling means reading every new log record *and* every new span to pull one key out of a jsonb column — the O(all telemetry) sweep the buffered write path (ADR 0003) exists to avoid. Sampling instead of sweeping is worse than either: a deploy shorter than the interval vanishes, and during a rolling deploy the answer flips with whichever row happened to be newest. At ingest the Resource is a structured protobuf message stated once per block rather than once per Signal, so the read is one dictionary lookup per block and the earliest timestamp is already being computed by the pass that maps the rows. ADR 0010's objection — that the write path should not learn about the features behind it — does not bite: what Ingestion learns is the Declared Identity it already handles, and it never learns who reads the result.
+
+**What it costs.** Ingestion, until now stateless per Signal, holds the version each Service is running. That state is restored from the table at startup and moves only after a row is committed, so a failed write leaves the ledger as it was and the next block declaring that version offers the Release again. The one-per-block sightings are handed to a background recorder over a channel, and a gate drops any block declaring the version already handed over — a Service sending steadily on one version enqueues nothing after its first block.
+
+**Rolling deploys, and the case we get wrong on purpose.** A rolling deploy keeps the old version arriving for minutes; a canary keeps it arriving for weeks. Both would otherwise read as a Release each time the versions alternate. So a Service has one version *regarded as running* and a set of others *still arriving*, each held for 30 minutes past its last sighting; only a version in neither opens a Release. The version regarded as running never ages out, which is what keeps a Service that logs once a week from announcing itself again on every log record.
+
+A rollback within those 30 minutes is then indistinguishable from a straggler — both are the old version arriving after the new one — and is passed over. This is chosen, not overlooked. A marker where nothing was deployed costs the whole feature's credibility; a missing marker costs a reader something they did by hand ten minutes ago and already know about. The deploy that broke things still gets its marker, which is the question being asked.
+
+**Two clocks.** `observed_at` is the earliest Signal in the block that first carried the new version — the sender's clock, because the Time Filter and the Volume are drawn on it and a marker on a different clock would sit beside Buckets it does not belong to. `recorded_at` is the server's, and decides order: a skewed clock or a replayed export must not be able to insert a Release before one that preceded it.
+
+**Retention.** Releases are never purged. Retention bounds volume and a Release has none — one row per deployment against millions per hour of Signals — while an Episode outlives the evidence that drove it and must still be able to name the version it opened on. They are erased with the Service's Deletion (ADR 0007), and the orphan sweep in the purger is their only other exit.
+
+## Consequences
+
+- A third kind of row lives in `telemetry.*`, and the first one there that retention does not reach. Anything that reasons about "how big can this schema get" has to treat it separately.
+- The straggler window is one number (`Ingestion:ReleaseStragglerWindow`, 30 minutes) trading a missed fast rollback against a false marker on a slow rollout. Shortening it buys the rollback and risks the false marker; there is no value that gets both.
+- Exploration answers Releases from an endpoint of its own rather than inside the Volume, because the Volume answers the whole Filter by definition and a Release answers only the Source Filter and the window. The two are drawn on one canvas and must not be read as one thing.
+- Alerting is untouched. The Episodes view joins Episodes to Releases in the browser (ADR 0013), so no server-side read answers for both. Putting the version into an Alert mail would be the first thing to widen Alerting's own definition of what an Alert says, and is deliberately not done here.
+- A Service whose sender never sets `service.version` gets nothing at all, and that is the intended degradation. The answer for it is to set the attribute — stable and recommended in OTel semconv — rather than for Bugler to grow an endpoint for announcing releases, which would make two sources of truth out of one observation.
+- A Release stands even when the Signals of its Export Request are turned away by a full buffer: the export arrived and declared the version. Bounded loss of telemetry (ADR 0003) does not imply bounded loss of Releases.

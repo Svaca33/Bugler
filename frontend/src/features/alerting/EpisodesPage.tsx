@@ -3,12 +3,18 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
 import { api, type Episode } from "@/api/client";
-import { useCatalog, useCurrentUser } from "@/api/queries";
+import { useCatalog, useCurrentUser, useReleases } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
+import {
+  buildTimelines,
+  versionAt,
+  type ReleaseTimelines,
+  type VersionAtInstant,
+} from "@/lib/releases";
 import { episodeRailClass } from "@/lib/severity";
 
 import {
@@ -16,6 +22,7 @@ import {
   hasSourceFilter,
   openedFrom,
   openedPhrase,
+  releasesFrom,
   resolveServiceIds,
   type EpisodesFilters,
 } from "./episodesFilter";
@@ -27,6 +34,7 @@ import { OpenNowBand } from "./OpenNowBand";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { indexServices, type KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
+import { VersionAtOpen } from "./VersionAtOpen";
 
 const PAGE_SIZE = 100;
 const HISTORY_PAGE = 25;
@@ -125,6 +133,21 @@ export function EpisodesPage(props: {
   const items = episodes.data?.pages.flatMap(page => page.items) ?? [];
   const myName = currentUser.data?.displayName ?? currentUser.data?.email;
 
+  // Joined in the browser rather than server-side: Releases are Ingestion's and reach the UI
+  // through Exploration, while Episodes are Alerting's, and no endpoint answers for both
+  // (ADR 0013). The two arrive apart and meet here, on service id and instant.
+  const releases = useReleases({
+    applicationId: filters.applicationId,
+    namespace: filters.namespace,
+    environment: filters.environment,
+    service: filters.service,
+    from: releasesFrom(
+      [...items, ...(band.data ?? [])].map(episode => episode.openedAt),
+      filters,
+    ),
+  }, { enabled: ready });
+  const timelines = buildTimelines(releases.data);
+
   const openLogs = (episode: Episode) => {
     const known = services.get(episode.serviceId);
     // The window starts a little before the opening: the first log's own timestamp predates
@@ -191,6 +214,7 @@ export function EpisodesPage(props: {
               <EpisodeRows
                 items={items}
                 services={services}
+                timelines={timelines}
                 selectedId={selectedId}
                 myName={myName}
                 onSelect={onSelect}
@@ -227,6 +251,7 @@ export function EpisodesPage(props: {
             id={selectedId}
             fromList={items.find(e => e.id === selectedId) ?? band.data?.find(e => e.id === selectedId)}
             services={services}
+            timelines={timelines}
             onClose={() => onSelect(undefined)}
             onOpenLogs={openLogs}
             onSelectEpisode={onSelect}
@@ -241,6 +266,7 @@ export function EpisodesPage(props: {
 function EpisodeRows(props: {
   items: Episode[];
   services: Map<string, KnownService>;
+  timelines: ReleaseTimelines;
   selectedId: string | undefined;
   myName: string | undefined;
   onSelect: (id: string) => void;
@@ -289,6 +315,7 @@ function EpisodeRows(props: {
         key={episode.id}
         episode={episode}
         known={props.services.get(episode.serviceId)}
+        version={versionAt(props.timelines, episode.serviceId, episode.openedAt)}
         selected={episode.id === props.selectedId}
         myName={props.myName}
         expanded={expanded}
@@ -314,6 +341,7 @@ function EpisodeRows(props: {
 function EpisodeRow(props: {
   episode: Episode;
   known: KnownService | undefined;
+  version: VersionAtInstant | undefined;
   selected: boolean;
   myName: string | undefined;
   expanded: boolean;
@@ -386,6 +414,8 @@ function EpisodeRow(props: {
           }`}
         >
           <span className={muted ? undefined : "text-[#A9BDD1]"}>{known?.facets.name ?? "—"}</span>
+          {/* Beside the service, because that is what it qualifies. */}
+          <VersionAtOpen at={props.version} />
           <span>{clock(episode.openedAt)}</span>
           {muted ? (
             <>

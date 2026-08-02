@@ -1,3 +1,4 @@
+using Bugler.Ingestion.ObserveReleases;
 using Bugler.Ingestion.OtlpMapping;
 using Bugler.Ingestion.Storage;
 using Bugler.Registry.Contracts;
@@ -7,7 +8,8 @@ using OpenTelemetry.Proto.Collector.Trace.V1;
 namespace Bugler.Ingestion.ReceiveOtlpTraces;
 
 /// <summary>OTLP/gRPC trace receiver (port 4317).</summary>
-internal sealed class OtlpTraceGrpcService(TelemetryBuffer buffer, IApiKeyValidator apiKeys)
+internal sealed class OtlpTraceGrpcService(
+    TelemetryBuffer buffer, ReleaseObservations releases, IApiKeyValidator apiKeys)
     : TraceService.TraceServiceBase
 {
     public override async Task<ExportTraceServiceResponse> Export(
@@ -23,7 +25,10 @@ internal sealed class OtlpTraceGrpcService(TelemetryBuffer buffer, IApiKeyValida
             throw new RpcException(new Status(StatusCode.Unauthenticated, "Missing or invalid API key."));
         }
 
-        var (rows, dropped) = OtlpTraceMapper.Map(request, serviceId.Value);
+        var (rows, dropped, versions) = OtlpTraceMapper.Map(request, serviceId.Value);
+        // Before the buffer, and unaffected by it: the export arrived and declared that version,
+        // so the Release stands even where a full buffer turns its Signals away (ADR 0016).
+        releases.Observe(serviceId.Value, versions);
         var overflow = rows.Count(row => !buffer.TryEnqueue(row));
 
         if (overflow == rows.Count && rows.Count > 0)

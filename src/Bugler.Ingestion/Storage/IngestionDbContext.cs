@@ -48,7 +48,27 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             span.HasIndex(s => new { s.ServiceId, s.StartTime }).IsDescending(false, true);
             span.HasIndex(s => s.TraceId);
         });
+
+        modelBuilder.Entity<StoredRelease>(release =>
+        {
+            release.ToTable("releases");
+            release.Property(r => r.Version).HasMaxLength(DeclaredVersionLimit);
+            release.Property(r => r.PreviousVersion).HasMaxLength(DeclaredVersionLimit);
+            // Serves both Exploration reads (ADR 0016): the Releases inside a window, and the
+            // Declared Version in effect at its start. Both run on `observed_at` — the sender's
+            // clock, the one the Time Filter and the Volume are drawn on. The recorder's own
+            // startup read orders by `recorded_at` instead and is left to a scan: it happens once
+            // per process over a table that holds one row per Release, not per Signal.
+            release.HasIndex(r => new { r.ServiceId, r.ObservedAt }).IsDescending(false, true);
+        });
     }
+
+    /// <summary>
+    /// The longest Declared Version stored. OTel bounds neither the length nor the format of
+    /// `service.version`, and the recorder holds the current one per Service in memory — so a
+    /// sender cannot be left free to declare a megabyte of it. Longer is read as no version at all.
+    /// </summary>
+    public const int DeclaredVersionLimit = 128;
 
     /// <summary>Schema shape of telemetry.spans; never instantiated at runtime.</summary>
     public sealed class StoredSpan
@@ -86,5 +106,32 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
         public string? ScopeName { get; init; }
         public required string ResourceAttributes { get; init; }
         public required string Attributes { get; init; }
+    }
+
+    /// <summary>Schema shape of telemetry.releases; never instantiated at runtime.</summary>
+    public sealed class StoredRelease
+    {
+        public long Id { get; init; }
+        public Guid ServiceId { get; init; }
+        public required string Version { get; init; }
+
+        /// <summary>
+        /// Null on the row that only establishes what a Service was already running: nothing
+        /// preceded it, so it is not a Release (ADR 0016). Every other row is one.
+        /// </summary>
+        public string? PreviousVersion { get; init; }
+
+        /// <summary>
+        /// When the Release happened on the sender's clock — the earliest Signal in the Batch that
+        /// first carried the new Declared Version. What the Volume and the Time Filter are drawn on.
+        /// </summary>
+        public DateTime ObservedAt { get; init; }
+
+        /// <summary>
+        /// When Bugler noticed, on the server's clock. Not for display: it is what the order of
+        /// Releases is decided by, because a sender's clock can run backwards and a replayed
+        /// Export Request can carry an old timestamp, and neither may reorder history.
+        /// </summary>
+        public DateTime RecordedAt { get; init; }
     }
 }

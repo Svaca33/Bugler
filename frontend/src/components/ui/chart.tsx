@@ -218,7 +218,7 @@ function ChartLegendContent({
  * and what its previews can import, and a mark that arrived from somewhere else would be neither.
  * Add to this list as charts need marks — it is deliberately not the whole library.
  */
-export { Bar, BarChart, CartesianGrid, Cell, ReferenceArea, XAxis, YAxis } from "recharts";
+export { Bar, BarChart, CartesianGrid, Cell, ReferenceArea, ReferenceLine, XAxis, YAxis } from "recharts";
 
 export {
   Chart,

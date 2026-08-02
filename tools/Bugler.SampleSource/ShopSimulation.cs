@@ -17,8 +17,14 @@ internal sealed record OperationResult(string Name, Outcome Outcome, string Deta
 /// logs emitted inside the active span so Bugler receives them trace-correlated.
 /// Latencies are real (Task.Delay) so span durations look plausible in the waterfall.
 /// </summary>
+/// <param name="loggerFactory">
+/// Resolved per operation rather than held, because the factory is replaced whenever the Declared
+/// Version rolls — a Resource is fixed when its provider is built, so a new version means new
+/// providers. The simulation outlives them so its own state does not restart with them: the rare
+/// error is spaced from the last one, not from the newest logger.
+/// </param>
 internal sealed class ShopSimulation(
-    ILoggerFactory loggerFactory, int declineRate, TimeSpan? rareErrorInterval)
+    Func<ILoggerFactory> loggerFactory, int declineRate, TimeSpan? rareErrorInterval)
 {
     public const string ActivitySourceName = "Sample.Eshop";
 
@@ -33,9 +39,10 @@ internal sealed class ShopSimulation(
 
     private static readonly string[] DeclineReasons = ["insufficient funds", "card expired", "suspected fraud"];
 
-    private readonly ILogger catalogLog = loggerFactory.CreateLogger("Eshop.Catalog");
-    private readonly ILogger checkoutLog = loggerFactory.CreateLogger("Eshop.Checkout");
-    private readonly ILogger jobsLog = loggerFactory.CreateLogger("Eshop.Jobs");
+    // A factory caches loggers by name, so asking for one per call costs a dictionary lookup.
+    private ILogger catalogLog => loggerFactory().CreateLogger("Eshop.Catalog");
+    private ILogger checkoutLog => loggerFactory().CreateLogger("Eshop.Checkout");
+    private ILogger jobsLog => loggerFactory().CreateLogger("Eshop.Jobs");
     private readonly Random random = new();
     private int nextOrderId = Random.Shared.Next(1000, 5000);
 

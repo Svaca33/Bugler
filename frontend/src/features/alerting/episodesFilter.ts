@@ -52,6 +52,27 @@ export function openedFrom(filters: EpisodesFilters): string | undefined {
   return length === undefined ? undefined : new Date(Date.now() - length).toISOString();
 }
 
+const HOUR_MS = 3_600_000;
+
+/**
+ * The instant to ask for Releases from, so every listed Episode can name the version it opened on:
+ * an hour before the oldest of them, which is as far back as "4 minutes after 1.2.3" ever reaches.
+ * Floored to the hour, or every page loaded would key a new query for a few seconds' difference.
+ *
+ * Derived from the Episodes on screen rather than from the window filter, because "all" has no
+ * window and a Service that has never redeployed has no Release inside one either — only the
+ * version reported as running at the start of a bounded window says what it is on.
+ */
+export function releasesFrom(openedAt: readonly string[], filters: EpisodesFilters): string {
+  const listed = openedAt.map(Date.parse).filter(instant => !Number.isNaN(instant));
+  const windowStart = openedFrom(filters);
+  const oldest = Math.min(
+    ...listed,
+    windowStart === undefined ? Date.now() : Date.parse(windowStart),
+  );
+  return new Date(Math.floor((oldest - HOUR_MS) / HOUR_MS) * HOUR_MS).toISOString();
+}
+
 /** "in the last 7 d" — the footer's window phrase; undefined when no window narrows. */
 export function openedPhrase(filters: EpisodesFilters): string | undefined {
   const opened = effectiveOpened(filters);

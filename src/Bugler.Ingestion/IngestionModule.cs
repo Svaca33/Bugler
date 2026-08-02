@@ -1,4 +1,5 @@
 using Bugler.Ingestion.EraseDeletedServiceTelemetry;
+using Bugler.Ingestion.ObserveReleases;
 using Bugler.Ingestion.PurgeExpiredTelemetry;
 using Bugler.Ingestion.ReceiveOtlpLogs;
 using Bugler.Ingestion.ReceiveOtlpTraces;
@@ -23,6 +24,8 @@ public static class IngestionModule
         services.AddSingleton<TelemetryBuffer>();
         services.AddHostedService<LogWriter>();
         services.AddHostedService<SpanWriter>();
+        services.AddSingleton<ReleaseObservations>();
+        services.AddHostedService<ReleaseRecorder>();
         services.AddSingleton<TelemetryPurger>();
         services.AddHostedService<PurgeScheduler>();
         services.AddScoped<IIntegrationEventHandler<ServicesDeleted>, DeletedServiceEraser>();

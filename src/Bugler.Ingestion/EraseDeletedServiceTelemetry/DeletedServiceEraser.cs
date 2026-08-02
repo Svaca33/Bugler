@@ -28,10 +28,15 @@ internal sealed class DeletedServiceEraser(
         var spans = await EraseAsync(
             "DELETE FROM telemetry.spans WHERE service_id = ANY(@services)",
             serviceIds, cancellationToken);
+        // Releases outlive retention (ADR 0016) but not the Service they describe: Deletion takes
+        // everything a Service ever sent, and this was observed from it.
+        var releases = await EraseAsync(
+            "DELETE FROM telemetry.releases WHERE service_id = ANY(@services)",
+            serviceIds, cancellationToken);
 
         logger.LogInformation(
-            "Erased {Logs} log records and {Spans} spans of {Services} deleted services",
-            logs, spans, serviceIds.Length);
+            "Erased {Logs} log records, {Spans} spans and {Releases} releases of {Services} deleted services",
+            logs, spans, releases, serviceIds.Length);
     }
 
     private async Task<int> EraseAsync(string sql, Guid[] serviceIds, CancellationToken cancellationToken)

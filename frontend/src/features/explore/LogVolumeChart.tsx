@@ -11,12 +11,22 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   ReferenceArea,
+  ReferenceLine,
   XAxis,
   YAxis,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { useCatalog, useReleases } from "@/api/queries";
 import { durationMs } from "@/lib/duration";
 import { bandsAdmittedBy, SEVERITY_BANDS } from "@/lib/severity";
+import { serviceLabels } from "@/lib/sourceFilter";
+
+import {
+  describeMarker,
+  markerLabel,
+  MAX_LABELLED_MARKERS,
+  releaseMarkers,
+} from "./releaseMarkers";
 
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import {
@@ -90,10 +100,32 @@ export function LogVolumeChart(props: {
     placeholderData: previous => previous,
   });
 
+  // Asked by the Source Filter and the window alone: a deployment happened whoever's Log Records
+  // the reader narrowed to, so severity, full text and Attribute Filters leave the markers where
+  // they were. Which is also why they do not ride along in the Volume — that answers the whole
+  // Filter by definition (ADR 0016).
+  const releases = useReleases(
+    {
+      applicationId: filters.applicationId,
+      namespace: filters.namespace,
+      environment: filters.environment,
+      service: filters.service,
+      range: filters.range,
+      from: filters.from,
+      to: filters.to,
+    },
+    { keepPrevious: true },
+  );
+  const catalog = useCatalog();
+
   // Follow's own tick is the trigger: the chart summarizes because records arrived, not because
   // five seconds went by, so a quiet stream costs nothing and a busy one never runs the two apart.
   const refetch = useRef(volume.refetch);
   refetch.current = volume.refetch;
+  // Markers ride the same tick: a Release that lands while Follow runs should appear beside the
+  // bars it explains, not on the next full reload.
+  const refetchReleases = useRef(releases.refetch);
+  refetchReleases.current = releases.refetch;
   const summarizedAt = useRef(0);
   useEffect(() => {
     if (!follow || pulse === 0) return;
@@ -101,6 +133,7 @@ export function LogVolumeChart(props: {
       () => {
         summarizedAt.current = Date.now();
         void refetch.current();
+        void refetchReleases.current();
       },
       Math.max(0, VOLUME_MIN_INTERVAL_MS - (Date.now() - summarizedAt.current)),
     );
@@ -135,6 +168,13 @@ export function LogVolumeChart(props: {
   // A Band the severity threshold excludes is empty by construction, so it gets neither a stack
   // segment nor a legend entry — the chart shows the list's set and only the list's set.
   const bands = bandsAdmittedBy(filters.severityMin);
+
+  // A second layer on the same time axis, never part of the Volume: the bars answer the whole
+  // Filter, these answer the Source Filter and the window.
+  const markers = releaseMarkers(releases.data?.releases ?? [], buckets, resolved);
+  const markersByBucket = new Map(markers.map(marker => [marker.bucket, marker]));
+  const labelled = markers.length <= MAX_LABELLED_MARKERS;
+  const labels = serviceLabels(catalog.data?.applications ?? []);
 
   // Holding the previous window is what keeps the list still, but it also makes a slow reload look
   // like nothing happened: the old chart simply sits there for seconds and then swaps. At a
@@ -207,11 +247,21 @@ export function LogVolumeChart(props: {
               cursor={{ fill: "var(--secondary)", fillOpacity: 0.35 }}
               content={
                 <ChartTooltipContent
-                  labelFormatter={label => (
-                    <span className="font-mono text-[11px]">
-                      {describeBucket(String(label), resolved, edgeOf(String(label)))}
-                    </span>
-                  )}
+                  labelFormatter={label => {
+                    const marker = markersByBucket.get(String(label));
+                    return (
+                      <span className="font-mono text-[11px]">
+                        {describeBucket(String(label), resolved, edgeOf(String(label)))}
+                        {marker !== undefined && (
+                          // The Bucket is as precise as a marker gets to be drawn; the instant it
+                          // actually happened at is written out here rather than pointed at.
+                          <span className="text-primary mt-1 block whitespace-pre-line">
+                            {describeMarker(marker, labels)}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  }}
                 />
               }
             />
@@ -231,6 +281,26 @@ export function LogVolumeChart(props: {
                   <Cell key={bucket.start} fillOpacity={edgeOf(bucket.start) === null ? 1 : 0.45} />
                 ))}
               </Bar>
+            ))}
+            {/* After the bars, so a marker is never buried by the traffic it explains. */}
+            {markers.map(marker => (
+              <ReferenceLine
+                key={marker.bucket}
+                x={marker.bucket}
+                stroke="var(--primary)"
+                strokeDasharray="3 3"
+                strokeWidth={1}
+                ifOverflow="extendDomain"
+                label={labelled
+                  ? {
+                    value: markerLabel(marker),
+                    position: "insideTopRight",
+                    fontSize: 9,
+                    fontFamily: "var(--font-mono)",
+                    fill: "var(--primary)",
+                  }
+                  : undefined}
+              />
             ))}
             {drag !== null && drag.from !== drag.to && (
               <ReferenceArea x1={drag.from} x2={drag.to} fill="var(--primary)" fillOpacity={0.18} />

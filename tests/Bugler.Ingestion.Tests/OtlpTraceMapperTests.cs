@@ -71,7 +71,7 @@ public class OtlpTraceMapperTests
             },
         };
 
-        var (rows, dropped) = OtlpTraceMapper.Map(Request(span), Service);
+        var (rows, dropped, _) = OtlpTraceMapper.Map(Request(span), Service);
 
         Assert.Equal(0, dropped);
         var row = Assert.Single(rows);
@@ -113,7 +113,7 @@ public class OtlpTraceMapperTests
             Name = "broken",
         };
 
-        var (rows, dropped) = OtlpTraceMapper.Map(Request(valid, malformed), Service);
+        var (rows, dropped, _) = OtlpTraceMapper.Map(Request(valid, malformed), Service);
 
         Assert.Equal(1, dropped);
         Assert.Equal("ok", Assert.Single(rows).Name);
@@ -131,7 +131,7 @@ public class OtlpTraceMapperTests
             EndTimeUnixNano = ToUnixNano(End),
         };
 
-        var (rows, _) = OtlpTraceMapper.Map(Request(span), Service);
+        var (rows, _, _) = OtlpTraceMapper.Map(Request(span), Service);
 
         var row = Assert.Single(rows);
         Assert.Null(row.ParentSpanId);

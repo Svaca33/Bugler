@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Bugler.Ingestion.ObserveReleases;
 using Bugler.Ingestion.Storage;
 using Bugler.SharedKernel;
 using OpenTelemetry.Proto.Collector.Trace.V1;
@@ -14,16 +15,24 @@ namespace Bugler.Ingestion.OtlpMapping;
 /// </summary>
 public static class OtlpTraceMapper
 {
-    /// <returns>The mapped rows plus the count of spans dropped for malformed trace/span ids.</returns>
-    public static (List<SpanRow> Rows, int Dropped) Map(ExportTraceServiceRequest request, ServiceId serviceId)
+    /// <returns>
+    /// The mapped rows, the count of spans dropped for malformed trace/span ids, and what each
+    /// Resource block declared its version to be. Traces observe Releases exactly as logs do — a
+    /// Service that only sends spans is no less deployed (ADR 0016).
+    /// </returns>
+    public static (List<SpanRow> Rows, int Dropped, List<DeclaredVersionSighting> Versions) Map(
+        ExportTraceServiceRequest request, ServiceId serviceId)
     {
         var rows = new List<SpanRow>();
+        var versions = new List<DeclaredVersionSighting>();
         var dropped = 0;
         var receivedAt = DateTime.UtcNow;
 
         foreach (var resourceSpans in request.ResourceSpans)
         {
             var resourceJson = OtlpJson.AttributesToJson(resourceSpans.Resource?.Attributes);
+            var declaredVersion = DeclaredVersion.Read(resourceSpans.Resource?.Attributes);
+            DateTime? earliest = null;
 
             foreach (var scopeSpans in resourceSpans.ScopeSpans)
             {
@@ -40,6 +49,11 @@ public static class OtlpTraceMapper
                     }
 
                     var startTime = OtlpJson.ToUtc(span.StartTimeUnixNano) ?? receivedAt;
+
+                    if (earliest is null || startTime < earliest)
+                    {
+                        earliest = startTime;
+                    }
 
                     rows.Add(new SpanRow(
                         serviceId.Value,
@@ -59,9 +73,16 @@ public static class OtlpTraceMapper
                         LinksToJson(span)));
                 }
             }
+
+            // A block declaring a version but carrying no usable span has nothing to be dated by,
+            // and a Release with no instant is not one.
+            if (declaredVersion is not null && earliest is { } earliestSignal)
+            {
+                versions.Add(new DeclaredVersionSighting(declaredVersion, earliestSignal));
+            }
         }
 
-        return (rows, dropped);
+        return (rows, dropped, versions);
     }
 
     private static string EventsToJson(Span span)

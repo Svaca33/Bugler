@@ -921,6 +921,77 @@
         }
       }
     },
+    "/api/releases": {
+      "get": {
+        "tags": [
+          "ReleasesEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "service",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleasesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/traces": {
       "get": {
         "tags": [
@@ -3404,6 +3475,73 @@
           }
         }
       },
+      "ReleaseDto": {
+        "required": [
+          "serviceId",
+          "version",
+          "previousVersion",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "string"
+          },
+          "previousVersion": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ReleasesResponse": {
+        "required": [
+          "from",
+          "to",
+          "now",
+          "running",
+          "releases"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "running": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunningVersionDto"
+            }
+          },
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReleaseDto"
+            }
+          }
+        }
+      },
       "ResetPasswordRequest": {
         "required": [
           "token",
@@ -3416,6 +3554,27 @@
           },
           "newPassword": {
             "type": "string"
+          }
+        }
+      },
+      "RunningVersionDto": {
+        "required": [
+          "serviceId",
+          "version",
+          "since"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -4252,6 +4411,9 @@
     },
     {
       "name": "ObservedKeysEndpoint"
+    },
+    {
+      "name": "ReleasesEndpoint"
     },
     {
       "name": "ListTracesEndpoint"

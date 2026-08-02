@@ -33,6 +33,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Bugler.Ingestion.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Protobuf Include="Protos\**\*.proto" ProtoRoot="Protos" GrpcServices="Server" />
   </ItemGroup>
 

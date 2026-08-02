@@ -55,6 +55,7 @@ was issued for and the sample data will not contradict its own registration:
 | `--environment <e>` | `sample` | `deployment.environment.name` — Environment |
 | `--service <name>` | `sample-eshop` | `service.name` — Service Name |
 | `--replica <id>` | machine name | `service.instance.id` — Replica |
+| `--version <v>` | `1.0.0` | `service.version` — Declared Version |
 
 ```bash
 dotnet run --project tools/Bugler.SampleSource -- \
@@ -64,6 +65,21 @@ dotnet run --project tools/Bugler.SampleSource -- \
 Run several copies with different keys to fill more than one Service at once, or
 several copies with one key and different `--replica` values to simulate the replicas
 of a single Service.
+
+`--version` is the one of these Bugler does read: a change of it is observed as a
+Release and drawn as a marker on the Volume and beside the Episodes that opened after
+it ([ADR 0016](../../docs/adr/0016-releases-are-observed-at-ingest.md)).
+
+By default it does not stay put — `--version-every 1` raises its trailing number every
+minute, so a run left going produces a Release a minute and the markers keep arriving
+without anything being restarted. `--version-every 0` holds one version for the whole
+run instead, and `--version ""` declares none at all, which is what a Service that never
+sets the attribute looks like: no markers, and nothing else about it changes.
+
+A raise rebuilds the OTLP providers, because a Resource is fixed when its provider is
+built. The old one is flushed before the new one starts, so the handover is clean and
+each version's telemetry lands whole — unlike a real rolling deploy, where the two
+overlap for minutes.
 
 Export failures (wrong endpoint, revoked key) are printed to stderr as
 `[otel Error] …` lines — the OpenTelemetry SDK would otherwise swallow them.

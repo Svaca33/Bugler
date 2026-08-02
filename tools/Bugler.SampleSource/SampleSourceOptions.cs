@@ -14,6 +14,8 @@ internal sealed record SampleSourceOptions(
     string Namespace,
     string EnvironmentName,
     string ServiceName,
+    string Version,
+    double VersionEveryMinutes,
     string Replica,
     bool Quiet)
 {
@@ -48,6 +50,12 @@ internal sealed record SampleSourceOptions(
           --service <name>   service.name (default: sample-eshop)
           --replica <id>     service.instance.id, which tells replicas of one Service
                              apart (default: the machine name)
+          --version <v>      service.version to start from (default: 1.0.0; empty
+                             declares none) — Bugler observes a change of it as a Release
+          --version-every <m>
+                             raise the trailing number of the version every m minutes,
+                             so Releases keep appearing without restarting anything
+                             (default: 1; 0 keeps one version for the whole run)
         """;
 
     public static SampleSourceOptions? Parse(string[] args)
@@ -62,6 +70,8 @@ internal sealed record SampleSourceOptions(
         var serviceNamespace = "demo";
         var environmentName = "sample";
         var serviceName = "sample-eshop";
+        var version = "1.0.0";
+        var versionEveryMinutes = 1.0;
         var replica = Environment.MachineName;
         var quiet = false;
 
@@ -131,6 +141,20 @@ internal sealed record SampleSourceOptions(
                 case "--service":
                     serviceName = Next(args, ref i);
                     break;
+                case "--version":
+                    version = Next(args, ref i);
+                    break;
+                case "--version-every":
+                    if (!double.TryParse(
+                            Next(args, ref i), NumberStyles.Float, CultureInfo.InvariantCulture,
+                            out versionEveryMinutes)
+                        || versionEveryMinutes < 0)
+                    {
+                        throw new OptionsError(
+                            "--version-every must be a non-negative number of minutes (0 disables).");
+                    }
+
+                    break;
                 case "--replica":
                     replica = Next(args, ref i);
                     break;
@@ -156,11 +180,35 @@ internal sealed record SampleSourceOptions(
 
         return new SampleSourceOptions(
             apiKey, endpointUri, protocol, rate, count, declineRate, rareErrorMinutes,
-            serviceNamespace, environmentName, serviceName, replica, quiet);
+            serviceNamespace, environmentName, serviceName, version, versionEveryMinutes,
+            replica, quiet);
+    }
+
+    /// <summary>
+    /// The next Declared Version: the trailing run of digits raised by one, so `1.0.9` becomes
+    /// `1.0.10` and `2.3` becomes `2.4`. A version ending in no digits at all — a git hash, say —
+    /// gains a `.1` to count on, because Bugler compares versions for equality alone and has no
+    /// opinion on what one should look like (ADR 0016).
+    /// </summary>
+    public static string RaiseVersion(string version)
+    {
+        var digits = version.Length;
+        while (digits > 0 && char.IsAsciiDigit(version[digits - 1]))
+        {
+            digits--;
+        }
+
+        var tail = version[digits..];
+        return tail.Length > 0 && long.TryParse(tail, out var number) && number < long.MaxValue
+            ? version[..digits] + (number + 1)
+            : version + ".1";
     }
 
     /// <summary>The identity the payload declares about itself, in the shape the UI labels a Service.</summary>
     public string DeclaredIdentity => $"{Namespace}/{EnvironmentName}/{ServiceName}";
+
+    /// <summary>The Declared Version to send, or null where the sender states none at all.</summary>
+    public string? DeclaredVersion => string.IsNullOrWhiteSpace(Version) ? null : Version;
 
     public static int PrintError(OptionsError error)
     {

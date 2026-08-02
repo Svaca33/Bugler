@@ -1,5 +1,6 @@
 using Bugler.Exploration.BrowseCatalog;
 using Bugler.Exploration.GetTraceWaterfall;
+using Bugler.Exploration.ListReleases;
 using Bugler.Exploration.ListTraces;
 using Bugler.Exploration.ObservedKeys;
 using Bugler.Exploration.Scoping;
@@ -32,6 +33,7 @@ public static class ExplorationModule
             .Produces<LogVolumeByServiceResponse>();
         group.MapGet("/api/logs/keys", ObservedKeysEndpoint.HandleLogs).Produces<ObservedKeysResponse>();
         group.MapGet("/api/logs/{id:long}", SearchLogsEndpoint.HandleDetail).Produces<LogRecordDto>();
+        group.MapGet("/api/releases", ReleasesEndpoint.Handle).Produces<ReleasesResponse>();
         group.MapGet("/api/traces", ListTracesEndpoint.Handle).Produces<ListTracesResponse>();
         group.MapGet("/api/traces/keys", ObservedKeysEndpoint.HandleTraces).Produces<ObservedKeysResponse>();
         group.MapGet("/api/traces/{traceId}", GetTraceWaterfallEndpoint.Handle).Produces<TraceDetailResponse>();

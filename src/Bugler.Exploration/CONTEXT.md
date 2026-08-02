@@ -68,6 +68,10 @@ _Avoid_: histogram, distribution, counts, timeline
 One slice of a Resolved Window that Volume is counted over. Their common width is chosen so a window yields a readable number of them, and their edges fall on multiples of that width, so a Bucket keeps its place while a Relative Range slides underneath. The first and last may be cut by the window rather than by their own width.
 _Avoid_: bin, interval, slot, granularity
 
+**Release**:
+As Ingestion defines it — the instant a Service began reporting a version it was not already running. Read here as a second layer on the same time axis as a Volume, never as part of one: a Volume answers the whole Filter by definition, while a Release answers the Source Filter and the window alone. Narrowing to one tenant's Log Records does not un-deploy anything.
+_Avoid_: deployment marker, annotation, event
+
 **Follow**:
 Reading the log list as the end of the stream rather than as an answer: matching Log Records appear as they are stored, and the list is a window on what is arriving rather than an account of it — under load it shows the newest and passes over the rest without saying so. Leaving Follow replaces it with an ordinary query.
 _Avoid_: live, tail, live tail, streaming, real-time
