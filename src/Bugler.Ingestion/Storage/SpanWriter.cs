@@ -8,7 +8,7 @@ namespace Bugler.Ingestion.Storage;
 
 /// <summary>
 /// Drains the span buffer and persists Batches via binary COPY — the trace-side
-/// counterpart of <see cref="LogWriter"/>, with the same loss semantics (ADR 0003).
+/// counterpart of <see cref="LogWriter"/>, with the same loss semantics (ADR 0003, ADR 0020).
 /// </summary>
 internal sealed class SpanWriter(
     TelemetryBuffer buffer,
@@ -20,6 +20,9 @@ internal sealed class SpanWriter(
         "COPY telemetry.spans (service_id, trace_id, span_id, parent_span_id, name, kind, " +
         "start_time, end_time, status_code, status_message, scope_name, " +
         "resource_attributes, attributes, events, links) FROM STDIN (FORMAT BINARY)";
+
+    private readonly BatchImporter<SpanRow> _importer =
+        new(dataSource, CopyCommand, WriteRowAsync, "spans", logger);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -35,7 +38,7 @@ internal sealed class SpanWriter(
                     batch.Add(row);
                 }
 
-                await FlushAsync(batch, stoppingToken);
+                await _importer.ImportAsync(batch, stoppingToken);
                 batch.Clear();
             }
         }
@@ -46,48 +49,28 @@ internal sealed class SpanWriter(
                 batch.Add(row);
             }
 
-            await FlushAsync(batch, CancellationToken.None);
+            await _importer.ImportAsync(batch, CancellationToken.None);
         }
     }
 
-    private async Task FlushAsync(List<SpanRow> batch, CancellationToken cancellationToken)
+    private static async Task WriteRowAsync(
+        NpgsqlBinaryImporter importer, SpanRow row, CancellationToken cancellationToken)
     {
-        if (batch.Count == 0)
-        {
-            return;
-        }
-
-        try
-        {
-            await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-            await using var importer = await connection.BeginBinaryImportAsync(CopyCommand, cancellationToken);
-
-            foreach (var row in batch)
-            {
-                await importer.StartRowAsync(cancellationToken);
-                await importer.WriteAsync(row.ServiceId, NpgsqlDbType.Uuid, cancellationToken);
-                await importer.WriteAsync(row.TraceId, NpgsqlDbType.Text, cancellationToken);
-                await importer.WriteAsync(row.SpanId, NpgsqlDbType.Text, cancellationToken);
-                await WriteNullableAsync(importer, row.ParentSpanId, cancellationToken);
-                await importer.WriteAsync(row.Name, NpgsqlDbType.Text, cancellationToken);
-                await importer.WriteAsync(row.Kind, NpgsqlDbType.Smallint, cancellationToken);
-                await importer.WriteAsync(row.StartTime, NpgsqlDbType.TimestampTz, cancellationToken);
-                await importer.WriteAsync(row.EndTime, NpgsqlDbType.TimestampTz, cancellationToken);
-                await importer.WriteAsync(row.StatusCode, NpgsqlDbType.Smallint, cancellationToken);
-                await WriteNullableAsync(importer, row.StatusMessage, cancellationToken);
-                await WriteNullableAsync(importer, row.ScopeName, cancellationToken);
-                await importer.WriteAsync(row.ResourceAttributes, NpgsqlDbType.Jsonb, cancellationToken);
-                await importer.WriteAsync(row.Attributes, NpgsqlDbType.Jsonb, cancellationToken);
-                await importer.WriteAsync(row.Events, NpgsqlDbType.Jsonb, cancellationToken);
-                await importer.WriteAsync(row.Links, NpgsqlDbType.Jsonb, cancellationToken);
-            }
-
-            await importer.CompleteAsync(cancellationToken);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            logger.LogError(exception, "Failed to persist a batch of {Count} spans; batch lost", batch.Count);
-        }
+        await importer.WriteAsync(row.ServiceId, NpgsqlDbType.Uuid, cancellationToken);
+        await importer.WriteAsync(row.TraceId, NpgsqlDbType.Text, cancellationToken);
+        await importer.WriteAsync(row.SpanId, NpgsqlDbType.Text, cancellationToken);
+        await WriteNullableAsync(importer, row.ParentSpanId, cancellationToken);
+        await importer.WriteAsync(row.Name, NpgsqlDbType.Text, cancellationToken);
+        await importer.WriteAsync(row.Kind, NpgsqlDbType.Smallint, cancellationToken);
+        await importer.WriteAsync(row.StartTime, NpgsqlDbType.TimestampTz, cancellationToken);
+        await importer.WriteAsync(row.EndTime, NpgsqlDbType.TimestampTz, cancellationToken);
+        await importer.WriteAsync(row.StatusCode, NpgsqlDbType.Smallint, cancellationToken);
+        await WriteNullableAsync(importer, row.StatusMessage, cancellationToken);
+        await WriteNullableAsync(importer, row.ScopeName, cancellationToken);
+        await importer.WriteAsync(row.ResourceAttributes, NpgsqlDbType.Jsonb, cancellationToken);
+        await importer.WriteAsync(row.Attributes, NpgsqlDbType.Jsonb, cancellationToken);
+        await importer.WriteAsync(row.Events, NpgsqlDbType.Jsonb, cancellationToken);
+        await importer.WriteAsync(row.Links, NpgsqlDbType.Jsonb, cancellationToken);
     }
 
     private static async Task WriteNullableAsync(

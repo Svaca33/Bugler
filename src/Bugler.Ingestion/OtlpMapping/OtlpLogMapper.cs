@@ -33,7 +33,9 @@ public static class OtlpLogMapper
 
             foreach (var scopeLogs in resourceLogs.ScopeLogs)
             {
-                var scopeName = string.IsNullOrEmpty(scopeLogs.Scope?.Name) ? null : scopeLogs.Scope.Name;
+                var scopeName = string.IsNullOrEmpty(scopeLogs.Scope?.Name)
+                    ? null
+                    : StorableText.Tame(scopeLogs.Scope.Name);
 
                 foreach (var log in scopeLogs.LogRecords)
                 {
@@ -50,7 +52,7 @@ public static class OtlpLogMapper
                         timestamp,
                         observed,
                         (short)log.SeverityNumber,
-                        string.IsNullOrEmpty(log.SeverityText) ? null : log.SeverityText,
+                        string.IsNullOrEmpty(log.SeverityText) ? null : StorableText.Tame(log.SeverityText),
                         BodyToString(log.Body),
                         OtlpJson.ToHex(log.TraceId, expectedLength: 16),
                         OtlpJson.ToHex(log.SpanId, expectedLength: 8),
@@ -74,7 +76,7 @@ public static class OtlpLogMapper
     private static string? BodyToString(AnyValue? body) => body?.ValueCase switch
     {
         null or AnyValue.ValueOneofCase.None => null,
-        AnyValue.ValueOneofCase.StringValue => body.StringValue,
+        AnyValue.ValueOneofCase.StringValue => StorableText.Tame(body.StringValue),
         _ => OtlpJson.ValueToJson(body),
     };
 }

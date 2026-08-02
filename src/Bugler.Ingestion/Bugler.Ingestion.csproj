@@ -34,6 +34,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Bugler.Ingestion.Tests" />
+    <!--
+      The integration tests need the buffer itself. Once a NUL is tamed in the mapper, no Export
+      Request can still carry a Signal PostgreSQL will refuse — so proving that one refused Signal
+      no longer costs its Batch means putting one into the buffer by hand.
+    -->
+    <InternalsVisibleTo Include="Bugler.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

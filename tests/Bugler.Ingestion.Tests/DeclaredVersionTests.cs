@@ -65,4 +65,24 @@ public class DeclaredVersionTests
         Assert.Null(DeclaredVersion.Read(Attributes(
             Version(new AnyValue { StringValue = new string('v', 129) }))));
     }
+
+    /// <summary>
+    /// Tamed rather than read as absent: this row is written by an ordinary insert, so a version
+    /// storage will not hold costs the Release rather than a Batch — and read as absent, a Service
+    /// whose SDK appends a terminator would simply never be seen to Release.
+    /// </summary>
+    [Fact]
+    public void A_version_carrying_an_unstorable_character_is_tamed_not_discarded()
+    {
+        Assert.Equal("1.2.3�", DeclaredVersion.Read(Attributes(
+            Version(new AnyValue { StringValue = "1.2.3\0" }))));
+    }
+
+    [Fact]
+    public void A_version_of_nothing_but_unstorable_characters_is_still_what_the_sender_declared()
+    {
+        // `string.Trim()` does not take a NUL for whitespace, so this was already a three-character
+        // version — one that no insert would have accepted.
+        Assert.Equal("���", DeclaredVersion.Read(Attributes(Version(new AnyValue { StringValue = "\0\0\0" }))));
+    }
 }

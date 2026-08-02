@@ -32,6 +32,14 @@ _Avoid_: deployment, rollout, version bump, ship
 A group of Signals persisted together as one write.
 _Avoid_: chunk, buffer
 
+**Tamed Text**:
+What a sender's text becomes where a character in it cannot be stored: the character is shown as U+FFFD rather than removed. A sender who logs a byte array gets it back the length they sent it, and Bugler is never caught quietly rewriting what a sender said.
+_Avoid_: sanitised, escaped, cleaned, stripped
+
+**Salvage**:
+The second pass over a Batch storage refused — halving it until the Signals that cannot be stored stand alone, so that the rest, which is mostly other Services' and mostly fine, survives instead of dying with them.
+_Avoid_: retry, repair, recovery
+
 **Rejection**:
 The refusal of an Export Request — because its API key is invalid, its payload is malformed, or the system is overloaded.
 _Avoid_: error, drop

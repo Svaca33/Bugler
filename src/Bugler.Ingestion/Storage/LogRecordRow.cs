@@ -16,4 +16,4 @@ public sealed record LogRecordRow(
     string? SpanId,
     string? ScopeName,
     string ResourceAttributes,
-    string Attributes);
+    string Attributes) : ITelemetryRow;

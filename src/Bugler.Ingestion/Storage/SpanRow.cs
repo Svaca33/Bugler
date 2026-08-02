@@ -20,4 +20,4 @@ public sealed record SpanRow(
     string ResourceAttributes,
     string Attributes,
     string Events,
-    string Links);
+    string Links) : ITelemetryRow;

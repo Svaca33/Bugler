@@ -49,7 +49,7 @@ internal static class OtlpJson
         {
             foreach (var attribute in attributes)
             {
-                writer.WritePropertyName(attribute.Key);
+                writer.WritePropertyName(StorableText.Tame(attribute.Key));
                 WriteAnyValue(writer, attribute.Value);
             }
         }
@@ -62,7 +62,7 @@ internal static class OtlpJson
         switch (value?.ValueCase)
         {
             case AnyValue.ValueOneofCase.StringValue:
-                writer.WriteStringValue(value.StringValue);
+                writer.WriteStringValue(StorableText.Tame(value.StringValue));
                 break;
             case AnyValue.ValueOneofCase.BoolValue:
                 writer.WriteBooleanValue(value.BoolValue);
@@ -86,7 +86,7 @@ internal static class OtlpJson
                 writer.WriteStartObject();
                 foreach (var entry in value.KvlistValue.Values)
                 {
-                    writer.WritePropertyName(entry.Key);
+                    writer.WritePropertyName(StorableText.Tame(entry.Key));
                     WriteAnyValue(writer, entry.Value);
                 }
 

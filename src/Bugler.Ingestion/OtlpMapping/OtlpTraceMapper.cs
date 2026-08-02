@@ -36,7 +36,9 @@ public static class OtlpTraceMapper
 
             foreach (var scopeSpans in resourceSpans.ScopeSpans)
             {
-                var scopeName = string.IsNullOrEmpty(scopeSpans.Scope?.Name) ? null : scopeSpans.Scope.Name;
+                var scopeName = string.IsNullOrEmpty(scopeSpans.Scope?.Name)
+                    ? null
+                    : StorableText.Tame(scopeSpans.Scope.Name);
 
                 foreach (var span in scopeSpans.Spans)
                 {
@@ -60,12 +62,12 @@ public static class OtlpTraceMapper
                         traceId,
                         spanId,
                         OtlpJson.ToHex(span.ParentSpanId, expectedLength: 8),
-                        span.Name,
+                        StorableText.Tame(span.Name),
                         (short)span.Kind,
                         startTime,
                         OtlpJson.ToUtc(span.EndTimeUnixNano) ?? startTime,
                         (short)(span.Status?.Code ?? Status.Types.StatusCode.Unset),
-                        string.IsNullOrEmpty(span.Status?.Message) ? null : span.Status.Message,
+                        string.IsNullOrEmpty(span.Status?.Message) ? null : StorableText.Tame(span.Status.Message),
                         scopeName,
                         resourceJson,
                         OtlpJson.AttributesToJson(span.Attributes),
@@ -99,7 +101,7 @@ public static class OtlpTraceMapper
             foreach (var spanEvent in span.Events)
             {
                 writer.WriteStartObject();
-                writer.WriteString("name", spanEvent.Name);
+                writer.WriteString("name", StorableText.Tame(spanEvent.Name));
                 if (OtlpJson.ToUtc(spanEvent.TimeUnixNano) is { } time)
                 {
                     writer.WriteString("time", time);

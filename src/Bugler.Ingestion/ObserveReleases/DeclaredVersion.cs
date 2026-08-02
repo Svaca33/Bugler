@@ -1,3 +1,4 @@
+using Bugler.Ingestion.OtlpMapping;
 using Bugler.Ingestion.Storage;
 using Google.Protobuf.Collections;
 using OpenTelemetry.Proto.Common.V1;
@@ -19,6 +20,13 @@ internal static class DeclaredVersion
     /// semconv leaves its format open — `2.0.0` and `a01dbef8a` are both valid — but not its type,
     /// so a number or a nested object is a sender getting it wrong, not a version. Blank and
     /// over-long values are read as absent too, and absent means nothing is observed at all.
+    ///
+    /// A version carrying a character storage will not hold is tamed like every other string rather
+    /// than joining that family, because this row is written by an ordinary insert: read as absent,
+    /// a Service whose SDK appends a terminator would never be seen to Release at all, and nobody
+    /// would be told why. Tamed, it Releases under a version ending in U+FFFD — ugly, working, and
+    /// its own diagnosis. Taming runs before the trim and the length check, and cannot change
+    /// either: it replaces one character with one character.
     /// </summary>
     public static string? Read(RepeatedField<KeyValue>? attributes)
     {
@@ -39,7 +47,7 @@ internal static class DeclaredVersion
                 return null;
             }
 
-            var version = attribute.Value.StringValue.Trim();
+            var version = StorableText.Tame(attribute.Value.StringValue).Trim();
             return version.Length is 0 or > IngestionDbContext.DeclaredVersionLimit ? null : version;
         }
 
