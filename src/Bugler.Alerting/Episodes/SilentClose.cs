@@ -34,7 +34,7 @@ internal static class SilentClose
         foreach (var episode in episodes)
         {
             episode.ClosedAt = now;
-            episode.CloseReason = EpisodeCloseReason.SensitivityOff;
+            episode.CloseReason = EpisodeCloseReason.WatchOff;
         }
 
         var episodeIds = episodes.Select(e => e.Id).ToList();

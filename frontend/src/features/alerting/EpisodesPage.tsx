@@ -138,7 +138,8 @@ export function EpisodesPage(props: {
         service: known?.facets.name,
         severityMin: 13,
         from: windowStart,
-        log: Number(episode.firstLogId),
+        // Only a watch that deals in log records has one to anchor on.
+        log: episode.firstMatchLogId === null ? undefined : Number(episode.firstMatchLogId),
       },
     });
   };
@@ -366,7 +367,7 @@ function EpisodeRow(props: {
     >
       <span
         className={`min-h-[30px] w-[3px] self-stretch rounded-[2px] ${
-          muted ? "bg-severity-debug-rail" : severityRailClass(Number(episode.firstLogSeverity))
+          muted ? "bg-severity-debug-rail" : severityRailClass(Number(episode.firstMatchSeverity))
         }`}
       />
 
@@ -376,7 +377,7 @@ function EpisodeRow(props: {
             muted ? "text-[#8CA1B8]" : selected ? "font-medium text-foreground" : "text-[#DCE8F3]"
           }`}
         >
-          {episode.firstLogBody}
+          {episode.firstMatchDetail}
         </span>
         <span
           className={`flex min-w-0 items-center gap-[9px] overflow-hidden font-mono text-[11px] whitespace-nowrap ${

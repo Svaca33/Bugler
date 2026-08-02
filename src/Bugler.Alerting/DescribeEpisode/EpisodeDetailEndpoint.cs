@@ -110,10 +110,10 @@ internal static class EpisodeDetailEndpoint
 
         var dto = new EpisodeDto(
             episode.Id, episode.ApplicationId.Value, episode.ServiceId.Value,
-            episode.Fingerprint, episode.State, episode.OpenedAt, episode.ClosedAt,
+            episode.Watch, episode.Fingerprint, episode.State, episode.OpenedAt, episode.ClosedAt,
             episode.LastMatchAt, episode.ErrorCount, episode.WarnCount,
-            episode.FirstLogId, episode.FirstLogTimestamp, episode.FirstLogSeverity,
-            episode.FirstLogBody,
+            episode.FirstMatchLogId, episode.FirstMatchAt, episode.FirstMatchSeverity,
+            episode.FirstMatchDetail,
             episode.AcknowledgedAt, EpisodesEndpoint.NameOf(names, episode.AcknowledgedByUserId),
             episode.SolvedAt, EpisodesEndpoint.NameOf(names, episode.SolvedByUserId),
             earlierAck?.AcknowledgedAt,

@@ -20,8 +20,9 @@ public sealed record EpisodeSummaryDto(
     DateTimeOffset LastMatchAt,
     int ErrorCount,
     int WarnCount,
-    short FirstLogSeverity,
-    string? FirstLogBody);
+    Watch Watch,
+    short? FirstMatchSeverity,
+    string? FirstMatchDetail);
 
 public sealed record ServiceEpisodesDto(
     Guid ServiceId,
@@ -84,7 +85,7 @@ internal static class EpisodesByServiceEndpoint
                     e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.QuietWindow),
                 Solved = g.Count(e => e.SolvedAt != null),
                 Muted = g.Count(e =>
-                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.SensitivityOff),
+                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.WatchOff),
             })
             .ToListAsync(cancellationToken);
 
@@ -122,7 +123,7 @@ internal static class EpisodesByServiceEndpoint
             : new EpisodeSummaryDto(
                 episode.Id, episode.State, episode.OpenedAt, episode.ClosedAt,
                 episode.LastMatchAt, episode.ErrorCount, episode.WarnCount,
-                episode.FirstLogSeverity, episode.FirstLogBody);
+                episode.Watch, episode.FirstMatchSeverity, episode.FirstMatchDetail);
 
     // Access's claim helper is internal to Access; the two lines are cheaper than a contract.
     private static Guid? GetUserId(ClaimsPrincipal principal) =>

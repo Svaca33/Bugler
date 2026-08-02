@@ -10,6 +10,7 @@ public sealed record EpisodeDto(
     Guid Id,
     Guid ApplicationId,
     Guid ServiceId,
+    Watch Watch,
     string Fingerprint,
     EpisodeState State,
     DateTimeOffset OpenedAt,
@@ -17,10 +18,10 @@ public sealed record EpisodeDto(
     DateTimeOffset LastMatchAt,
     int ErrorCount,
     int WarnCount,
-    long FirstLogId,
-    DateTimeOffset FirstLogTimestamp,
-    short FirstLogSeverity,
-    string? FirstLogBody,
+    long? FirstMatchLogId,
+    DateTimeOffset FirstMatchAt,
+    short? FirstMatchSeverity,
+    string? FirstMatchDetail,
     DateTimeOffset? AcknowledgedAt,
     string? AcknowledgedBy,
     DateTimeOffset? SolvedAt,
@@ -101,7 +102,7 @@ internal static class EpisodesEndpoint
                     && e.CloseReason == EpisodeCloseReason.QuietWindow)
                 || (wantSolved && e.SolvedAt != null)
                 || (wantMuted && e.SolvedAt == null
-                    && e.CloseReason == EpisodeCloseReason.SensitivityOff));
+                    && e.CloseReason == EpisodeCloseReason.WatchOff));
         }
 
         // Episode ids are UUIDv7 and PostgreSQL compares uuids bytewise, so id order is open
@@ -152,10 +153,10 @@ internal static class EpisodesEndpoint
 
         var items = rows.Select(r => new EpisodeDto(
             r.Episode.Id, r.Episode.ApplicationId.Value, r.Episode.ServiceId.Value,
-            r.Episode.Fingerprint, r.Episode.State, r.Episode.OpenedAt, r.Episode.ClosedAt,
-            r.Episode.LastMatchAt, r.Episode.ErrorCount, r.Episode.WarnCount,
-            r.Episode.FirstLogId, r.Episode.FirstLogTimestamp, r.Episode.FirstLogSeverity,
-            r.Episode.FirstLogBody,
+            r.Episode.Watch, r.Episode.Fingerprint, r.Episode.State, r.Episode.OpenedAt,
+            r.Episode.ClosedAt, r.Episode.LastMatchAt, r.Episode.ErrorCount, r.Episode.WarnCount,
+            r.Episode.FirstMatchLogId, r.Episode.FirstMatchAt, r.Episode.FirstMatchSeverity,
+            r.Episode.FirstMatchDetail,
             r.Episode.AcknowledgedAt, NameOf(names, r.Episode.AcknowledgedByUserId),
             r.Episode.SolvedAt, NameOf(names, r.Episode.SolvedByUserId),
             r.EarlierAck?.AcknowledgedAt, NameOf(names, r.EarlierAck?.AcknowledgedByUserId),

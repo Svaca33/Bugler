@@ -28,7 +28,7 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         var all = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
             "/api/alerting/episodes");
         Assert.Equal(3, all!.Items.Count);
-        Assert.Equal("foreign trouble", all.Items[0].FirstLogBody);
+        Assert.Equal("foreign trouble", all.Items[0].FirstMatchDetail);
 
         // Keyset paging: the second page starts past the first page's last row.
         var firstPage = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
@@ -37,7 +37,7 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
             $"/api/alerting/episodes?limit=2&beforeId={firstPage!.Items[^1].Id}");
         Assert.Equal(2, firstPage.Items.Count);
         var remaining = Assert.Single(secondPage!.Items);
-        Assert.Equal("own trouble", remaining.FirstLogBody);
+        Assert.Equal("own trouble", remaining.FirstMatchDetail);
 
         // A granted member sees only their application's episodes.
         var member = await _harness.CreateUserClientAsync(
@@ -95,8 +95,8 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         var faces = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
             "/api/alerting/episodes?latestPerFingerprint=true");
         Assert.Equal(2, faces!.Items.Count);
-        Assert.Equal("other trouble", faces.Items[0].FirstLogBody);
-        Assert.Equal("flaky", faces.Items[1].FirstLogBody);
+        Assert.Equal("other trouble", faces.Items[0].FirstMatchDetail);
+        Assert.Equal("flaky", faces.Items[1].FirstMatchDetail);
         Assert.Equal(2, faces.Items[1].PriorCount);
 
         // The state filter judges the face: the flaky group has quieted episodes, but its face
@@ -104,14 +104,14 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         var quieted = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
             "/api/alerting/episodes?latestPerFingerprint=true&state=Quieted");
         var quietFace = Assert.Single(quieted!.Items);
-        Assert.Equal("other trouble", quietFace.FirstLogBody);
+        Assert.Equal("other trouble", quietFace.FirstMatchDetail);
 
         // Keyset paging walks faces, skipping the history between them.
         var firstPage = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
             "/api/alerting/episodes?latestPerFingerprint=true&limit=1");
         var secondPage = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
             $"/api/alerting/episodes?latestPerFingerprint=true&limit=1&beforeId={firstPage!.Items[0].Id}");
-        Assert.Equal("flaky", Assert.Single(secondPage!.Items).FirstLogBody);
+        Assert.Equal("flaky", Assert.Single(secondPage!.Items).FirstMatchDetail);
 
         // Counts follow the faces (1 open + 1 quieted), not the episodes (1 + 3).
         var grouped = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
@@ -288,11 +288,11 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, fingerprint, opened_at, first_log_id,
-                 first_log_timestamp, first_log_severity, first_log_body, error_count,
+                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
+                 first_match_at, first_match_severity, first_match_detail, error_count,
                  warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', '{body}', now(), 1,
+                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', 1, '{body}', now(), 1,
                  now(), 17, '{body}', 1, 0, now(),
                  {(quieted ? "now()" : "NULL")}, {(quieted ? "1" : "NULL")})
             """);

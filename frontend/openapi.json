@@ -2672,6 +2672,7 @@
           "id",
           "applicationId",
           "serviceId",
+          "watch",
           "fingerprint",
           "state",
           "openedAt",
@@ -2679,10 +2680,10 @@
           "lastMatchAt",
           "errorCount",
           "warnCount",
-          "firstLogId",
-          "firstLogTimestamp",
-          "firstLogSeverity",
-          "firstLogBody",
+          "firstMatchLogId",
+          "firstMatchAt",
+          "firstMatchSeverity",
+          "firstMatchDetail",
           "acknowledgedAt",
           "acknowledgedBy",
           "solvedAt",
@@ -2705,6 +2706,9 @@
           "serviceId": {
             "type": "string",
             "format": "uuid"
+          },
+          "watch": {
+            "$ref": "#/components/schemas/Watch"
           },
           "fingerprint": {
             "type": "string"
@@ -2743,27 +2747,29 @@
             ],
             "format": "int32"
           },
-          "firstLogId": {
+          "firstMatchLogId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int64"
           },
-          "firstLogTimestamp": {
+          "firstMatchAt": {
             "type": "string",
             "format": "date-time"
           },
-          "firstLogSeverity": {
+          "firstMatchSeverity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int16"
           },
-          "firstLogBody": {
+          "firstMatchDetail": {
             "type": [
               "null",
               "string"
@@ -2858,8 +2864,9 @@
           "lastMatchAt",
           "errorCount",
           "warnCount",
-          "firstLogSeverity",
-          "firstLogBody"
+          "watch",
+          "firstMatchSeverity",
+          "firstMatchDetail"
         ],
         "type": "object",
         "properties": {
@@ -2901,15 +2908,19 @@
             ],
             "format": "int32"
           },
-          "firstLogSeverity": {
+          "watch": {
+            "$ref": "#/components/schemas/Watch"
+          },
+          "firstMatchSeverity": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
             "format": "int16"
           },
-          "firstLogBody": {
+          "firstMatchDetail": {
             "type": [
               "null",
               "string"
@@ -4151,6 +4162,11 @@
             "format": "int32"
           }
         }
+      },
+      "Watch": {
+        "enum": [
+          "Logs"
+        ]
       }
     }
   },

@@ -50,8 +50,9 @@ export interface EpisodeSummary {
   lastMatchAt: string;
   errorCount: number;
   warnCount: number;
-  firstLogSeverity: number;
-  firstLogBody: string | null;
+  watch: string;
+  firstMatchSeverity: number | null;
+  firstMatchDetail: string | null;
 }
 
 export interface ServiceEpisodes {

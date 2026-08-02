@@ -88,11 +88,11 @@ public sealed class AlertingCascadeTests : IAsyncLifetime
         await _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, fingerprint, opened_at, first_log_id,
-                 first_log_timestamp, first_log_severity, first_log_body, error_count,
+                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
+                 first_match_at, first_match_severity, first_match_detail, error_count,
                  warn_count, last_match_at)
             VALUES
-                ('{episodeId}', '{_harness.ServiceId}', '{_harness.ApplicationId}', 'boom',
+                ('{episodeId}', '{_harness.ServiceId}', '{_harness.ApplicationId}', 1, 'boom',
                  now(), 1, now(), 17, 'boom', 1, 0, now());
             INSERT INTO alerting.deliveries
                 (id, episode_id, kind, channel, user_id, attempts, created_at, next_attempt_at)

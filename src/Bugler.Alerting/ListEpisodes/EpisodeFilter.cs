@@ -56,7 +56,7 @@ internal static class EpisodeFilter
         if (!string.IsNullOrEmpty(q))
         {
             var pattern = "%" + q.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_") + "%";
-            query = query.Where(e => EF.Functions.ILike(e.FirstLogBody!, pattern, @"\"));
+            query = query.Where(e => EF.Functions.ILike(e.FirstMatchDetail!, pattern, @"\"));
         }
 
         return acknowledged switch

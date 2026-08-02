@@ -85,6 +85,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             episode.Property(e => e.ServiceId).HasConversion(ServiceIdConverter);
             episode.Property(e => e.ApplicationId).HasConversion(ApplicationIdConverter);
             episode.Property(e => e.Fingerprint).HasMaxLength(300);
+            episode.Property(e => e.FirstMatchDetail).HasMaxLength(500);
             // The invariant: at most one open Episode per kind of trouble per Service.
             // Also the open-episode scan.
             // Named HasIndex overloads make two distinct indexes over the same columns; the

@@ -125,7 +125,7 @@ function EpisodeBody(props: {
     },
   });
 
-  const severity = Number(episode.firstLogSeverity);
+  const severity = Number(episode.firstMatchSeverity);
   const isError = severity >= 17;
   const myName = currentUser.data?.displayName ?? currentUser.data?.email;
   const heldByMe = episode.acknowledgedBy !== null && episode.acknowledgedBy === myName;
@@ -152,7 +152,7 @@ function EpisodeBody(props: {
             : "—"}
         </p>
         <div className="rounded-lg border border-[#1E344C] bg-card px-[11px] py-2.5 font-mono text-[12.5px] leading-[1.55] text-[#DCE8F3]">
-          {episode.firstLogBody}
+          {episode.firstMatchDetail}
         </div>
         <div className="flex items-center gap-2.5">
           <span
@@ -165,7 +165,7 @@ function EpisodeBody(props: {
             {severityLabel(severity)}
           </span>
           <span className="font-mono text-[11px] text-[#7D93AA]">
-            {formatTime(episode.firstLogTimestamp)}
+            {formatTime(episode.firstMatchAt)}
           </span>
           <button
             type="button"

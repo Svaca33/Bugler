@@ -65,7 +65,7 @@ internal static class EpisodeCountsEndpoint
                     e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.QuietWindow),
                 Solved = g.Count(e => e.SolvedAt != null),
                 Muted = g.Count(e =>
-                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.SensitivityOff),
+                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.WatchOff),
             })
             .FirstOrDefaultAsync(cancellationToken);
 

@@ -4,8 +4,8 @@ namespace Bugler.Alerting.Episodes;
 
 /// <summary>
 /// One bounded stretch of trouble in one Service (see CONTEXT.md: Episode). Carries everything a
-/// message about it needs — Deliveries never read telemetry again, so an Alert survives the Purge
-/// of the Log Records that drove it.
+/// message about it needs — Deliveries never read the evidence again, so an Alert survives the
+/// Purge of the Log Records that drove it.
 /// </summary>
 public sealed class Episode
 {
@@ -15,16 +15,26 @@ public sealed class Episode
     /// <summary>Stored redundantly (immutable mapping) so visibility filtering and cascades need no catalog round-trip.</summary>
     public required ApplicationId ApplicationId { get; init; }
 
+    /// <summary>Which watch found this trouble and keeps feeding it (see CONTEXT.md: Watch).</summary>
+    public required Watch Watch { get; init; }
+
     /// <summary>The kind of trouble this Episode is about — what tells it apart from the Service's other Episodes.</summary>
     public required string Fingerprint { get; init; }
 
-    /// <summary>Detection wall-clock, not the log's own claim — durations stay immune to sender clock skew.</summary>
+    /// <summary>Detection wall-clock, not the evidence's own claim — durations stay immune to sender clock skew.</summary>
     public required DateTimeOffset OpenedAt { get; init; }
 
-    public required long FirstLogId { get; init; }
-    public required DateTimeOffset FirstLogTimestamp { get; init; }
-    public required short FirstLogSeverity { get; init; }
-    public string? FirstLogBody { get; init; }
+    /// <summary>The Log Record the opening match was, where the Watch deals in Log Records; null where it does not.</summary>
+    public long? FirstMatchLogId { get; init; }
+
+    /// <summary>When the opening match happened by its own reckoning — the log's timestamp, the probe's moment.</summary>
+    public required DateTimeOffset FirstMatchAt { get; init; }
+
+    /// <summary>The opening match's Severity Band, where the Watch has one; null where it does not.</summary>
+    public short? FirstMatchSeverity { get; init; }
+
+    /// <summary>What the opening match said, in one line — a log's body, or what a probe got back.</summary>
+    public string? FirstMatchDetail { get; init; }
 
     public int ErrorCount { get; set; }
     public int WarnCount { get; set; }

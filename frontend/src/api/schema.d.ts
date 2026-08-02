@@ -2241,6 +2241,7 @@ export interface components {
             applicationId: string;
             /** Format: uuid */
             serviceId: string;
+            watch: components["schemas"]["Watch"];
             fingerprint: string;
             state: components["schemas"]["EpisodeState"];
             /** Format: date-time */
@@ -2254,12 +2255,12 @@ export interface components {
             /** Format: int32 */
             warnCount: number | string;
             /** Format: int64 */
-            firstLogId: number | string;
+            firstMatchLogId: null | number | string;
             /** Format: date-time */
-            firstLogTimestamp: string;
+            firstMatchAt: string;
             /** Format: int16 */
-            firstLogSeverity: number | string;
-            firstLogBody: null | string;
+            firstMatchSeverity: null | number | string;
+            firstMatchDetail: null | string;
             /** Format: date-time */
             acknowledgedAt: null | string;
             acknowledgedBy: null | string;
@@ -2293,9 +2294,10 @@ export interface components {
             errorCount: number | string;
             /** Format: int32 */
             warnCount: number | string;
+            watch: components["schemas"]["Watch"];
             /** Format: int16 */
-            firstLogSeverity: number | string;
-            firstLogBody: null | string;
+            firstMatchSeverity: null | number | string;
+            firstMatchDetail: null | string;
         };
         ForgotPasswordRequest: {
             email: string;
@@ -2593,6 +2595,8 @@ export interface components {
             /** Format: int32 */
             debug: number | string;
         };
+        /** @enum {unknown} */
+        Watch: "Logs";
     };
     responses: never;
     parameters: never;

@@ -78,7 +78,7 @@ function OpenCard(props: {
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
 
-  const severity = Number(episode.firstLogSeverity);
+  const severity = Number(episode.firstMatchSeverity);
   const isError = severity >= 17;
   const heldByMe = episode.acknowledgedBy !== null && episode.acknowledgedBy === props.myName;
   const priorCount = Number(episode.priorCount);
@@ -109,7 +109,7 @@ function OpenCard(props: {
           </span>
         </div>
 
-        <p className="truncate text-[13.5px] font-medium text-foreground">{episode.firstLogBody}</p>
+        <p className="truncate text-[13.5px] font-medium text-foreground">{episode.firstMatchDetail}</p>
 
         <div className="flex min-w-0 items-center gap-2.5 overflow-hidden font-mono text-[11px] whitespace-nowrap text-[#7D93AA]">
           {/* The application name is dropped here on purpose — it is in the rail and the detail. */}

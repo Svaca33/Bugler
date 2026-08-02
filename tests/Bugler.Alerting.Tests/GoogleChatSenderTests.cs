@@ -10,8 +10,8 @@ public class GoogleChatSenderTests
         Subject: "[Bugler] Trouble in Eshop acme/prod/web",
         Place: "Eshop acme/prod/web",
         SeverityLabel: "ERROR",
-        FirstLogInstant: "2026-07-29 09:59:58 UTC",
-        FirstLogBody: "Payment gateway timed out",
+        MatchInstant: "2026-07-29 09:59:58 UTC",
+        MatchDetail: "Payment gateway timed out",
         EpisodeUrl: episodeUrl,
         TextBody: "irrelevant here",
         HtmlBody: "irrelevant here");
@@ -42,7 +42,7 @@ public class GoogleChatSenderTests
     [Fact]
     public void Card_text_is_chats_html_so_the_log_body_arrives_escaped()
     {
-        var alert = Alert() with { FirstLogBody = "expected <ul> & got <li>" };
+        var alert = Alert() with { MatchDetail = "expected <ul> & got <li>" };
 
         var widgets = Payload(alert)["cardsV2"]![0]!["card"]!["sections"]![0]!["widgets"]!;
         Assert.Equal(

@@ -186,8 +186,12 @@ export function DashboardPage(props: {
                       lastMatchAt: service.latest.lastMatchAt,
                       errorCount: Number(service.latest.errorCount),
                       warnCount: Number(service.latest.warnCount),
-                      firstLogSeverity: Number(service.latest.firstLogSeverity),
-                      firstLogBody: service.latest.firstLogBody,
+                      watch: service.latest.watch,
+                      firstMatchSeverity:
+                        service.latest.firstMatchSeverity === null
+                          ? null
+                          : Number(service.latest.firstMatchSeverity),
+                      firstMatchDetail: service.latest.firstMatchDetail,
                     },
             })),
           },

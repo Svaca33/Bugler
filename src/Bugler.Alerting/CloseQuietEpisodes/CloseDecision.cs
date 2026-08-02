@@ -17,7 +17,7 @@ public static class CloseDecision
         {
             // Off means "stop talking about this service now" — not an All Clear, a silence.
             // It outranks an acknowledgement: with the watch off there is nothing to hold open.
-            return EpisodeCloseReason.SensitivityOff;
+            return EpisodeCloseReason.WatchOff;
         }
 
         if (acknowledged)

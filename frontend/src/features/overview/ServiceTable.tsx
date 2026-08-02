@@ -93,7 +93,7 @@ export function ServiceTable(props: {
                     ) : open && latest != null ? (
                       <>
                         <LiveDuration since={latest.openedAt} />
-                        {latest.firstLogBody != null && ` · ${latest.firstLogBody}`}
+                        {latest.firstMatchDetail != null && ` · ${latest.firstMatchDetail}`}
                       </>
                     ) : latest?.closedAt != null ? (
                       `all clear ${describeMillis(Date.now() - Date.parse(latest.closedAt))} ago`

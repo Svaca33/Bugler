@@ -18,6 +18,14 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
 
     internal static object BuildPayload(ComposedAlert alert)
     {
+        // The band joins the stamp only where the Alert's Watch deals in Severity Bands.
+        var stamp = alert.SeverityLabel is null
+            ? alert.MatchInstant
+            : $"{alert.SeverityLabel}, {alert.MatchInstant}";
+        var subtitle = alert.SeverityLabel is null
+            ? alert.MatchInstant
+            : $"{alert.SeverityLabel} · {alert.MatchInstant}";
+
         var widgets = new List<object>
         {
             new
@@ -31,8 +39,8 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
             {
                 decoratedText = new
                 {
-                    topLabel = $"First log ({alert.SeverityLabel}, {alert.FirstLogInstant})",
-                    text = WebUtility.HtmlEncode(alert.FirstLogBody),
+                    topLabel = $"First log ({stamp})",
+                    text = WebUtility.HtmlEncode(alert.MatchDetail),
                     wrapText = true,
                 },
             },
@@ -64,7 +72,7 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
                         header = new
                         {
                             title = $"Trouble in {alert.Place}",
-                            subtitle = $"{alert.SeverityLabel} · {alert.FirstLogInstant}",
+                            subtitle,
                         },
                         sections = new[] { new { widgets } },
                     },

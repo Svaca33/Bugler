@@ -112,11 +112,11 @@ public sealed class AlertingSettingsTests : IAsyncLifetime
         await _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, fingerprint, opened_at, first_log_id,
-                 first_log_timestamp, first_log_severity, first_log_body, error_count,
+                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
+                 first_match_at, first_match_severity, first_match_detail, error_count,
                  warn_count, last_match_at)
             VALUES
-                (gen_random_uuid(), '{_harness.ServiceId}', '{_harness.ApplicationId}', 'boom',
+                (gen_random_uuid(), '{_harness.ServiceId}', '{_harness.ApplicationId}', 1, 'boom',
                  now(), 1, now(), 17, 'boom', 3, 0, now())
             """);
 
@@ -125,7 +125,7 @@ public sealed class AlertingSettingsTests : IAsyncLifetime
             new { sensitivity = "Off", quietWindowMinutes = (int?)null });
         Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
 
-        // close_reason 2 = SensitivityOff; no All Clear delivery may appear.
+        // close_reason 2 = WatchOff; no All Clear delivery may appear.
         await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.episodes WHERE closed_at IS NOT NULL AND close_reason = 2", 1);
         var deliveries = await _harness.WaitForCountAsync("SELECT COUNT(*) FROM alerting.deliveries", 0);

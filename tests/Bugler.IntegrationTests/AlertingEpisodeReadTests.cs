@@ -42,17 +42,17 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
         var window = Uri.EscapeDataString(DateTimeOffset.UtcNow.AddDays(-7).ToString("O"));
         var recent = await ListAsync($"?from={window}");
         Assert.Equal(2, recent.Items.Count);
-        Assert.DoesNotContain(recent.Items, e => e.FirstLogBody!.Contains("Bulk index"));
+        Assert.DoesNotContain(recent.Items, e => e.FirstMatchDetail!.Contains("Bulk index"));
 
         // q: case-insensitive substring of the first log body.
         var text = await ListAsync("?q=TIMEOUT");
         var timeout = Assert.Single(text.Items);
-        Assert.Contains("Timeout", timeout.FirstLogBody);
+        Assert.Contains("Timeout", timeout.FirstMatchDetail);
 
         // LIKE wildcards in q match literally: "50%" must not swallow "502".
         var literal = await ListAsync($"?q={Uri.EscapeDataString("50%")}");
         var escaped = Assert.Single(literal.Items);
-        Assert.Contains("50% of documents", escaped.FirstLogBody);
+        Assert.Contains("50% of documents", escaped.FirstMatchDetail);
 
         // acknowledged: "me" is the caller's mark, "none" is nobody's; anything else is an error.
         await _harness.Client.PostAsync($"/api/alerting/episodes/{timeout.Id}/acknowledge", null);
@@ -120,7 +120,7 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
         Assert.Equal((2, 1, 0, 0), (web.Open, web.Quieted, web.Solved, web.Muted));
         // An open episode outranks any closed one, and among the open the newest wins.
         Assert.Equal(EpisodeState.Open, web.Latest!.State);
-        Assert.Equal("newest open trouble", web.Latest.FirstLogBody);
+        Assert.Equal("newest open trouble", web.Latest.FirstMatchDetail);
 
         // Nothing open on the worker, so it is quoted by when its last stretch ended.
         var worker = all.Services.Single(s => s.ServiceId == secondService);
@@ -148,7 +148,7 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
         var web = Assert.Single(recent.Services);
         // The ancient one is still open, but it opened before the window: not this board's story.
         Assert.Equal(1, web.Open);
-        Assert.Equal("fresh trouble", web.Latest!.FirstLogBody);
+        Assert.Equal("fresh trouble", web.Latest!.FirstMatchDetail);
 
         var stranger = await _harness.CreateUserClientAsync("stranger@bugler.test", "Stranger123!");
         var nothing = await stranger.GetFromJsonAsync<EpisodesByServiceResponse>(
@@ -248,11 +248,11 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
         _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, fingerprint, opened_at, first_log_id,
-                 first_log_timestamp, first_log_severity, first_log_body, error_count,
+                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
+                 first_match_at, first_match_severity, first_match_detail, error_count,
                  warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', '{body}',
+                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', 1, '{body}',
                  now() - interval '{daysAgo} days', 1, now(), 17, '{body}', 1, 0, now(),
                  {(quieted || muted ? "now()" : "NULL")}, {(quieted ? "1" : muted ? "2" : "NULL")})
             """);

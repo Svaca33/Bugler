@@ -55,7 +55,7 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
         Assert.Contains("boom", alertMail.HtmlBody);
         var alertChat = Assert.Single(_chat.Sent);
         Assert.Contains("chat.googleapis.com", alertChat.WebhookUrl);
-        Assert.Contains("boom", alertChat.Alert.FirstLogBody);
+        Assert.Contains("boom", alertChat.Alert.MatchDetail);
 
         // The service falls quiet: backdate the last match past the 15-minute default window.
         // The Episode becomes Quieted — and nobody is told (ADR 0003): the Alert is the only

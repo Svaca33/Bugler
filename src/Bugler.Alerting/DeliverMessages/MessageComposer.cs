@@ -14,9 +14,10 @@ namespace Bugler.Alerting.DeliverMessages;
 public sealed record ComposedAlert(
     string Subject,
     string Place,
-    string SeverityLabel,
-    string FirstLogInstant,
-    string FirstLogBody,
+    /// <summary>The opening match's Severity Band, where its Watch has one; null where it does not.</summary>
+    string? SeverityLabel,
+    string MatchInstant,
+    string MatchDetail,
     string? EpisodeUrl,
     string TextBody,
     string HtmlBody);
@@ -32,9 +33,9 @@ public static class MessageComposer
         Episode episode, CatalogService identity, string publicBaseUrl)
     {
         var place = $"{identity.ApplicationName} {identity.Namespace}/{identity.Environment}/{identity.Name}";
-        var severity = SeverityLabel(episode.FirstLogSeverity);
-        var instant = Instant(episode.FirstLogTimestamp);
-        var body = episode.FirstLogBody ?? "(no body)";
+        var severity = episode.FirstMatchSeverity is { } band ? SeverityLabel(band) : null;
+        var instant = Instant(episode.FirstMatchAt);
+        var body = episode.FirstMatchDetail ?? "(no body)";
         var episodeUrl = publicBaseUrl.Length == 0
             ? null
             : $"{publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}";
@@ -43,21 +44,21 @@ public static class MessageComposer
             Subject: $"[Bugler] Trouble in {place}",
             Place: place,
             SeverityLabel: severity,
-            FirstLogInstant: instant,
-            FirstLogBody: body,
+            MatchInstant: instant,
+            MatchDetail: body,
             EpisodeUrl: episodeUrl,
             TextBody: ComposeText(place, severity, instant, body, episodeUrl),
             HtmlBody: ComposeHtml(place, severity, instant, body, episodeUrl));
     }
 
     private static string ComposeText(
-        string place, string severity, string instant, string body, string? episodeUrl)
+        string place, string? severity, string instant, string body, string? episodeUrl)
     {
         var lines = new List<string>
         {
             $"{place} started logging trouble.",
             "",
-            $"First log ({severity}, {instant}):",
+            $"First log ({Stamp(severity, instant)}):",
             body,
         };
 
@@ -76,7 +77,7 @@ public static class MessageComposer
     // The same message for eyes that render HTML: brass on warm paper, matching the UI's light
     // theme. Inline styles only — mail clients strip everything else.
     private static string ComposeHtml(
-        string place, string severity, string instant, string body, string? episodeUrl)
+        string place, string? severity, string instant, string body, string? episodeUrl)
     {
         var button = episodeUrl is null
             ? ""
@@ -91,13 +92,17 @@ public static class MessageComposer
                 <body style="margin:0;padding:24px;background:#F4EDDD;">
                 <div style="max-width:560px;margin:0 auto;background:#FFFCF4;border:1px solid #E3D5B4;border-radius:8px;padding:24px;font-family:'Segoe UI',Arial,sans-serif;color:#2B2416;">
                 <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> started logging trouble.</p>
-                <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">First log ({WebUtility.HtmlEncode(severity)}, {WebUtility.HtmlEncode(instant)}):</p>
+                <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">First log ({WebUtility.HtmlEncode(Stamp(severity, instant))}):</p>
                 <pre style="margin:0;padding:12px 14px;background:#F4EDDD;border-radius:6px;font-family:Consolas,Menlo,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;color:#2B2416;">{WebUtility.HtmlEncode(body)}</pre>{button}
                 </div>
                 </body>
                 </html>
                 """;
     }
+
+    /// <summary>How the opening match is stamped: its band and moment, or just the moment where its Watch has no bands.</summary>
+    private static string Stamp(string? severity, string instant) =>
+        severity is null ? instant : $"{severity}, {instant}";
 
     private static string SeverityLabel(short severityNumber) => severityNumber switch
     {

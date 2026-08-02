@@ -53,7 +53,7 @@ public sealed class EpisodeCloser(
 
             switch (reason)
             {
-                case EpisodeCloseReason.SensitivityOff:
+                case EpisodeCloseReason.WatchOff:
                     mutedServices.Add(episode.ServiceId); // SilentClose closes and lapses below.
                     break;
 

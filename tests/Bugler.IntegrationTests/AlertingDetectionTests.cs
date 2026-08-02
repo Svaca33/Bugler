@@ -45,7 +45,7 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
 
         Assert.Equal(1, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.episodes WHERE closed_at IS NULL "
-            + "AND error_count = 1 AND warn_count = 0 AND first_log_body = 'boom'", 1));
+            + "AND error_count = 1 AND warn_count = 0 AND first_match_detail = 'boom'", 1));
         Assert.Equal(1, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.deliveries WHERE kind = 1 AND channel = 1", 1));
         Assert.Equal(1, await _harness.WaitForCountAsync(
@@ -139,7 +139,7 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
         await _detector.DetectOnceAsync(CancellationToken.None);
 
         Assert.Equal(1, await _harness.WaitForCountAsync(
-            "SELECT COUNT(*) FROM alerting.episodes WHERE first_log_body = 'fresh trouble'", 1));
+            "SELECT COUNT(*) FROM alerting.episodes WHERE first_match_detail = 'fresh trouble'", 1));
     }
 
     [Fact]

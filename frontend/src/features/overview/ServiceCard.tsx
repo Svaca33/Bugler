@@ -87,7 +87,7 @@ export function ServiceCard(props: {
         <div className="mt-3 rounded-lg border border-[rgba(229,84,74,0.2)] bg-[rgba(229,84,74,0.07)] px-[11px] py-[9px]">
           <div className="flex items-center gap-2">
             <span
-              className={`h-[15px] w-[3px] shrink-0 rounded-[2px] ${severityRailClass(Number(quoted.firstLogSeverity))}`}
+              className={`h-[15px] w-[3px] shrink-0 rounded-[2px] ${severityRailClass(Number(quoted.firstMatchSeverity))}`}
             />
             <span className="truncate font-mono text-[10.5px] text-[#A9BDD1]">
               opened {clock(quoted.openedAt)} · <LiveDuration since={quoted.openedAt} /> ·{" "}
@@ -95,8 +95,8 @@ export function ServiceCard(props: {
               {Number(quoted.warnCount) > 0 && ` · ${Number(quoted.warnCount).toLocaleString()} warn`}
             </span>
           </div>
-          {quoted.firstLogBody != null && (
-            <div className="mt-1.5 truncate font-mono text-xs text-[#DCE8F3]">{quoted.firstLogBody}</div>
+          {quoted.firstMatchDetail != null && (
+            <div className="mt-1.5 truncate font-mono text-xs text-[#DCE8F3]">{quoted.firstMatchDetail}</div>
           )}
         </div>
       )}

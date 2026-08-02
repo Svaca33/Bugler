@@ -15,11 +15,12 @@ public class EpisodeLifecycleTests
         Id = Guid.CreateVersion7(),
         ServiceId = ServiceId.New(),
         ApplicationId = ApplicationId.New(),
+        Watch = Watch.Logs,
         Fingerprint = "Payment gateway timed out",
         OpenedAt = Now.AddHours(-1),
-        FirstLogId = 42,
-        FirstLogTimestamp = Now.AddHours(-1),
-        FirstLogSeverity = 17,
+        FirstMatchLogId = 42,
+        FirstMatchAt = Now.AddHours(-1),
+        FirstMatchSeverity = 17,
         ErrorCount = 3,
         WarnCount = 0,
         LastMatchAt = Now.AddMinutes(-10),
@@ -37,7 +38,7 @@ public class EpisodeLifecycleTests
     {
         var episode = Episode();
         episode.ClosedAt = Now.AddMinutes(-5);
-        episode.CloseReason = EpisodeCloseReason.SensitivityOff;
+        episode.CloseReason = EpisodeCloseReason.WatchOff;
         return episode;
     }
 
@@ -126,7 +127,7 @@ public class EpisodeLifecycleTests
         Assert.Equal(HandOutcome.Acted, episode.Solve(Dev, Now));
 
         Assert.Equal(EpisodeState.Solved, episode.State);
-        Assert.Equal(EpisodeCloseReason.SensitivityOff, episode.CloseReason);
+        Assert.Equal(EpisodeCloseReason.WatchOff, episode.CloseReason);
     }
 
     [Fact]

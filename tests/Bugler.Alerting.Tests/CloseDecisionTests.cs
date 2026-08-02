@@ -26,7 +26,7 @@ public class CloseDecisionTests
     [Fact]
     public void Sensitivity_off_silences_immediately_even_mid_trouble()
     {
-        Assert.Equal(EpisodeCloseReason.SensitivityOff, CloseDecision.Decide(
+        Assert.Equal(EpisodeCloseReason.WatchOff, CloseDecision.Decide(
             Sensitivity.Off, acknowledged: false, Now.AddSeconds(-1), Window, Now));
     }
 
@@ -40,7 +40,7 @@ public class CloseDecisionTests
     [Fact]
     public void Sensitivity_off_outranks_the_acknowledgement()
     {
-        Assert.Equal(EpisodeCloseReason.SensitivityOff, CloseDecision.Decide(
+        Assert.Equal(EpisodeCloseReason.WatchOff, CloseDecision.Decide(
             Sensitivity.Off, acknowledged: true, Now.AddSeconds(-1), Window, Now));
     }
 }
