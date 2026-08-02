@@ -308,6 +308,25 @@
         }
       }
     },
+    "/api/admin/storage": {
+      "get": {
+        "tags": [
+          "ReportStorageEndpoint"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageReportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/logs": {
       "get": {
         "tags": [
@@ -2483,47 +2502,6 @@
           }
         }
       },
-      "ChangePasswordRequest": {
-        "required": [
-          "currentPassword",
-          "newPassword"
-        ],
-        "type": "object",
-        "properties": {
-          "currentPassword": {
-            "type": "string"
-          },
-          "newPassword": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatAlertDto": {
-        "required": [
-          "deliveredAt"
-        ],
-        "type": "object",
-        "properties": {
-          "deliveredAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        }
-      },
-      "ChatWebhookDto": {
-        "required": [
-          "domain"
-        ],
-        "type": "object",
-        "properties": {
-          "domain": {
-            "type": "string"
-          }
-        }
-      },
       "CreateApplicationRequest": {
         "required": [
           "name"
@@ -3040,6 +3018,47 @@
             "type": "boolean"
           },
           "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatAlertDto": {
+        "required": [
+          "deliveredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
             "type": "string"
           }
         }
@@ -3843,6 +3862,26 @@
           }
         }
       },
+      "ServiceStorageDto": {
+        "required": [
+          "serviceId",
+          "logs",
+          "traces"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "logs": {
+            "$ref": "#/components/schemas/SignalStorageDto"
+          },
+          "traces": {
+            "$ref": "#/components/schemas/SignalStorageDto"
+          }
+        }
+      },
       "ServiceVolumeDto": {
         "required": [
           "serviceId",
@@ -3926,20 +3965,6 @@
           }
         }
       },
-      "SetChatWebhookRequest": {
-        "required": [
-          "url"
-        ],
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "SetFingerprintQuietWindowRequest": {
         "required": [
           "quietWindowMinutes"
@@ -3954,6 +3979,20 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "SetChatWebhookRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4082,6 +4121,40 @@
           }
         }
       },
+      "SignalStorageDto": {
+        "required": [
+          "footprintBytes",
+          "retentionDays",
+          "windowBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "footprintBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "retentionDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "windowBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "SmtpSecurity": {
         "enum": [
           "Automatic",
@@ -4089,6 +4162,48 @@
           "StartTls",
           "ImplicitTls"
         ]
+      },
+      "StorageReportResponse": {
+        "required": [
+          "windowStart",
+          "windowEnd",
+          "logTableBytes",
+          "traceTableBytes",
+          "services"
+        ],
+        "type": "object",
+        "properties": {
+          "windowStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "logTableBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "traceTableBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceStorageDto"
+            }
+          }
+        }
       },
       "SubscriptionsDto": {
         "required": [
@@ -4399,6 +4514,9 @@
     },
     {
       "name": "MailSettingsEndpoints"
+    },
+    {
+      "name": "ReportStorageEndpoint"
     },
     {
       "name": "SearchLogsEndpoint"

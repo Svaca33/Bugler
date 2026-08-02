@@ -9,4 +9,7 @@ public static class Capabilities
 {
     /// <summary>Changing how the unattended watch behaves: Sensitivity, Quiet Windows, the Chat Webhook.</summary>
     public const string ConfigureAlerting = "ConfigureAlerting";
+
+    /// <summary>Reading what the stored telemetry costs: each Service's Footprint and Ingest Rate.</summary>
+    public const string InspectStorage = "InspectStorage";
 }

@@ -12,7 +12,7 @@
 
 ## Relationships
 
-- **Ingestion → Registry**: Ingestion asks Registry to validate an API key (key → ServiceId) and reads effective retention per service when purging. Nothing else crosses this boundary.
+- **Ingestion → Registry**: Ingestion asks Registry to validate an API key (key → ServiceId) and reads effective retention per service — when purging, and when reporting each Service's storage Footprint beside the number the purge works from (ADR 0017). Nothing else crosses this boundary.
 - **Exploration → Access**: Exploration asks Access for the set of applications the current user may read; every query is constrained by that set.
 - **Exploration → Registry**: Exploration reads the catalog (application and service names, and the facets a Source Filter offers) for display and filter suggestions.
 - **Alerting → Registry**: Alerting reads the catalog to name the Service an Episode belongs to and hangs its detection settings on Applications and Services.

@@ -3,9 +3,11 @@ using Bugler.Ingestion.ObserveReleases;
 using Bugler.Ingestion.PurgeExpiredTelemetry;
 using Bugler.Ingestion.ReceiveOtlpLogs;
 using Bugler.Ingestion.ReceiveOtlpTraces;
+using Bugler.Ingestion.ReportStorageFootprint;
 using Bugler.Ingestion.Storage;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -52,6 +54,18 @@ public static class IngestionModule
     {
         endpoints.MapPost("/v1/logs", IngestLogsHttpEndpoint.Handle);
         endpoints.MapPost("/v1/traces", IngestTracesHttpEndpoint.Handle);
+        return endpoints;
+    }
+
+    /// <summary>
+    /// The storage report behind the admin's Storage view. The Host mounts it and names the
+    /// capability it requires — authorization vocabulary is Access's, and Ingestion may not
+    /// borrow it (the context map gives the two no relationship).
+    /// </summary>
+    public static IEndpointRouteBuilder MapStorageReport(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGet("", ReportStorageEndpoint.Handle)
+            .Produces<StorageReportResponse>();
         return endpoints;
     }
 

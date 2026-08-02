@@ -468,6 +468,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StorageReportResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/logs": {
         parameters: {
             query?: never;
@@ -2219,17 +2254,6 @@ export interface components {
             environment: string;
             name: string;
         };
-        ChangePasswordRequest: {
-            currentPassword: string;
-            newPassword: string;
-        };
-        ChatAlertDto: {
-            /** Format: date-time */
-            deliveredAt: null | string;
-        };
-        ChatWebhookDto: {
-            domain: string;
-        };
         CreateApplicationRequest: {
             name: string;
         };
@@ -2354,6 +2378,17 @@ export interface components {
         HealthCheckProbeDto: {
             alive: boolean;
             detail: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        ChatAlertDto: {
+            /** Format: date-time */
+            deliveredAt: null | string;
+        };
+        ChatWebhookDto: {
+            domain: string;
         };
         IssuedApiKeyDto: {
             /** Format: uuid */
@@ -2555,6 +2590,12 @@ export interface components {
             serviceId: string;
             off: boolean;
         };
+        ServiceStorageDto: {
+            /** Format: uuid */
+            serviceId: string;
+            logs: components["schemas"]["SignalStorageDto"];
+            traces: components["schemas"]["SignalStorageDto"];
+        };
         ServiceVolumeDto: {
             /** Format: uuid */
             serviceId: string;
@@ -2573,12 +2614,12 @@ export interface components {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
         };
-        SetChatWebhookRequest: {
-            url: null | string;
-        };
         SetFingerprintQuietWindowRequest: {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+        };
+        SetChatWebhookRequest: {
+            url: null | string;
         };
         SetRetentionRequest: {
             /** Format: int32 */
@@ -2604,8 +2645,27 @@ export interface components {
             password: string;
             displayName: null | string;
         };
+        SignalStorageDto: {
+            /** Format: int64 */
+            footprintBytes: number | string;
+            /** Format: int32 */
+            retentionDays: number | string;
+            /** Format: int64 */
+            windowBytes: number | string;
+        };
         /** @enum {unknown} */
         SmtpSecurity: "Automatic" | "None" | "StartTls" | "ImplicitTls";
+        StorageReportResponse: {
+            /** Format: date-time */
+            windowStart: string;
+            /** Format: date-time */
+            windowEnd: string;
+            /** Format: int64 */
+            logTableBytes: number | string;
+            /** Format: int64 */
+            traceTableBytes: number | string;
+            services: components["schemas"]["ServiceStorageDto"][];
+        };
         SubscriptionsDto: {
             applicationIds: string[];
             serviceIds: string[];

@@ -1,4 +1,5 @@
 using Bugler.Access;
+using Bugler.Access.Contracts;
 using Bugler.Alerting;
 using Bugler.Exploration;
 using Bugler.Host;
@@ -92,6 +93,14 @@ mailAdmin.MapPut("/settings", MailSettingsEndpoints.Save)
     .ProducesProblem(StatusCodes.Status400BadRequest);
 mailAdmin.MapDelete("/settings", MailSettingsEndpoints.Reset)
     .Produces<MailSettingsDto>();
+
+// What the stored telemetry costs, from the context that stores it (ADR 0017): each Service's
+// Footprint and Ingest Rate beside the Effective Retention its purge works from. The group is
+// mounted here because the capability name is Access's and the handler is Ingestion's, and only
+// the Host may know both.
+appSurface.MapGroup("/api/admin/storage")
+    .RequireAuthorization(Capabilities.InspectStorage)
+    .MapStorageReport();
 
 appSurface.MapExploration();
 appSurface.MapAccess();

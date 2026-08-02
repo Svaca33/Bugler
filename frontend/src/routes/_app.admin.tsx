@@ -4,10 +4,11 @@ import { UsersAdminPage } from "@/features/access/UsersAdminPage";
 import { useCurrentUser } from "@/features/access/useAuth";
 import { CatalogAdminPage } from "@/features/registry/CatalogAdminPage";
 import { ServerAdminPage } from "@/features/server/ServerAdminPage";
+import { StorageAdminPage } from "@/features/storage/StorageAdminPage";
 
-type AdminSection = "topology" | "people" | "server";
+type AdminSection = "topology" | "storage" | "people" | "server";
 
-const SECTIONS: AdminSection[] = ["topology", "people", "server"];
+const SECTIONS: AdminSection[] = ["topology", "storage", "people", "server"];
 
 export const Route = createFileRoute("/_app/admin")({
   validateSearch: (search: Record<string, unknown>): { section: AdminSection } => ({
@@ -43,6 +44,11 @@ function AdminRoute() {
             onClick={() => navigate({ search: { section: "topology" }, replace: true })}
           />
           <Tab
+            label="Storage"
+            active={section === "storage"}
+            onClick={() => navigate({ search: { section: "storage" }, replace: true })}
+          />
+          <Tab
             label="People"
             active={section === "people"}
             onClick={() => navigate({ search: { section: "people" }, replace: true })}
@@ -57,6 +63,7 @@ function AdminRoute() {
 
       <div className="min-h-0 flex-1">
         {section === "topology" && <CatalogAdminPage />}
+        {section === "storage" && <StorageAdminPage />}
         {section === "people" && <UsersAdminPage />}
         {section === "server" && <ServerAdminPage />}
       </div>

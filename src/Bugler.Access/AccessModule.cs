@@ -76,7 +76,8 @@ public static class AccessModule
             .AddPolicy("Admin", policy => policy.RequireRole(AuthEndpoints.AdminRole))
             // Capabilities name the deed, not the doer (ADR 0015). Both spellings coexist while
             // the older endpoints still ask for the role directly.
-            .AddPolicy(Capabilities.ConfigureAlerting, policy => policy.RequireRole(AuthEndpoints.AdminRole));
+            .AddPolicy(Capabilities.ConfigureAlerting, policy => policy.RequireRole(AuthEndpoints.AdminRole))
+            .AddPolicy(Capabilities.InspectStorage, policy => policy.RequireRole(AuthEndpoints.AdminRole));
 
         return services;
     }
