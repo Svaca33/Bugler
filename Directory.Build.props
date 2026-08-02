@@ -20,8 +20,8 @@
 
       A build with no count passed in is a local one, and says so by being .0.
     -->
-    <VersionPrefix>0.11</VersionPrefix>
-    <VersionPatchBase>102</VersionPatchBase>
+    <VersionPrefix>0.12</VersionPrefix>
+    <VersionPatchBase>104</VersionPatchBase>
     <BuildHeight Condition="'$(BuildHeight)' == ''">0</BuildHeight>
     <Version>$(VersionPrefix).$(BuildHeight)</Version>
   </PropertyGroup>
