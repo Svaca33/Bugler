@@ -17,9 +17,16 @@ const DAY = 24 * HOUR;
 const at = (day: number, hour: number, minute = 0, second = 0) =>
   new Date(2026, 6, day, hour, minute, second).toISOString();
 
-const oneHour: VolumeWindow = { from: at(29, 13, 3, 20), to: at(29, 14, 3, 20), widthMs: 30_000 };
-const oneWeek: VolumeWindow = { from: at(23, 9), to: at(30, 9), widthMs: 2 * HOUR };
-const oneMonth: VolumeWindow = { from: at(1, 0), to: at(30, 0), widthMs: DAY };
+// `now` sits past the top of these windows, so only the tests that are about the elapsing Bucket
+// have to think about it — every other edge is the window's doing.
+const oneHour: VolumeWindow = {
+  from: at(29, 13, 3, 20),
+  to: at(29, 14, 3, 20),
+  now: at(29, 15, 0),
+  widthMs: 30_000,
+};
+const oneWeek: VolumeWindow = { from: at(23, 9), to: at(30, 9), now: at(31, 9), widthMs: 2 * HOUR };
+const oneMonth: VolumeWindow = { from: at(1, 0), to: at(30, 0), now: at(31, 0), widthMs: DAY };
 
 test("marks the Bucket the window opened inside as leading", () => {
   expect(bucketEdge(at(29, 13, 3, 0), oneHour)).toBe("leading");
@@ -32,10 +39,38 @@ test("marks the Bucket that reaches past the window as trailing", () => {
 });
 
 test("leaves both edges whole when the window falls on Bucket boundaries", () => {
-  const aligned: VolumeWindow = { from: at(29, 13), to: at(29, 14), widthMs: MINUTE };
+  const aligned: VolumeWindow = { from: at(29, 13), to: at(29, 14), now: at(29, 15), widthMs: MINUTE };
 
   expect(bucketEdge(at(29, 13), aligned)).toBe(null);
   expect(bucketEdge(at(29, 13, 59), aligned)).toBe(null);
+});
+
+test("marks the Bucket holding now as elapsing, however the window ends", () => {
+  // The window's top is stretched to cover the newest record, so the Bucket still filling closes
+  // exactly on `to` and would otherwise read as a finished one that simply had less traffic.
+  const following: VolumeWindow = {
+    from: at(29, 13, 3, 20),
+    to: at(29, 14, 3, 30),
+    now: at(29, 14, 3, 25),
+    widthMs: 30_000,
+  };
+
+  expect(bucketEdge(at(29, 14, 3, 0), following)).toBe("elapsing");
+  expect(bucketEdge(at(29, 14, 2, 30), following)).toBe(null);
+});
+
+test("a Bucket beyond now is whole rather than elapsing", () => {
+  // A sender whose clock ran ahead stretches the window past the server's own; those Buckets are
+  // counted in full and only look odd, so nothing about them is dimmed.
+  const aheadOfTheClock: VolumeWindow = {
+    from: at(29, 13),
+    to: at(29, 15),
+    now: at(29, 14),
+    widthMs: 30_000,
+  };
+
+  expect(bucketEdge(at(29, 14, 30, 0), aheadOfTheClock)).toBe(null);
+  expect(bucketEdge(at(29, 14, 0, 0), aheadOfTheClock)).toBe("elapsing");
 });
 
 test("a window inside one day needs no date on the axis, one crossing midnight does", () => {
@@ -61,22 +96,22 @@ test("an axis label carries only what the window makes ambiguous", () => {
 test("tells a Bucket still elapsing apart from one the window cut", () => {
   const start = at(29, 14, 3, 0);
 
-  expect(describeBucket(start, oneHour, "trailing", false)).toContain("still elapsing");
-  expect(describeBucket(start, oneHour, "trailing", true)).toContain("cut by the window");
-  expect(describeBucket(start, oneHour, "leading", false)).toContain("only partly inside");
-  expect(describeBucket(start, oneHour, null, false)).not.toContain("·");
+  expect(describeBucket(start, oneHour, "elapsing")).toContain("still elapsing");
+  expect(describeBucket(start, oneHour, "trailing")).toContain("cut by the window");
+  expect(describeBucket(start, oneHour, "leading")).toContain("only partly inside");
+  expect(describeBucket(start, oneHour, null)).not.toContain("·");
 });
 
 test("a tooltip repeats the date only when the Bucket crosses midnight", () => {
   // Inside a single day the date is on neither end.
-  expect(describeBucket(at(29, 14), oneHour, null, false)).not.toContain("29");
+  expect(describeBucket(at(29, 14), oneHour, null)).not.toContain("29");
 
   // Across a week both ends sit on the same day, so it is named once.
-  const sameDay = describeBucket(at(25, 14), oneWeek, null, false);
+  const sameDay = describeBucket(at(25, 14), oneWeek, null);
   expect(sameDay.match(/25/g)).toHaveLength(1);
 
   // A whole-day Bucket ends on the next day, which has to be spelled out.
-  const overnight = describeBucket(at(12, 0), oneMonth, null, false);
+  const overnight = describeBucket(at(12, 0), oneMonth, null);
   expect(overnight).toContain("12");
   expect(overnight).toContain("13");
 });

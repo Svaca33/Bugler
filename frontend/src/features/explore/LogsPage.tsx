@@ -1,5 +1,5 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { api, type LogRecord } from "@/api/client";
 import { useCatalog } from "@/api/queries";
@@ -12,6 +12,8 @@ import { severityClass, severityFilterOptions, severityLabel, severityRailClass 
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
 import { toQueryParams, type AttributeFilter } from "./attributeFilters";
+import { FOLLOW_PAGE, ROW_HEIGHT } from "./follow";
+import { useFollow } from "./useFollow";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { FilterGroup, FilterRail } from "@/components/ui/filter-rail";
 import { FilterSelect } from "@/components/ui/filter-select";
@@ -33,6 +35,24 @@ const PAGE_SIZE = 100;
 
 const GRID = "grid grid-cols-[3px_172px_66px_196px_96px_1fr] items-center gap-3.5 px-5";
 
+/** Everything the Filter narrows by, in the shape the API takes it — the list, its total and
+ *  Follow's own ticks all read it from here so none of them can drift from the others. */
+function logQuery(filters: LogFilters) {
+  return {
+    applicationId: filters.applicationId,
+    namespace: filters.namespace,
+    environment: filters.environment,
+    service: filters.service,
+    severityMin: filters.severityMin,
+    range: filters.range,
+    from: filters.from,
+    to: filters.to,
+    q: filters.q,
+    traceId: filters.traceId,
+    ...toQueryParams(filters.filters ?? []),
+  };
+}
+
 export function LogsPage(props: {
   filters: LogFilters;
   onChange: (filters: LogFilters) => void;
@@ -42,8 +62,10 @@ export function LogsPage(props: {
 }) {
   const { filters, onChange, selectedLogId, onSelectLog } = props;
   const catalog = useCatalog();
-  const [live, setLive] = useState(false);
+  const queryClient = useQueryClient();
+  const [follow, setFollow] = useState(false);
   const [search, setSearch] = useState(filters.q ?? "");
+  const scroller = useRef<HTMLDivElement>(null);
 
   const logs = useInfiniteQuery({
     queryKey: ["logs", filters],
@@ -51,17 +73,7 @@ export function LogsPage(props: {
       const { data, error } = await api.GET("/api/logs", {
         params: {
           query: {
-            applicationId: filters.applicationId,
-            namespace: filters.namespace,
-            environment: filters.environment,
-            service: filters.service,
-            severityMin: filters.severityMin,
-            range: filters.range,
-            from: filters.from,
-            to: filters.to,
-            q: filters.q,
-            traceId: filters.traceId,
-            ...toQueryParams(filters.filters ?? []),
+            ...logQuery(filters),
             limit: PAGE_SIZE,
             before: pageParam?.before,
             beforeId: pageParam?.beforeId,
@@ -78,38 +90,65 @@ export function LogsPage(props: {
         ? { before: last.timestamp, beforeId: Number(last.id) }
         : undefined;
     },
-    refetchInterval: live ? 5000 : false,
   });
 
+  const paged = logs.data?.pages.flatMap(page => page.items) ?? [];
+
+  // Follow reads forward from the newest record on screen. It is a second list rather than more
+  // pages of this one: it holds only what it has been handed, in the order it arrived.
+  const followed = useFollow({
+    enabled: follow,
+    key: JSON.stringify(logQuery(filters)),
+    seed: () => paged,
+    fetchNewer: async (cursor, signal) => {
+      const { data, error } = await api.GET("/api/logs", {
+        signal,
+        params: { query: { ...logQuery(filters), limit: FOLLOW_PAGE, ...cursor } },
+      });
+      if (error !== undefined) throw new Error("Failed to load logs");
+      return data.items;
+    },
+    onGiveUp: () => setFollow(false),
+  });
+
+  // New records land above the viewport, so the browser would push everything the reader is looking
+  // at downwards. Rows are one fixed height, which makes the correction exact rather than nearly.
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (element === null || followed.added === 0 || element.scrollTop === 0) return;
+    element.scrollTop += followed.added * ROW_HEIGHT;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one correction per tick, not per render
+  }, [followed.pulse]);
+
+  const startFollowing = () => {
+    setFollow(true);
+    // Following is a claim to be watching the end of the stream, and a Filter that ends before the
+    // stream does contradicts it. Only the top goes; where the window opens is still the reader's.
+    if (filters.to !== undefined) onChange({ ...filters, to: undefined });
+  };
+
+  const stopFollowing = () => {
+    setFollow(false);
+    // A followed list passed over records without saying so, so it must not be paged on afterwards:
+    // what replaces it is an ordinary first page of the same Filter, contiguous as far as it goes.
+    void queryClient.resetQueries({ queryKey: ["logs", filters] });
+  };
+
   // The total belongs to the Filter, not to how far the reader has paged, so it is asked once per
-  // Filter rather than once per page — and not at all while Live keeps moving the answer.
+  // Filter rather than once per page — and not at all while Follow keeps moving the answer.
   const total = useQuery({
     queryKey: ["logs-count", filters],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/logs/count", {
-        params: {
-          query: {
-            applicationId: filters.applicationId,
-            namespace: filters.namespace,
-            environment: filters.environment,
-            service: filters.service,
-            severityMin: filters.severityMin,
-            range: filters.range,
-            from: filters.from,
-            to: filters.to,
-            q: filters.q,
-            traceId: filters.traceId,
-            ...toQueryParams(filters.filters ?? []),
-          },
-        },
+        params: { query: logQuery(filters) },
       });
       if (error !== undefined) throw new Error("Failed to count log records");
       return data;
     },
-    enabled: !live,
+    enabled: !follow,
   });
 
-  const items = logs.data?.pages.flatMap(page => page.items) ?? [];
+  const items = follow ? followed.items : paged;
   const applications = catalog.data?.applications ?? [];
   const labels = serviceLabels(applications);
 
@@ -133,10 +172,11 @@ export function LogsPage(props: {
 
   // Never "N records": that reads as the total while it only ever counts what has been paged in.
   // Past the cap the total reads "1000+" — the count stops there rather than scanning a window of
-  // millions to put an exact digit on the end of a number read as "a lot" either way.
-  const counted = live
-    ? `${items.length} loaded`
-    : total.data === undefined
+  // millions to put an exact digit on the end of a number read as "a lot" either way. A followed
+  // list is counted nowhere at all: it is a window on what is arriving rather than an account of
+  // it, and what it declines to say it declines to say in numbers too (Exploration ADR 0004).
+  const counted =
+    total.data === undefined
       ? `${items.length} loaded`
       : `${items.length} of ${total.data.total}${total.data.capped ? "+" : ""} records`;
 
@@ -261,22 +301,21 @@ export function LogsPage(props: {
         >
           <div className="flex items-center gap-3.5 px-5 py-3">
             <h1 className="text-sm font-semibold tracking-[-0.1px]">Log records</h1>
-            {live && (
-              <span className="flex items-center gap-1.5 font-mono text-[11px] text-primary">
-                <span className="size-1.5 animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
-                refreshing every 5 s
-              </span>
+            {/* The one thing a followed list says about itself: that it is still running. Without
+                it a stream nothing is arriving into looks the same as one that has stopped. */}
+            {follow && (
+              <span className="size-1.5 animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-primary" />
             )}
-            {/* Live is not a filter — it is how often this list refetches, so it lives on the list. */}
+            {/* Follow is not a filter — it is how this list is being read, so it lives on the list. */}
             <div className="ml-auto flex items-center gap-3">
-              <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>
+              {!follow && <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>}
               <Button
                 type="button"
-                variant={live ? "default" : "outline"}
+                variant={follow ? "default" : "outline"}
                 size="sm"
-                onClick={() => setLive(!live)}
+                onClick={() => (follow ? stopFollowing() : startFollowing())}
               >
-                {live ? "Live ●" : "Live"}
+                {follow ? "Follow ●" : "Follow"}
               </Button>
             </div>
           </div>
@@ -285,15 +324,18 @@ export function LogsPage(props: {
               where in time you are, and it is needed most while paging back through older records. */}
           <LogVolumeChart
             filters={filters}
-            live={live}
+            follow={follow}
+            pulse={followed.pulse}
             onNarrow={time => {
               // Narrowing to a stretch of the past is the opposite of watching what arrives.
-              setLive(false);
+              if (follow) stopFollowing();
               onChange({ ...filters, ...time });
             }}
           />
 
-          <div className="min-h-0 flex-1 overflow-auto">
+          {/* Scroll anchoring is off because the correction above is exact and the browser's is a
+              guess; two of them would fight over the same pixels. */}
+          <div ref={scroller} className="min-h-0 flex-1 overflow-auto [overflow-anchor:none]">
             <div
               className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
             >
@@ -372,17 +414,22 @@ export function LogsPage(props: {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 border-t border-[#17293D] px-5 py-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!logs.hasNextPage || logs.isFetchingNextPage}
-              onClick={() => logs.fetchNextPage()}
-            >
-              {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
-            </Button>
-            <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
-          </div>
+          {/* Paging on under a followed list would join two lists that are not one: below the
+              oldest record Follow was handed there is nothing to carry on from. Leaving Follow is
+              what gives the reader a list to page. */}
+          {!follow && (
+            <div className="flex items-center gap-3 border-t border-[#17293D] px-5 py-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!logs.hasNextPage || logs.isFetchingNextPage}
+                onClick={() => logs.fetchNextPage()}
+              >
+                {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
+              </Button>
+              <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
+            </div>
+          )}
         </ResizablePanel>
 
         {selected !== null && (

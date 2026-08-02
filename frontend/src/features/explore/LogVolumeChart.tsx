@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { api } from "@/api/client";
 import {
@@ -45,12 +45,21 @@ const CHART_CONFIG: ChartConfig = Object.fromEntries(
 /** Tall enough for a stack to be readable, short enough not to eat the list. */
 const BAR_AREA = "h-[176px]";
 
+/**
+ * The least time between two summaries while Follow runs. The Volume genuinely counts every Log
+ * Record in the window, so it is the one read on the page that cannot be asked for at the list's
+ * pace; this keeps it no dearer than the timer it replaced.
+ */
+const VOLUME_MIN_INTERVAL_MS = 5000;
+
 export function LogVolumeChart(props: {
   filters: VolumeFilters;
-  live: boolean;
+  follow: boolean;
+  /** Rises on every tick of Follow that brought Log Records; the chart moves with it, not a timer. */
+  pulse: number;
   onNarrow: (time: TimeFilterValue) => void;
 }) {
-  const { filters, live, onNarrow } = props;
+  const { filters, follow, pulse, onNarrow } = props;
   // Both ends are Bucket starts, so committing them is already snapped to Bucket edges.
   const [drag, setDrag] = useState<{ from: string; to: string } | null>(null);
 
@@ -77,10 +86,26 @@ export function LogVolumeChart(props: {
       if (error !== undefined) throw new Error("Failed to summarize log volume");
       return data;
     },
-    refetchInterval: live ? 5000 : false,
     // Holding the last window while the next one loads is what keeps the list from jumping.
     placeholderData: previous => previous,
   });
+
+  // Follow's own tick is the trigger: the chart summarizes because records arrived, not because
+  // five seconds went by, so a quiet stream costs nothing and a busy one never runs the two apart.
+  const refetch = useRef(volume.refetch);
+  refetch.current = volume.refetch;
+  const summarizedAt = useRef(0);
+  useEffect(() => {
+    if (!follow || pulse === 0) return;
+    const timer = setTimeout(
+      () => {
+        summarizedAt.current = Date.now();
+        void refetch.current();
+      },
+      Math.max(0, VOLUME_MIN_INTERVAL_MS - (Date.now() - summarizedAt.current)),
+    );
+    return () => clearTimeout(timer);
+  }, [follow, pulse]);
 
   if (volume.isError) {
     return (
@@ -104,8 +129,8 @@ export function LogVolumeChart(props: {
     );
   }
 
-  const { from, to, buckets } = volume.data;
-  const resolved: VolumeWindow = { from, to, widthMs: durationMs(volume.data.bucket) ?? 0 };
+  const { from, to, now, buckets } = volume.data;
+  const resolved: VolumeWindow = { from, to, now, widthMs: durationMs(volume.data.bucket) ?? 0 };
   const edgeOf = (start: string) => bucketEdge(start, resolved);
   // A Band the severity threshold excludes is empty by construction, so it gets neither a stack
   // segment nor a legend entry — the chart shows the list's set and only the list's set.
@@ -113,9 +138,9 @@ export function LogVolumeChart(props: {
 
   // Holding the previous window is what keeps the list still, but it also makes a slow reload look
   // like nothing happened: the old chart simply sits there for seconds and then swaps. At a
-  // retention's width summarizing takes that long, so the wait has to be visible. Not while Live is
-  // on — that reloads every five seconds by design, and a spinner blinking on every tick is noise.
-  const reloading = volume.isFetching && !live;
+  // retention's width summarizing takes that long, so the wait has to be visible. Not while Follow
+  // is on — that resummarizes by design, and a spinner blinking on every tick is noise.
+  const reloading = volume.isFetching && !follow;
 
   const commit = () => {
     const [lower, upper] = drag === null ? [] : [drag.from, drag.to].sort();
@@ -184,7 +209,7 @@ export function LogVolumeChart(props: {
                 <ChartTooltipContent
                   labelFormatter={label => (
                     <span className="font-mono text-[11px]">
-                      {describeBucket(String(label), resolved, edgeOf(String(label)), filters.to !== undefined)}
+                      {describeBucket(String(label), resolved, edgeOf(String(label)))}
                     </span>
                   )}
                 />

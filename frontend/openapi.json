@@ -431,6 +431,26 @@
             }
           },
           {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "afterId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "schema": {
@@ -2385,6 +2405,47 @@
           }
         }
       },
+      "ChangePasswordRequest": {
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatAlertDto": {
+        "required": [
+          "deliveredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ChatWebhookDto": {
+        "required": [
+          "domain"
+        ],
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          }
+        }
+      },
       "CreateApplicationRequest": {
         "required": [
           "name"
@@ -2879,47 +2940,6 @@
           }
         }
       },
-      "ChangePasswordRequest": {
-        "required": [
-          "currentPassword",
-          "newPassword"
-        ],
-        "type": "object",
-        "properties": {
-          "currentPassword": {
-            "type": "string"
-          },
-          "newPassword": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatAlertDto": {
-        "required": [
-          "deliveredAt"
-        ],
-        "type": "object",
-        "properties": {
-          "deliveredAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        }
-      },
-      "ChatWebhookDto": {
-        "required": [
-          "domain"
-        ],
-        "type": "object",
-        "properties": {
-          "domain": {
-            "type": "string"
-          }
-        }
-      },
       "IssuedApiKeyDto": {
         "required": [
           "id",
@@ -3182,6 +3202,7 @@
         "required": [
           "from",
           "to",
+          "now",
           "bucket",
           "buckets"
         ],
@@ -3192,6 +3213,10 @@
             "format": "date-time"
           },
           "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "now": {
             "type": "string",
             "format": "date-time"
           },
@@ -3702,6 +3727,20 @@
           }
         }
       },
+      "SetChatWebhookRequest": {
+        "required": [
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "SetFingerprintQuietWindowRequest": {
         "required": [
           "quietWindowMinutes"
@@ -3716,20 +3755,6 @@
               "string"
             ],
             "format": "int32"
-          }
-        }
-      },
-      "SetChatWebhookRequest": {
-        "required": [
-          "url"
-        ],
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },

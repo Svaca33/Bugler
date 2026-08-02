@@ -58,6 +58,8 @@ internal static class SearchLogsEndpoint
         string[]? res,
         DateTime? before,
         long? beforeId,
+        DateTime? after,
+        long? afterId,
         int? limit,
         ScopeResolver scope,
         NpgsqlDataSource dataSource,
@@ -86,6 +88,19 @@ internal static class SearchLogsEndpoint
             conditions.Add("(timestamp, id) < (@before, @beforeId)");
             command.Parameters.AddWithValue("before", Sql.EnsureUtc(beforeTime));
             command.Parameters.AddWithValue("beforeId", beforeIdValue);
+        }
+
+        // The cursor Follow reads forward from: everything newer than the newest record it holds.
+        // Ordering and LIMIT are the ones below, so a burst wider than the page yields the newest
+        // records of it and passes over the rest — the ceiling on the rate is the LIMIT itself,
+        // and it stays silent by design (Exploration ADR 0004). Late arrivals are the same story
+        // from the other end: `timestamp` is the sender's stamp, so telemetry that reaches Bugler
+        // after this cursor but stamped before it sits below the cursor forever.
+        if (after is { } afterTime && afterId is { } afterIdValue)
+        {
+            conditions.Add("(timestamp, id) > (@after, @afterId)");
+            command.Parameters.AddWithValue("after", Sql.EnsureUtc(afterTime));
+            command.Parameters.AddWithValue("afterId", afterIdValue);
         }
 
         var take = Math.Clamp(limit ?? 100, 1, 1000);

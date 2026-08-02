@@ -3,7 +3,7 @@ namespace Bugler.Exploration.Querying;
 /// <summary>
 /// How wide one Bucket of a Volume is. Picked from a fixed ladder rather than by dividing the
 /// window into a fixed count: a divided window puts the edges on arbitrary instants and moves them
-/// every time a Relative Range slides, so the whole chart re-bins several times a minute under Live
+/// every time a Relative Range slides, so the whole chart re-bins several times a minute under Follow
 /// and no bar can be compared with the one beside it. A ladder rung keeps its edges still (ADR 0003).
 /// </summary>
 public static class BucketWidth

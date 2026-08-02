@@ -10,25 +10,41 @@
 const MINUTE = 60_000;
 const DAY = 86_400_000;
 
-/** The Resolved Window a Volume came back with, and the width its Buckets share. */
+/**
+ * The Resolved Window a Volume came back with, the width its Buckets share, and the instant the
+ * server resolved it at. `now` is the server's reading and never the viewer's: their clocks
+ * disagree, and the whole point of it here is to be believed.
+ */
 export interface VolumeWindow {
   from: string;
   to: string;
+  now: string;
   widthMs: number;
 }
 
-/** A Bucket the window cut short: `leading` lost data to it, `trailing` has time still to come. */
-export type BucketEdge = "leading" | "trailing" | null;
+/**
+ * A Bucket that renders lower than the traffic in it deserves: `leading` and `trailing` are cut by
+ * the window, `elapsing` has simply not finished happening yet.
+ */
+export type BucketEdge = "leading" | "trailing" | "elapsing" | null;
 
 /**
  * Buckets sit on multiples of their width, but a Resolved Window rarely does, so the first and
  * last Bucket of a Volume are usually only partly inside it. They render lower through no fault
  * of the traffic, which is why the chart has to mark them rather than let them read as a dip.
+ *
+ * The Bucket holding `now` is the case that cannot be read off the window at all. Its top is
+ * stretched to cover the newest record, so a Bucket still filling closes exactly on `to` and looks
+ * finished — which under Follow is the state the chart is in permanently, always ending on a dip
+ * that is only the clock.
  */
 export function bucketEdge(start: string, window: VolumeWindow): BucketEdge {
   const at = new Date(start).getTime();
+  const closes = at + window.widthMs;
+  const now = new Date(window.now).getTime();
   if (at < new Date(window.from).getTime()) return "leading";
-  if (at + window.widthMs > new Date(window.to).getTime()) return "trailing";
+  if (at <= now && now < closes) return "elapsing";
+  if (closes > new Date(window.to).getTime()) return "trailing";
   return null;
 }
 
@@ -60,15 +76,11 @@ export function bucketLabel(start: string, window: VolumeWindow): string {
 }
 
 /**
- * A trailing Bucket has two causes that look identical and mean the opposite: an Absolute Range
- * cut it, so nothing more is coming, or it has simply not finished elapsing, so it will grow.
+ * A short Bucket at the top has two causes that look identical and mean the opposite: the window
+ * cut it, so nothing more is coming, or it has not finished elapsing, so it will grow. Which one
+ * it is comes from the window's own `now` rather than from a guess about the Time Filter.
  */
-export function describeBucket(
-  start: string,
-  window: VolumeWindow,
-  edge: BucketEdge,
-  boundedAbove: boolean,
-): string {
+export function describeBucket(start: string, window: VolumeWindow, edge: BucketEdge): string {
   const opened = new Date(start);
   const closed = new Date(opened.getTime() + window.widthMs);
   const dated = axisNeedsDate(window);
@@ -79,7 +91,8 @@ export function describeBucket(
     ` – ${dated && !sameDay ? `${day(closed)} ` : ""}${clock(closed, window.widthMs)}`;
 
   if (edge === "leading") return `${span} · only partly inside the window`;
-  if (edge === "trailing") return `${span} · ${boundedAbove ? "cut by the window" : "still elapsing"}`;
+  if (edge === "elapsing") return `${span} · still elapsing`;
+  if (edge === "trailing") return `${span} · cut by the window`;
   return span;
 }
 

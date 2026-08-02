@@ -10,13 +10,13 @@ Bucket width comes from a fixed ladder — `1s, 5s, 10s, 30s, 1m, 5m, 15m, 30m, 
 
 - **Clip the axis at `now`** — simplest, and wrong for the same reason ADR 0002 gives: it makes future-stamped records invisible in the chart while they sit at the head of the list.
 - **Draw the axis over the data extent only** — a "last hour" showing traffic in its final five minutes would render a five-minute chart, and the fifty-five silent minutes, usually the interesting part, would simply not exist.
-- **A fixed number of Buckets stretched to fit the window** — edges then slide with every refetch of a Relative Range, re-binning the whole chart several times a minute under Live. A Volume chart is read by comparing bars to each other; bars that re-bin under the reader have nothing stable to be compared against.
+- **A fixed number of Buckets stretched to fit the window** — edges then slide with every refetch of a Relative Range, re-binning the whole chart several times a minute under Follow. A Volume chart is read by comparing bars to each other; bars that re-bin under the reader have nothing stable to be compared against.
 - **Widen the query to whole Buckets** so the edges are never cut — makes the end bars full, at the cost of counting Log Records the list does not show. Dropping the cut Buckets instead hides Log Records the list does show. Both break the one property the chart is built on: it is the same set as the list, aggregated.
 
 ## Consequences
 
 - Cut leading and trailing Buckets are reported as they are; the client dims them and says in the tooltip whether the Bucket was cut by the window or has simply not finished elapsing. Those two are visually identical and mean opposite things.
-- Because edges stand still while a Relative Range slides beneath them, Live only ever grows the last bar.
+- Because edges stand still while a Relative Range slides beneath them, Follow only ever grows the last bar.
 - The ladder has to reach `30d` so that a Filter bounding nothing still terminates at a readable number of Buckets.
 - The response is dense — every Bucket including the empty ones — so no client can accidentally collapse a gap by forgetting to synthesise the missing ones.
 - Volume runs under its own `statement_timeout`. On a window too wide to aggregate, the chart says so and the list still answers; the alternative is a page that hangs on the cheap query because the expensive one is still running.

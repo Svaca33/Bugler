@@ -492,6 +492,8 @@ export interface paths {
                     res?: string[];
                     before?: string;
                     beforeId?: number | string;
+                    after?: string;
+                    afterId?: number | string;
                     limit?: number | string;
                 };
                 header?: never;
@@ -2172,6 +2174,17 @@ export interface components {
             environment: string;
             name: string;
         };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        ChatAlertDto: {
+            /** Format: date-time */
+            deliveredAt: null | string;
+        };
+        ChatWebhookDto: {
+            domain: string;
+        };
         CreateApplicationRequest: {
             name: string;
         };
@@ -2291,17 +2304,6 @@ export interface components {
             /** Format: uuid */
             applicationId: string;
         };
-        ChangePasswordRequest: {
-            currentPassword: string;
-            newPassword: string;
-        };
-        ChatAlertDto: {
-            /** Format: date-time */
-            deliveredAt: null | string;
-        };
-        ChatWebhookDto: {
-            domain: string;
-        };
         IssuedApiKeyDto: {
             /** Format: uuid */
             id: string;
@@ -2373,6 +2375,8 @@ export interface components {
             from: string;
             /** Format: date-time */
             to: string;
+            /** Format: date-time */
+            now: string;
             bucket: string;
             buckets: components["schemas"]["VolumeBucketDto"][];
         };
@@ -2492,12 +2496,12 @@ export interface components {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
         };
+        SetChatWebhookRequest: {
+            url: null | string;
+        };
         SetFingerprintQuietWindowRequest: {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
-        };
-        SetChatWebhookRequest: {
-            url: null | string;
         };
         SetRetentionRequest: {
             /** Format: int32 */

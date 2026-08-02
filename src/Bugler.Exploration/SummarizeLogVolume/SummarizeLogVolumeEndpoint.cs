@@ -10,10 +10,18 @@ namespace Bugler.Exploration.SummarizeLogVolume;
 /// <summary>
 /// The Volume of a query: its Resolved Window, the width every Bucket shares as an ISO-8601
 /// duration, and one entry per Bucket including the empty ones.
+/// <para>
+/// <paramref name="Now"/> is the server instant the window was resolved against. Without it a
+/// viewer cannot tell the Bucket that is still filling from one the window cut short: the window's
+/// top is stretched to cover the newest record, so the Bucket holding it ends exactly at
+/// <paramref name="To"/> and reads as complete while most of it has yet to elapse. Viewers must not
+/// substitute their own clock for this — a Resolved Window is the server's reading, not theirs.
+/// </para>
 /// </summary>
 public sealed record LogVolumeResponse(
     DateTime From,
     DateTime To,
+    DateTime Now,
     string Bucket,
     IReadOnlyList<VolumeBucketDto> Buckets);
 
@@ -76,6 +84,7 @@ internal static class SummarizeLogVolumeEndpoint
             return TypedResults.Ok(new LogVolumeResponse(
                 lower.UtcDateTime,
                 end.UtcDateTime,
+                now.UtcDateTime,
                 XmlConvert.ToString(width),
                 VolumeAggregate.Densify(counted, lower, end, width)));
         }

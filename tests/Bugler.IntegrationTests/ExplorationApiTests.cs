@@ -130,6 +130,35 @@ public sealed class ExplorationApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Follow_reads_forward_from_its_cursor_and_narrows_by_the_same_filter()
+    {
+        var all = await GetAsync<SearchLogsResponse>("/api/logs");
+        var newest = all.Items[0];
+        var oneBehind = all.Items[1];
+
+        // A reader who is up to date is told nothing rather than told again.
+        Assert.Empty((await GetAsync<SearchLogsResponse>(After(newest))).Items);
+
+        // From one behind, only what is newer comes back — never the record the cursor names.
+        Assert.Equal(newest.Id, Assert.Single((await GetAsync<SearchLogsResponse>(After(oneBehind))).Items).Id);
+
+        await IngestOneLogAsync(_harness.ApiKey, "Deploy finished");
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 4);
+
+        var arrived = await GetAsync<SearchLogsResponse>(After(newest));
+        Assert.Equal("Deploy finished", Assert.Single(arrived.Items).Body);
+
+        // Every other criterion still applies: a tick is the list's Filter read forward, not past it.
+        Assert.Empty((await GetAsync<SearchLogsResponse>($"{After(oneBehind)}&namespace=vysocina")).Items);
+        Assert.Empty((await GetAsync<SearchLogsResponse>($"{After(oneBehind)}&severityMin=17")).Items);
+
+        // A burst wider than the page yields its newest, not its oldest: the tail stays at the end
+        // of the stream instead of falling behind it, and says nothing of what it passed over.
+        var capped = await GetAsync<SearchLogsResponse>($"{After(all.Items[^1])}&limit=1");
+        Assert.Equal("Deploy finished", Assert.Single(capped.Items).Body);
+    }
+
+    [Fact]
     public async Task Volume_counts_the_same_records_the_list_shows_split_by_severity_band()
     {
         var volume = await GetAsync<LogVolumeResponse>("/api/logs/volume?range=PT1H");
@@ -161,6 +190,13 @@ public sealed class ExplorationApiTests : IAsyncLifetime
         // The Bucket holding `From` opens on or before it — edges sit on multiples of the width.
         Assert.True(volume.Buckets[0].Start <= volume.From);
         Assert.True(volume.Buckets[0].Start > volume.From - width);
+
+        // `To` is stretched to cover the newest record, so the Bucket holding it closes exactly on
+        // `To` and reads as finished. Only `Now` tells a viewer that it is in fact still filling.
+        Assert.InRange(volume.Now, volume.From, volume.To);
+        Assert.True(
+            volume.Buckets[^1].Start + width > volume.Now,
+            $"the last bucket closed at {volume.Buckets[^1].Start + width:O}, before now {volume.Now:O}");
     }
 
     [Fact]
@@ -174,6 +210,9 @@ public sealed class ExplorationApiTests : IAsyncLifetime
 
         // A window capped at now would hide the anomaly the list deliberately shows (ADR 0002).
         Assert.True(volume.To > now.AddMinutes(30), $"window ended at {volume.To:O}, before the future record");
+        // The window then reaches past the clock, which is the one case where the Buckets at the top
+        // are neither filling nor cut short — they are already whole and simply lie ahead of now.
+        Assert.True(volume.To > volume.Now);
         Assert.Equal(4, volume.Buckets.Sum(b => b.Error + b.Warn + b.Info + b.Debug));
     }
 
@@ -330,6 +369,9 @@ public sealed class ExplorationApiTests : IAsyncLifetime
 
     private static string FilterJson(string value, params string[] path) =>
         Uri.EscapeDataString(JsonSerializer.Serialize(new { path, value }));
+
+    private static string After(LogRecordDto record) =>
+        $"/api/logs?after={Instant(record.Timestamp)}&afterId={record.Id}";
 
     private static string Instant(DateTime utc) =>
         Uri.EscapeDataString(DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToString("O"));
