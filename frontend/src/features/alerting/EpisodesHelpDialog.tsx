@@ -36,25 +36,27 @@ export function EpisodesHelpDialog() {
             How episodes work
           </DialogTitle>
           <DialogDescription>
-            One episode is one kind of trouble in one service — from the log that opens it to the
-            hand that ends it.
+            One episode is one kind of trouble in one service — from what opens it to the hand
+            that ends it.
           </DialogDescription>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-[19px] overflow-auto px-[22px] py-[18px]">
           <section className="flex flex-col gap-[11px]">
-            <SectionLabel>FROM LOG TO ALERT</SectionLabel>
+            <SectionLabel>FROM TROUBLE TO ALERT</SectionLabel>
             <div className="grid grid-cols-[1fr_18px_1fr_18px_1fr_18px_1fr] items-stretch">
-              <StepCard number={1} tint="bg-severity-error/16 text-severity-error" title="A log arrives">
-                An error — or a warning too, if the service&apos;s <Term>sensitivity</Term> says so.
+              <StepCard number={1} tint="bg-severity-error/16 text-severity-error" title="Something goes wrong">
+                An error log — or a <Term>health check</Term> that stops answering, three tries
+                running.
               </StepCard>
               <Arrow />
               <StepCard number={2} tint="bg-severity-warn/16 text-severity-warn" title="It gets a fingerprint">
-                Its message template, variables blanked — the <Term>kind of trouble</Term>.
+                A log&apos;s message template, variables blanked — the <Term>kind of trouble</Term>.
               </StepCard>
               <Arrow />
               <StepCard number={3} tint="bg-severity-warn/16 text-severity-warn" title="An episode opens">
-                Only if none of that kind is open. Otherwise the log just <Term>feeds</Term> it.
+                Only if none of that kind is open. Otherwise it just <Term>feeds</Term> the
+                open one.
               </StepCard>
               <Arrow />
               <StepCard number={4} tint="bg-state-solved/16 text-state-solved" title="One alert goes out">
@@ -79,7 +81,7 @@ export function EpisodesHelpDialog() {
                 <span className="absolute top-[27px] left-0 h-[11px] w-[21%] rounded-md bg-[#E5544A]" />
                 <span className="absolute top-[27px] left-[21%] h-[11px] w-[31%] rounded-r-md border border-l-0 border-dashed border-[#E5544A]/50 bg-[#E5544A]/12" />
                 <span className="absolute top-[5px] left-[21%] w-[31%] text-center font-mono text-[10px] text-[#7D93AA]">
-                  quiet window · no matching log
+                  quiet window · nothing new
                 </span>
                 <span className="absolute top-[26px] left-[53.5%] rounded-[5px] border border-[#E9A43C]/42 bg-[#E9A43C]/14 px-[7px] py-0.5 font-mono text-[9.5px] tracking-[0.08em] whitespace-nowrap text-[#E9A43C]">
                   QUIETED

@@ -40,12 +40,12 @@ public sealed class EpisodeCloser(
             await dbContext.FingerprintQuietWindows.AsNoTracking().ToListAsync(cancellationToken));
 
         var now = DateTimeOffset.UtcNow;
-        var mutedServices = new List<ServiceId>();
+        var mutedByWatch = new Dictionary<Watch, List<ServiceId>>();
 
         foreach (var episode in openEpisodes)
         {
             var reason = CloseDecision.Decide(
-                effective.SensitivityOf(episode.ServiceId),
+                IsWatchOff(episode, effective),
                 episode.AcknowledgedAt is not null,
                 episode.LastMatchAt,
                 effective.QuietWindowOf(episode.ServiceId, episode.Fingerprint),
@@ -54,7 +54,9 @@ public sealed class EpisodeCloser(
             switch (reason)
             {
                 case EpisodeCloseReason.WatchOff:
-                    mutedServices.Add(episode.ServiceId); // SilentClose closes and lapses below.
+                    // SilentClose closes and lapses below, per Watch.
+                    mutedByWatch.TryAdd(episode.Watch, []);
+                    mutedByWatch[episode.Watch].Add(episode.ServiceId);
                     break;
 
                 case EpisodeCloseReason.QuietWindow:
@@ -68,7 +70,19 @@ public sealed class EpisodeCloser(
             }
         }
 
-        await SilentClose.ApplyAsync(dbContext, mutedServices, now, cancellationToken);
+        foreach (var (watch, services) in mutedByWatch)
+        {
+            await SilentClose.ApplyAsync(dbContext, services, watch, now, cancellationToken);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>Each Watch has its own switch: Sensitivity for the Logs Watch, an address for the Health Check Watch.</summary>
+    private static bool IsWatchOff(Episode episode, EffectiveSettings effective) => episode.Watch switch
+    {
+        Watch.Logs => effective.SensitivityOf(episode.ServiceId) == Sensitivity.Off,
+        Watch.HealthCheck => effective.HealthCheckUrlOf(episode.ServiceId) is null,
+        _ => false,
+    };
 }

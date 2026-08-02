@@ -32,14 +32,14 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
             {
                 textParagraph = new
                 {
-                    text = $"<b>{WebUtility.HtmlEncode(alert.Place)}</b> started logging trouble.",
+                    text = $"<b>{WebUtility.HtmlEncode(alert.Place)}</b> {WebUtility.HtmlEncode(alert.Opening)}",
                 },
             },
             new
             {
                 decoratedText = new
                 {
-                    topLabel = $"First log ({stamp})",
+                    topLabel = $"{alert.EvidenceLabel} ({stamp})",
                     text = WebUtility.HtmlEncode(alert.MatchDetail),
                     wrapText = true,
                 },
@@ -71,7 +71,7 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
                     {
                         header = new
                         {
-                            title = $"Trouble in {alert.Place}",
+                            title = alert.Headline,
                             subtitle,
                         },
                         sections = new[] { new { widgets } },

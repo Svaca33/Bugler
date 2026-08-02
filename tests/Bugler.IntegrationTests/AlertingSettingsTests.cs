@@ -38,7 +38,7 @@ public sealed class AlertingSettingsTests : IAsyncLifetime
         var overridePut = await _harness.Client.PutAsJsonAsync(
             $"/api/admin/services/{_harness.ServiceId}/alerting",
             new { sensitivity = "Errors", quietWindowMinutes = (int?)null });
-        Assert.Equal(HttpStatusCode.NoContent, overridePut.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, overridePut.StatusCode);
 
         var dto = await _harness.Client.GetFromJsonAsync<ApplicationAlertingDto>(
             $"/api/admin/applications/{_harness.ApplicationId}/alerting");
@@ -49,12 +49,61 @@ public sealed class AlertingSettingsTests : IAsyncLifetime
         Assert.Equal("Errors", serviceOverride.Sensitivity!.Value.ToString());
         Assert.Null(serviceOverride.QuietWindowMinutes);
 
-        // Clearing both fields deletes the override row: absent means inherit.
+        // Clearing every field deletes the override row: absent means inherit.
         var clear = await _harness.Client.PutAsJsonAsync(
             $"/api/admin/services/{_harness.ServiceId}/alerting",
             new { sensitivity = (string?)null, quietWindowMinutes = (int?)null });
-        Assert.Equal(HttpStatusCode.NoContent, clear.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
         await _harness.WaitForCountAsync("SELECT COUNT(*) FROM alerting.service_settings", 0);
+    }
+
+    [Fact]
+    public async Task A_health_check_address_round_trips_and_is_probed_on_the_spot()
+    {
+        // Port 1 on the loopback answers nothing, so the trial probe reports a real failure
+        // rather than needing a stub server — and the address is still saved, because a Service
+        // that is down right now is exactly when somebody sets its health check up.
+        var url = "http://127.0.0.1:1/health";
+        var put = await _harness.Client.PutAsJsonAsync(
+            $"/api/admin/services/{_harness.ServiceId}/alerting",
+            new { sensitivity = (string?)null, quietWindowMinutes = (int?)null, healthCheckUrl = url });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var probed = await put.Content.ReadFromJsonAsync<SetServiceAlertingResponse>();
+        Assert.NotNull(probed!.HealthCheck);
+        Assert.False(probed.HealthCheck.Alive);
+        Assert.Contains(url, probed.HealthCheck.Detail);
+
+        var dto = await _harness.Client.GetFromJsonAsync<ApplicationAlertingDto>(
+            $"/api/admin/applications/{_harness.ApplicationId}/alerting");
+        Assert.Equal(url, Assert.Single(dto!.ServiceOverrides).HealthCheckUrl);
+
+        // The address alone keeps the row alive; nothing else about the Service is overridden.
+        var withoutUrl = await _harness.Client.PutAsJsonAsync(
+            $"/api/admin/services/{_harness.ServiceId}/alerting",
+            new { sensitivity = (string?)null, quietWindowMinutes = (int?)null, healthCheckUrl = (string?)null });
+        Assert.Equal(HttpStatusCode.OK, withoutUrl.StatusCode);
+        Assert.Null((await withoutUrl.Content.ReadFromJsonAsync<SetServiceAlertingResponse>())!.HealthCheck);
+        await _harness.WaitForCountAsync("SELECT COUNT(*) FROM alerting.service_settings", 0);
+    }
+
+    [Fact]
+    public async Task The_health_check_takes_http_but_not_nonsense()
+    {
+        // Deliberately looser than the Chat Webhook: a self-hosted Bugler usually shares a
+        // network with what it watches, so plain http is the ordinary case.
+        var plainHttp = await _harness.Client.PutAsJsonAsync(
+            $"/api/admin/services/{_harness.ServiceId}/alerting",
+            new { healthCheckUrl = "http://127.0.0.1:1/health" });
+        Assert.Equal(HttpStatusCode.OK, plainHttp.StatusCode);
+
+        foreach (var bad in new[] { "/health", "ftp://backend/health", "not a url" })
+        {
+            var response = await _harness.Client.PutAsJsonAsync(
+                $"/api/admin/services/{_harness.ServiceId}/alerting",
+                new { healthCheckUrl = bad });
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
     }
 
     [Fact]

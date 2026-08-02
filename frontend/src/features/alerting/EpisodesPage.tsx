@@ -9,7 +9,7 @@ import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
-import { severityRailClass } from "@/lib/severity";
+import { episodeRailClass } from "@/lib/severity";
 
 import {
   effectiveLifecycle,
@@ -22,6 +22,7 @@ import {
 import { EpisodesFilterRail } from "./EpisodesFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
 import { clock, dayLabel, historyStamp } from "./format";
+import { HealthCheckBadge } from "./HealthCheckBadge";
 import { OpenNowBand } from "./OpenNowBand";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { indexServices, type KnownService } from "./serviceIndex";
@@ -367,7 +368,7 @@ function EpisodeRow(props: {
     >
       <span
         className={`min-h-[30px] w-[3px] self-stretch rounded-[2px] ${
-          muted ? "bg-severity-debug-rail" : severityRailClass(Number(episode.firstMatchSeverity))
+          muted ? "bg-severity-debug-rail" : episodeRailClass(episode.firstMatchSeverity)
         }`}
       />
 
@@ -393,9 +394,16 @@ function EpisodeRow(props: {
             </>
           ) : (
             <>
-              <span className="text-severity-error">{episode.errorCount} err</span>
-              {Number(episode.warnCount) > 0 && (
-                <span className="text-severity-warn">{episode.warnCount} warn</span>
+              {episode.watch === "HealthCheck" ? (
+                // Nothing was logged, so there is nothing to count: how long says it instead.
+                <HealthCheckBadge />
+              ) : (
+                <>
+                  <span className="text-severity-error">{episode.errorCount} err</span>
+                  {Number(episode.warnCount) > 0 && (
+                    <span className="text-severity-warn">{episode.warnCount} warn</span>
+                  )}
+                </>
               )}
               {historyToggle}
               <QuietWindowBadge episode={episode} />

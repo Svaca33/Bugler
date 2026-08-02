@@ -128,8 +128,10 @@ public sealed class EpisodeDetector(
                 .Select(s => s.LogId)
                 .ToListAsync(cancellationToken))
             .ToHashSet();
+        // This Watch's own Episodes only: another Watch's open Episode is neither one to feed
+        // nor one that counts against the per-Service cap on kinds of trouble.
         var openEpisodes = await dbContext.Episodes
-            .Where(e => e.ClosedAt == null)
+            .Where(e => e.ClosedAt == null && e.Watch == Watch.Logs)
             .ToDictionaryAsync(e => (e.ServiceId, e.Fingerprint), cancellationToken);
 
         var decisions = DetectionBatch.Decide(
@@ -167,7 +169,10 @@ public sealed class EpisodeDetector(
                     LastMatchAt = now,
                 };
                 dbContext.Episodes.Add(episode);
-                await EnqueueAlertsAsync(dbContext, episode, snapshot, mailEnabled, now, cancellationToken);
+                await AlertsOwed.EnqueueAsync(
+                    dbContext, episode, mailEnabled,
+                    snapshot.ApplicationsWithWebhook.Contains(episode.ApplicationId),
+                    now, cancellationToken);
                 logger.LogInformation(
                     "Episode opened for service {ServiceId} by log {LogId} (severity {Severity}): {Fingerprint}",
                     detection.ServiceId, first.Id, first.Severity, detection.Fingerprint);
@@ -194,53 +199,6 @@ public sealed class EpisodeDetector(
             // index won. Nothing committed, nothing advanced; the next run reconciles.
             logger.LogWarning(exception, "Detection page conflicted and will be retried");
             return false;
-        }
-    }
-
-    /// <summary>The Alert rows owed for a fresh Episode: one mail per subscriber now, one chat message if the webhook is set.</summary>
-    private static async Task EnqueueAlertsAsync(
-        AlertingDbContext dbContext,
-        Episode episode,
-        Snapshot snapshot,
-        bool mailEnabled,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        if (mailEnabled)
-        {
-            // No access check here: whether a subscriber may still read the Application is a
-            // delivery-time question. Subscribers are resolved at open — the Alert's audience.
-            var subscribers = await dbContext.Subscriptions
-                .Where(s => s.ServiceId == episode.ServiceId || s.ApplicationId == episode.ApplicationId)
-                .Select(s => s.UserId)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-            foreach (var userId in subscribers)
-            {
-                dbContext.Deliveries.Add(new Delivery
-                {
-                    Id = Guid.CreateVersion7(),
-                    EpisodeId = episode.Id,
-                    Kind = DeliveryKind.Alert,
-                    Channel = DeliveryChannel.Mail,
-                    UserId = userId,
-                    CreatedAt = now,
-                    NextAttemptAt = now,
-                });
-            }
-        }
-
-        if (snapshot.ApplicationsWithWebhook.Contains(episode.ApplicationId))
-        {
-            dbContext.Deliveries.Add(new Delivery
-            {
-                Id = Guid.CreateVersion7(),
-                EpisodeId = episode.Id,
-                Kind = DeliveryKind.Alert,
-                Channel = DeliveryChannel.Chat,
-                CreatedAt = now,
-                NextAttemptAt = now,
-            });
         }
     }
 

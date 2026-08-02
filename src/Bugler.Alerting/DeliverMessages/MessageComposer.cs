@@ -13,7 +13,13 @@ namespace Bugler.Alerting.DeliverMessages;
 /// </summary>
 public sealed record ComposedAlert(
     string Subject,
+    /// <summary>The subject without the tag — what a channel that brands itself already shows as a title.</summary>
+    string Headline,
     string Place,
+    /// <summary>What the Service did, in the words of the Watch that noticed.</summary>
+    string Opening,
+    /// <summary>What the quoted evidence is called under that Watch — a log, a health check.</summary>
+    string EvidenceLabel,
     /// <summary>The opening match's Severity Band, where its Watch has one; null where it does not.</summary>
     string? SeverityLabel,
     string MatchInstant,
@@ -39,26 +45,46 @@ public static class MessageComposer
         var episodeUrl = publicBaseUrl.Length == 0
             ? null
             : $"{publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}";
+        var words = Words.For(episode.Watch);
+
+        var headline = $"{words.Subject} {place}";
 
         return new ComposedAlert(
-            Subject: $"[Bugler] Trouble in {place}",
+            Subject: $"[Bugler] {headline}",
+            Headline: headline,
             Place: place,
+            Opening: words.Opening,
+            EvidenceLabel: words.EvidenceLabel,
             SeverityLabel: severity,
             MatchInstant: instant,
             MatchDetail: body,
             EpisodeUrl: episodeUrl,
-            TextBody: ComposeText(place, severity, instant, body, episodeUrl),
-            HtmlBody: ComposeHtml(place, severity, instant, body, episodeUrl));
+            TextBody: ComposeText(place, words, severity, instant, body, episodeUrl),
+            HtmlBody: ComposeHtml(place, words, severity, instant, body, episodeUrl));
+    }
+
+    /// <summary>
+    /// The three phrases that differ by Watch. Everything else about an Alert — the place, the
+    /// stamp, the evidence, the link — is the same message whichever watch found the trouble.
+    /// </summary>
+    internal sealed record Words(string Subject, string Opening, string EvidenceLabel)
+    {
+        public static Words For(Watch watch) => watch switch
+        {
+            Watch.HealthCheck => new Words(
+                "No answer from", "stopped answering its health check.", "Health check"),
+            _ => new Words("Trouble in", "started logging trouble.", "First log"),
+        };
     }
 
     private static string ComposeText(
-        string place, string? severity, string instant, string body, string? episodeUrl)
+        string place, Words words, string? severity, string instant, string body, string? episodeUrl)
     {
         var lines = new List<string>
         {
-            $"{place} started logging trouble.",
+            $"{place} {words.Opening}",
             "",
-            $"First log ({Stamp(severity, instant)}):",
+            $"{words.EvidenceLabel} ({Stamp(severity, instant)}):",
             body,
         };
 
@@ -77,7 +103,7 @@ public static class MessageComposer
     // The same message for eyes that render HTML: brass on warm paper, matching the UI's light
     // theme. Inline styles only — mail clients strip everything else.
     private static string ComposeHtml(
-        string place, string? severity, string instant, string body, string? episodeUrl)
+        string place, Words words, string? severity, string instant, string body, string? episodeUrl)
     {
         var button = episodeUrl is null
             ? ""
@@ -91,8 +117,8 @@ public static class MessageComposer
                 <html>
                 <body style="margin:0;padding:24px;background:#F4EDDD;">
                 <div style="max-width:560px;margin:0 auto;background:#FFFCF4;border:1px solid #E3D5B4;border-radius:8px;padding:24px;font-family:'Segoe UI',Arial,sans-serif;color:#2B2416;">
-                <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> started logging trouble.</p>
-                <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">First log ({WebUtility.HtmlEncode(Stamp(severity, instant))}):</p>
+                <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> {WebUtility.HtmlEncode(words.Opening)}</p>
+                <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">{WebUtility.HtmlEncode(words.EvidenceLabel)} ({WebUtility.HtmlEncode(Stamp(severity, instant))}):</p>
                 <pre style="margin:0;padding:12px 14px;background:#F4EDDD;border-radius:6px;font-family:Consolas,Menlo,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;color:#2B2416;">{WebUtility.HtmlEncode(body)}</pre>{button}
                 </div>
                 </body>

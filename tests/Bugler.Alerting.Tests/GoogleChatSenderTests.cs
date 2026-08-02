@@ -8,7 +8,10 @@ public class GoogleChatSenderTests
 {
     private static ComposedAlert Alert(string? episodeUrl = "https://bugler.example.com/episodes?episode=1") => new(
         Subject: "[Bugler] Trouble in Eshop acme/prod/web",
+        Headline: "Trouble in Eshop acme/prod/web",
         Place: "Eshop acme/prod/web",
+        Opening: "started logging trouble.",
+        EvidenceLabel: "First log",
         SeverityLabel: "ERROR",
         MatchInstant: "2026-07-29 09:59:58 UTC",
         MatchDetail: "Payment gateway timed out",
@@ -48,6 +51,30 @@ public class GoogleChatSenderTests
         Assert.Equal(
             "expected &lt;ul&gt; &amp; got &lt;li&gt;",
             (string?)widgets[1]!["decoratedText"]!["text"]);
+    }
+
+    [Fact]
+    public void A_health_check_card_carries_that_watchs_words_and_no_severity()
+    {
+        var alert = Alert() with
+        {
+            Headline = "No answer from Eshop acme/prod/web",
+            Opening = "stopped answering its health check.",
+            EvidenceLabel = "Health check",
+            SeverityLabel = null,
+            MatchDetail = "HTTP 503 from http://backend:8080/health",
+        };
+
+        var card = Payload(alert)["cardsV2"]![0]!["card"]!;
+
+        Assert.Equal("No answer from Eshop acme/prod/web", (string?)card["header"]!["title"]);
+        Assert.Equal("2026-07-29 09:59:58 UTC", (string?)card["header"]!["subtitle"]);
+
+        var widgets = card["sections"]![0]!["widgets"]!.AsArray();
+        Assert.Contains("stopped answering its health check", (string?)widgets[0]!["textParagraph"]!["text"]);
+        Assert.Equal(
+            "Health check (2026-07-29 09:59:58 UTC)",
+            (string?)widgets[1]!["decoratedText"]!["topLabel"]);
     }
 
     [Fact]

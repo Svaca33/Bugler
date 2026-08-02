@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { LiveDuration } from "@/lib/LiveDuration";
-import { severityRailClass } from "@/lib/severity";
+import { episodeRailClass } from "@/lib/severity";
 
 import { StatusBadges } from "./badges";
 import { MailToggle } from "./MailToggle";
@@ -87,12 +87,21 @@ export function ServiceCard(props: {
         <div className="mt-3 rounded-lg border border-[rgba(229,84,74,0.2)] bg-[rgba(229,84,74,0.07)] px-[11px] py-[9px]">
           <div className="flex items-center gap-2">
             <span
-              className={`h-[15px] w-[3px] shrink-0 rounded-[2px] ${severityRailClass(Number(quoted.firstMatchSeverity))}`}
+              className={`h-[15px] w-[3px] shrink-0 rounded-[2px] ${episodeRailClass(quoted.firstMatchSeverity)}`}
             />
             <span className="truncate font-mono text-[10.5px] text-[#A9BDD1]">
-              opened {clock(quoted.openedAt)} · <LiveDuration since={quoted.openedAt} /> ·{" "}
-              {Number(quoted.errorCount).toLocaleString()} err
-              {Number(quoted.warnCount) > 0 && ` · ${Number(quoted.warnCount).toLocaleString()} warn`}
+              opened {clock(quoted.openedAt)} · <LiveDuration since={quoted.openedAt} />
+              {quoted.watch === "HealthCheck" ? (
+                // Nothing was logged, so there is nothing to count.
+                " · health check"
+              ) : (
+                <>
+                  {" · "}
+                  {Number(quoted.errorCount).toLocaleString()} err
+                  {Number(quoted.warnCount) > 0
+                    && ` · ${Number(quoted.warnCount).toLocaleString()} warn`}
+                </>
+              )}
             </span>
           </div>
           {quoted.firstMatchDetail != null && (

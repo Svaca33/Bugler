@@ -4,7 +4,7 @@
 
 - [Ingestion](./src/Bugler.Ingestion/CONTEXT.md) — the write path: receives OTLP export requests, authenticates their source, stores telemetry, and purges it when retention expires
 - [Exploration](./src/Bugler.Exploration/CONTEXT.md) — the read path: searching, viewing, and correlating stored logs and traces
-- [Alerting](./src/Bugler.Alerting/CONTEXT.md) — the unattended watch: detects when a Service starts logging trouble and notifies subscribers by mail and Google Chat
+- [Alerting](./src/Bugler.Alerting/CONTEXT.md) — the unattended watch: detects when a Service starts logging trouble or stops answering that it is alive, and notifies subscribers by mail and Google Chat
 - [Registry](./src/Bugler.Registry/CONTEXT.md) — the telemetry topology: applications, services, API keys, retention policies
 - [Access](./src/Bugler.Access/CONTEXT.md) — human identity: users, sessions, admin role, per-application read grants
 
@@ -19,6 +19,7 @@
 - **Alerting → Access**: at the moment a mail leaves, Alerting asks Access whether the subscribed User is active and may still read the Application — and for the account's address.
 - **Registry → Ingestion, Registry → Access, Registry → Alerting**: on Deletion, Registry publishes `ServicesDeleted` and `ApplicationDeleted` through its outbox; Ingestion erases the Signals of the deleted Services, Access revokes the grants pointing at the deleted Application, and Alerting drops the Episodes, Subscriptions, and settings pointing at what was deleted. Registry does not know who listens (ADR 0008).
 - **Access → Alerting**: on a User's Deletion, Access publishes `UserDeleted` through its own outbox; Alerting drops the Subscriptions standing in their name and lapses the Deliveries still owed to them.
+- **Alerting → the watched Services themselves**: the Health Check Watch calls each Service's configured address on the loop's beat (ADR 0008 in Alerting's own log). This is the only outbound connection Bugler ever opens to a Service — everywhere else telemetry is pushed to Bugler, never fetched (ADR 0006). Nothing is read but the status code, and the address is Alerting's own setting; Registry does not learn that Services have addresses.
 - **Alerting → Mail**: Alerting sends through `IMailSender` and waits for the outcome, because a Delivery has to record whether the message left and pursue it again if it did not.
 - **Host → Mail**: the Host stores the SMTP settings the admin screen edits and hands them to the transport through `ISmtpSettingsSource`; saved settings win over the `Mail:Smtp` configuration section until reset (ADR 0014). Mail itself still owns no data.
 - **Shared identifiers**: `ApplicationId`, `ServiceId` and the integration event contracts are the only types shared across contexts.

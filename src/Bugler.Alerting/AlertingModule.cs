@@ -11,6 +11,7 @@ using Bugler.Alerting.ManageAlertingSettings;
 using Bugler.Alerting.ManageSubscriptions;
 using Bugler.Alerting.ReadEffectiveSensitivity;
 using Bugler.Alerting.SummarizeEpisodesByService;
+using Bugler.Alerting.WatchHealthChecks;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -40,12 +41,21 @@ public static class AlertingModule
         services.AddSingleton<EpisodeDetector>();
         services.AddSingleton<EpisodeCloser>();
         services.AddSingleton<DeliveryRunner>();
+        // The tally of consecutive failures is the watcher's own memory, so it outlives a sweep.
+        services.AddSingleton<HealthCheckWatcher>();
         services.AddHostedService<AlertingScheduler>();
 
         // The typed client stays transient so the factory can rotate its handlers; the runner
         // resolves IChatSender from its per-run scope.
         services.AddHttpClient<GoogleChatSender>();
         services.AddTransient<IChatSender>(p => p.GetRequiredService<GoogleChatSender>());
+
+        // Redirects are off by design: a health endpoint that bounces to a login page would
+        // otherwise be judged alive by the login page's 200 (see CONTEXT.md: Health Check).
+        services.AddHttpClient<HealthProbe>(client =>
+                client.Timeout = TimeSpan.FromSeconds(HealthProbe.TimeoutSeconds))
+            .ConfigurePrimaryHttpMessageHandler(() =>
+                new HttpClientHandler { AllowAutoRedirect = false });
 
         services.AddScoped<IIntegrationEventHandler<ServicesDeleted>, DeletedServicesHandler>();
         services.AddScoped<IIntegrationEventHandler<ApplicationDeleted>, DeletedApplicationHandler>();
@@ -66,7 +76,8 @@ public static class AlertingModule
         admin.MapPut("/applications/{applicationId:guid}/alerting/webhook",
             AdminAlertingEndpoints.SetChatWebhook);
         admin.MapPut("/services/{serviceId:guid}/alerting",
-            AdminAlertingEndpoints.SetServiceAlerting);
+            AdminAlertingEndpoints.SetServiceAlerting)
+            .Produces<SetServiceAlertingResponse>();
         admin.MapPut("/episodes/{id:guid}/quiet-window", FingerprintQuietWindowEndpoint.Set);
 
         var user = endpoints.MapGroup("/api/alerting").RequireAuthorization();

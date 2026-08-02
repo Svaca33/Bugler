@@ -5,12 +5,13 @@ import type { Episode } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { describeMillis } from "@/lib/duration";
 import { serviceLabel } from "@/lib/serviceLabel";
-import { severityRailClass } from "@/lib/severity";
+import { episodeRailClass } from "@/lib/severity";
 
 import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
 import { clock, clockShort, ordinal } from "./format";
+import { HealthCheckBadge } from "./HealthCheckBadge";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
@@ -78,8 +79,8 @@ function OpenCard(props: {
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
 
-  const severity = Number(episode.firstMatchSeverity);
-  const isError = severity >= 17;
+  // A watch with no severity bands still reports trouble, and open trouble reads as an error.
+  const isError = episode.firstMatchSeverity == null || Number(episode.firstMatchSeverity) >= 17;
   const heldByMe = episode.acknowledgedBy !== null && episode.acknowledgedBy === props.myName;
   const priorCount = Number(episode.priorCount);
 
@@ -92,11 +93,14 @@ function OpenCard(props: {
       }`}
       onClick={() => props.onSelect(episode.id)}
     >
-      <span className={`min-h-[44px] w-[3px] self-stretch rounded-[2px] ${severityRailClass(severity)}`} />
+      <span
+        className={`min-h-[44px] w-[3px] self-stretch rounded-[2px] ${episodeRailClass(episode.firstMatchSeverity)}`}
+      />
 
       <div className="flex min-w-0 flex-col gap-1.5">
         <div className="flex items-center gap-2.5">
           <StateBadge state="Open" />
+          {episode.watch === "HealthCheck" && <HealthCheckBadge />}
           <LiveDuration since={episode.openedAt} className="font-mono text-[11.5px] text-[#DCE8F3]" />
           <span
             className={`whitespace-nowrap rounded-[5px] border px-1.5 text-[10px] ${
@@ -117,9 +121,14 @@ function OpenCard(props: {
             {props.known !== undefined ? serviceLabel(props.known.facets) : "—"}
           </span>
           <span className="flex-none">{clock(episode.openedAt)}</span>
-          <span className="text-severity-error">{episode.errorCount} err</span>
-          {Number(episode.warnCount) > 0 && (
-            <span className="text-severity-warn">{episode.warnCount} warn</span>
+          {/* Nothing was logged under the health check watch, so there is nothing to count. */}
+          {episode.watch !== "HealthCheck" && (
+            <>
+              <span className="text-severity-error">{episode.errorCount} err</span>
+              {Number(episode.warnCount) > 0 && (
+                <span className="text-severity-warn">{episode.warnCount} warn</span>
+              )}
+            </>
           )}
           <QuietWindowBadge episode={episode} />
         </div>

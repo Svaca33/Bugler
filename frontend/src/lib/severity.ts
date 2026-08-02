@@ -72,6 +72,16 @@ export function severityRailClass(severityNumber: number): string {
   return BAND_RAIL[severityBand(severityNumber)];
 }
 
+/**
+ * The rail of an episode, whose watch may deal in no severity bands at all. Such an episode still
+ * reports trouble, and trouble is red — the rail must not fade to debug grey merely because there
+ * is no log to grade. That an episode is not about logs is said by its badge instead, so the
+ * colour keeps meaning exactly one thing.
+ */
+export function episodeRailClass(severity: number | string | null | undefined): string {
+  return severityRailClass(severity == null ? 17 : Number(severity));
+}
+
 /** Threshold values for the "minimum severity" filter dropdown. */
 export const severityFilterOptions = [
   { value: 0, label: "All severities" },

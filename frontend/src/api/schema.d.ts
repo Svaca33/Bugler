@@ -1304,7 +1304,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["SetServiceAlertingResponse"];
+                    };
                 };
             };
         };
@@ -2306,6 +2308,10 @@ export interface components {
             /** Format: uuid */
             applicationId: string;
         };
+        HealthCheckProbeDto: {
+            alive: boolean;
+            detail: string;
+        };
         IssuedApiKeyDto: {
             /** Format: uuid */
             id: string;
@@ -2439,6 +2445,7 @@ export interface components {
             sensitivity: null | components["schemas"]["Sensitivity"];
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+            healthCheckUrl: null | string;
         };
         ServiceDto: {
             /** Format: uuid */
@@ -2515,6 +2522,10 @@ export interface components {
             sensitivity: null | components["schemas"]["Sensitivity"];
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+            healthCheckUrl: null | string;
+        };
+        SetServiceAlertingResponse: {
+            healthCheck: null | components["schemas"]["HealthCheckProbeDto"];
         };
         SetSubscriptionsRequest: {
             applicationIds: string[];
@@ -2596,7 +2607,7 @@ export interface components {
             debug: number | string;
         };
         /** @enum {unknown} */
-        Watch: "Logs";
+        Watch: "Logs" | "HealthCheck";
     };
     responses: never;
     parameters: never;

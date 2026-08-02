@@ -70,6 +70,34 @@ public class MessageComposerTests
     }
 
     [Fact]
+    public void An_unanswered_health_check_speaks_of_silence_rather_than_of_logs()
+    {
+        var episode = new Episode
+        {
+            Id = Guid.NewGuid(),
+            ServiceId = Identity.Id,
+            ApplicationId = Identity.ApplicationId,
+            Watch = Watch.HealthCheck,
+            Fingerprint = "(health check failing)",
+            OpenedAt = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero),
+            FirstMatchAt = new DateTimeOffset(2026, 7, 29, 9, 59, 58, TimeSpan.Zero),
+            FirstMatchDetail = "HTTP 503 from http://backend:8080/health",
+            LastMatchAt = new DateTimeOffset(2026, 7, 29, 11, 0, 0, TimeSpan.Zero),
+        };
+
+        var alert = MessageComposer.ComposeAlert(episode, Identity, "https://bugler.example.com");
+
+        Assert.Equal("[Bugler] No answer from Eshop acme/prod/web", alert.Subject);
+        Assert.Contains("stopped answering its health check.", alert.TextBody);
+        Assert.Contains("HTTP 503 from http://backend:8080/health", alert.TextBody);
+        // No Severity Band exists to name, so the stamp is the moment alone.
+        Assert.Null(alert.SeverityLabel);
+        Assert.Contains("Health check (2026-07-29 09:59:58 UTC):", alert.TextBody);
+        Assert.DoesNotContain("ERROR", alert.TextBody);
+        Assert.DoesNotContain("started logging trouble", alert.TextBody);
+    }
+
+    [Fact]
     public void Without_a_public_base_url_the_message_carries_no_links()
     {
         var alert = MessageComposer.ComposeAlert(Episode(), Identity, "");

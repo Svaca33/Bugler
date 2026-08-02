@@ -41,7 +41,9 @@ public sealed class EffectiveSettings
                 service.ApplicationId,
                 overrides?.Sensitivity ?? application?.Sensitivity ?? AlertingDefaults.Sensitivity,
                 overrides?.QuietWindowMinutes ?? application?.QuietWindowMinutes
-                    ?? AlertingDefaults.QuietWindowMinutes);
+                    ?? AlertingDefaults.QuietWindowMinutes,
+                // The one setting with no tier above it: an address cannot be inherited.
+                overrides?.HealthCheckUrl);
         }
 
         return new EffectiveSettings(
@@ -74,6 +76,10 @@ public sealed class EffectiveSettings
     public ApplicationId? ApplicationOf(ServiceId serviceId) =>
         _services.GetValueOrDefault(serviceId)?.ApplicationId;
 
+    /// <summary>Where this Service answers whether it is alive; null means the Health Check Watch is off for it.</summary>
+    public string? HealthCheckUrlOf(ServiceId serviceId) =>
+        _services.GetValueOrDefault(serviceId)?.HealthCheckUrl;
+
     /// <summary>The Services of one Application whose effective Sensitivity is Off right now — the set a settings change must close silently.</summary>
     public IReadOnlyList<ServiceId> ServicesEffectivelyOff(ApplicationId applicationId) =>
         _services
@@ -81,6 +87,23 @@ public sealed class EffectiveSettings
             .Select(s => s.Key)
             .ToList();
 
+    /// <summary>The Services of one Application nobody is asking — the set a cleared address must close silently.</summary>
+    public IReadOnlyList<ServiceId> ServicesWithoutHealthCheck(ApplicationId applicationId) =>
+        _services
+            .Where(s => s.Value.ApplicationId == applicationId && s.Value.HealthCheckUrl is null)
+            .Select(s => s.Key)
+            .ToList();
+
+    /// <summary>Every Service the Health Check Watch has an address for — one sweep's whole worklist.</summary>
+    public IReadOnlyList<WatchedService> WatchedByHealthCheck() =>
+        _services
+            .Where(s => s.Value.HealthCheckUrl is not null)
+            .Select(s => new WatchedService(s.Key, s.Value.ApplicationId, s.Value.HealthCheckUrl!))
+            .ToList();
+
     private sealed record ResolvedService(
-        ApplicationId ApplicationId, Sensitivity Sensitivity, int QuietWindowMinutes);
+        ApplicationId ApplicationId,
+        Sensitivity Sensitivity,
+        int QuietWindowMinutes,
+        string? HealthCheckUrl);
 }

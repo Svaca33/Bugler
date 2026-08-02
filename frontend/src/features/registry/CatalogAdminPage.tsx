@@ -342,8 +342,9 @@ function ServiceCard(props: {
           defaultRetentionDays={props.defaultRetentionDays}
           defaultTraceRetentionDays={props.defaultTraceRetentionDays}
         />
-        <ServiceAlertingOverride applicationId={props.applicationId} serviceId={props.service.id} />
       </div>
+
+      <ServiceAlertingOverride applicationId={props.applicationId} serviceId={props.service.id} />
 
       {props.issuedPlaintext !== null && (
         <div className="flex flex-col gap-2 rounded-[9px] border border-[rgba(233,164,60,0.55)] bg-[rgba(233,164,60,0.10)] p-3.5">

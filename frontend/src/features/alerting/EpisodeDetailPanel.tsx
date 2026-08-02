@@ -16,6 +16,7 @@ import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
 import { clock, historyStamp } from "./format";
+import { HealthCheckBadge } from "./HealthCheckBadge";
 import { describeQuietWindow, MAX_QUIET_WINDOW_MINUTES, quietWindowError } from "./quietWindow";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
@@ -125,8 +126,10 @@ function EpisodeBody(props: {
     },
   });
 
+  const isHealthCheck = episode.watch === "HealthCheck";
   const severity = Number(episode.firstMatchSeverity);
-  const isError = severity >= 17;
+  // A watch with no severity bands still reports trouble, and open trouble reads as an error.
+  const isError = episode.firstMatchSeverity == null || severity >= 17;
   const myName = currentUser.data?.displayName ?? currentUser.data?.email;
   const heldByMe = episode.acknowledgedBy !== null && episode.acknowledgedBy === myName;
   const earlier = history.data === undefined
@@ -155,25 +158,32 @@ function EpisodeBody(props: {
           {episode.firstMatchDetail}
         </div>
         <div className="flex items-center gap-2.5">
-          <span
-            className={`rounded px-1.5 font-mono text-[11px] ${
-              isError
-                ? "bg-[rgba(229,84,74,0.15)] text-severity-error"
-                : "bg-[rgba(201,123,18,0.15)] text-severity-warn"
-            }`}
-          >
-            {severityLabel(severity)}
-          </span>
+          {isHealthCheck ? (
+            <HealthCheckBadge />
+          ) : (
+            <span
+              className={`rounded px-1.5 font-mono text-[11px] ${
+                isError
+                  ? "bg-[rgba(229,84,74,0.15)] text-severity-error"
+                  : "bg-[rgba(201,123,18,0.15)] text-severity-warn"
+              }`}
+            >
+              {severityLabel(severity)}
+            </span>
+          )}
           <span className="font-mono text-[11px] text-[#7D93AA]">
             {formatTime(episode.firstMatchAt)}
           </span>
-          <button
-            type="button"
-            className="ml-auto text-[11.5px] whitespace-nowrap text-primary hover:underline"
-            onClick={() => props.onOpenLogs(episode)}
-          >
-            Open in logs ›
-          </button>
+          {/* Nothing was logged, so there is nowhere in the logs to land. */}
+          {!isHealthCheck && (
+            <button
+              type="button"
+              className="ml-auto text-[11.5px] whitespace-nowrap text-primary hover:underline"
+              onClick={() => props.onOpenLogs(episode)}
+            >
+              Open in logs ›
+            </button>
+          )}
         </div>
       </div>
 
@@ -196,10 +206,16 @@ function EpisodeBody(props: {
           )}
 
           <Moment dot={isError ? "bg-severity-error-rail" : "bg-severity-warn-rail"}>
-            <p className="text-[12.5px]">Opened by an {severityLabel(severity)} log</p>
+            <p className="text-[12.5px]">
+              {isHealthCheck
+                ? "Opened by a health check that stopped answering"
+                : `Opened by an ${severityLabel(severity)} log`}
+            </p>
             <p className="font-mono text-[11px] text-[#7D93AA]">
               {clock(episode.openedAt)}
-              {detail !== undefined && ` · sensitivity ${sensitivityWords(detail.effectiveSensitivity)}`}
+              {/* Sensitivity is the logs watch's setting and governs nothing here. */}
+              {!isHealthCheck && detail !== undefined
+                && ` · sensitivity ${sensitivityWords(detail.effectiveSensitivity)}`}
             </p>
           </Moment>
 
@@ -235,44 +251,48 @@ function EpisodeBody(props: {
               lastMatchAt={episode.lastMatchAt}
               acknowledged={episode.acknowledgedAt !== null}
               quietWindowMinutes={detail === undefined ? undefined : Number(detail.quietWindowMinutes)}
+              healthCheck={isHealthCheck}
             />
           )}
         </div>
       </div>
 
-      {/* Volume so far */}
-      <div className="flex flex-col gap-2">
-        <p className={CAPTION}>VOLUME SO FAR</p>
-        <div className="flex h-2 overflow-hidden rounded bg-[#101F31]">
-          {totalCount > 0 && (
-            <>
-              <span
-                style={{
-                  width: `${(errorCount / totalCount) * 100}%`,
-                  background: "var(--severity-error-fill)",
-                }}
-              />
-              <span
-                style={{
-                  width: `${(warnCount / totalCount) * 100}%`,
-                  background: "var(--severity-warn-fill)",
-                }}
-              />
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-3 font-mono text-[11px]">
-          <span className="whitespace-nowrap text-severity-error">
-            {errorCount} error{errorCount === 1 ? "" : "s"}
-          </span>
-          {warnCount > 0 && (
-            <span className="whitespace-nowrap text-severity-warn">
-              {warnCount} warning{warnCount === 1 ? "" : "s"}
+      {/* Volume so far — only where the watch counts anything. The health check watch produces
+          one failed probe per beat, which measures the beat rather than the trouble. */}
+      {!isHealthCheck && (
+        <div className="flex flex-col gap-2">
+          <p className={CAPTION}>VOLUME SO FAR</p>
+          <div className="flex h-2 overflow-hidden rounded bg-[#101F31]">
+            {totalCount > 0 && (
+              <>
+                <span
+                  style={{
+                    width: `${(errorCount / totalCount) * 100}%`,
+                    background: "var(--severity-error-fill)",
+                  }}
+                />
+                <span
+                  style={{
+                    width: `${(warnCount / totalCount) * 100}%`,
+                    background: "var(--severity-warn-fill)",
+                  }}
+                />
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-3 font-mono text-[11px]">
+            <span className="whitespace-nowrap text-severity-error">
+              {errorCount} error{errorCount === 1 ? "" : "s"}
             </span>
-          )}
-          <span className="ml-auto text-[#7D93AA]">≈ {ratePerMinute(episode)} / min</span>
+            {warnCount > 0 && (
+              <span className="whitespace-nowrap text-severity-warn">
+                {warnCount} warning{warnCount === 1 ? "" : "s"}
+              </span>
+            )}
+            <span className="ml-auto text-[#7D93AA]">≈ {ratePerMinute(episode)} / min</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Recurrence */}
       <div className="flex flex-col gap-2">
@@ -371,9 +391,11 @@ function EpisodeBody(props: {
             )}
           </>
         )}
-        <Button size="sm" variant="ghost" onClick={() => props.onOpenLogs(episode)}>
-          Open in logs
-        </Button>
+        {!isHealthCheck && (
+          <Button size="sm" variant="ghost" onClick={() => props.onOpenLogs(episode)}>
+            Open in logs
+          </Button>
+        )}
         {actions.failure != null && (
           <span className="text-[11.5px] text-destructive">{actions.failure.message}</span>
         )}
@@ -539,12 +561,16 @@ function StillMatching(props: {
   lastMatchAt: string;
   acknowledged: boolean;
   quietWindowMinutes: number | undefined;
+  healthCheck: boolean;
 }) {
   const now = useNow();
+  const since = describeLiveMillis(now - Date.parse(props.lastMatchAt));
   return (
     <Moment dot="bg-severity-error-rail" pulse>
       <p className="text-[12.5px]">
-        Still matching — last log {describeLiveMillis(now - Date.parse(props.lastMatchAt))} ago
+        {props.healthCheck
+          ? `Still matching — last failed check ${since} ago`
+          : `Still matching — last log ${since} ago`}
       </p>
       {props.acknowledged ? (
         <p className="font-mono text-[11px] text-[#7D93AA]">

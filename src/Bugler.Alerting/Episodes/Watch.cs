@@ -12,4 +12,7 @@ public enum Watch : short
 {
     /// <summary>The Log Records a Service sends; a match is one at or above its Sensitivity.</summary>
     Logs = 1,
+
+    /// <summary>The Health Check a Service answers; a match is one probe that did not answer 2xx.</summary>
+    HealthCheck = 2,
 }

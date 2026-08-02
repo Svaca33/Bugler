@@ -1,27 +1,39 @@
 # Alerting
 
-The unattended watch over incoming logs: notices when a Service starts logging trouble, opens an Episode, and tells the people who asked. How a stretch of trouble ended — on its own, by a human verdict, or because the watching stopped — is read in the UI, never mailed. Detection is configured per Application; delivery is each person's own choice.
+The unattended watch over a Service: notices when one starts logging trouble or stops answering that it is alive, opens an Episode, and tells the people who asked. How a stretch of trouble ended — on its own, by a human verdict, or because the watching stopped — is read in the UI, never mailed. Detection is configured per Application; delivery is each person's own choice.
 
 ## Language
 
+**Watch**:
+What Bugler was looking at when it found the trouble and what keeps feeding it — the Log Records a Service sends, or the Health Check it answers. An Episode belongs to exactly one, each has its own switch, and a Fingerprint means something different under each: what tells one kind of trouble from another is the pair, never the Fingerprint alone.
+_Avoid_: source, signal, detector, channel
+
+**Health Check**:
+The one address a Service may answer at to say it is alive, and the only place Bugler reaches outwards. Asked on the watch's own beat; a 2xx means alive and everything else — another status, a redirect, a refused connection, silence — means not. Never inherited from the Application, because every Service answers at its own address, and the address is the Watch's only switch: unset, nobody is asking.
+_Avoid_: ping, heartbeat, liveness probe, uptime check
+
 **Sensitivity**:
-Which Severity Bands of a Service's Log Records may open or sustain an Episode — Off, Errors, or Errors and Warnings (bands as Exploration defines them). An Application-wide setting a Service may override; detection always reads its current value.
+Which Severity Bands of a Service's Log Records may open or sustain an Episode — Off, Errors, or Errors and Warnings (bands as Exploration defines them). The Logs Watch's own setting and no other's: Off stops that watch and says nothing about whether anyone is still asking the Health Check. An Application-wide setting a Service may override; detection always reads its current value.
 _Avoid_: alert level, threshold, trigger filter
 
 **Quiet Window**:
-The stretch of time an open Episode must go without a matching Log Record before it closes. An Application-wide duration a Service may override, and one kind of trouble in a Service may override again — a Service's Episodes therefore fall quiet independently of one another.
+The stretch of time an open Episode must go without a match before it closes. An Application-wide duration a Service may override, and one kind of trouble in a Service may override again — a Service's Episodes therefore fall quiet independently of one another.
 _Avoid_: cooldown, resolve timeout, silence period
 
+**Match**:
+One observation of a kind of trouble: a Log Record at or above the Service's Sensitivity under the Logs Watch, one failed probe under the Health Check Watch. Matches open an Episode, feed it, and by ceasing let it fall quiet.
+_Avoid_: hit, occurrence, sample
+
 **Fingerprint**:
-The kind of trouble a Log Record announces: the sender's message template when it travels along, otherwise the body with its variable parts blanked. What tells one Episode of a Service apart from another.
+The kind of trouble a Match announces — under the Logs Watch, the sender's message template when it travels along, otherwise the body with its variable parts blanked; under the Health Check Watch, the single reserved kind that is not answering. What tells one Episode of a Service apart from another, read together with the Watch it belongs to.
 _Avoid_: error type, issue, grouping key
 
 **Episode**:
-One bounded stretch of one kind of trouble in one Service: opened by the first matching Log Record of a Fingerprint with no open Episode, counting every match of that Fingerprint since. It ends by Quieting, by being Solved, or by being Muted — and never reopens: a later match of the same Fingerprint starts a new Episode. Never spans Services, never merges, and outlives the Log Records that drove it.
+One bounded stretch of one kind of trouble in one Service: opened by the first Match of a kind with no open Episode, counting every Match of that kind since. It ends by Quieting, by being Solved, or by being Muted — and never reopens: a later Match of the same kind starts a new Episode. Never spans Services, never spans Watches, never merges, and outlives the evidence that drove it.
 _Avoid_: incident, outage, alert group, error burst
 
 **Quieted**:
-How an unacknowledged Episode ends on its own: its Quiet Window passed without a matching Log Record. The trouble stopped; nothing is claimed to be fixed. Only the passage of time does this — no hand can, and an Acknowledged open Episode never does.
+How an unacknowledged Episode ends on its own: its Quiet Window passed without a Match. The trouble stopped; nothing is claimed to be fixed. Only the passage of time does this — no hand can, and an Acknowledged open Episode never does.
 _Avoid_: auto-resolved, expired, closed by quiet window
 
 **Solved**:
@@ -29,7 +41,7 @@ The one human verdict on a kind of trouble: the cause was fixed. Rendered only o
 _Avoid_: resolved, fixed, closed
 
 **Muted**:
-How an Episode ends when its Service's Sensitivity turns Off: the watching stopped, nothing is claimed about the problem. May still be Solved later.
+How an Episode ends when the Watch feeding it is turned off — Sensitivity set to Off, or a Health Check address cleared: the watching stopped, nothing is claimed about the problem. Reaches only that Watch's Episodes; the other watch's carry on. May still be Solved later.
 _Avoid_: silenced, dismissed
 
 **Acknowledged**:
@@ -41,7 +53,7 @@ The append-only record of every human hand laid on an Episode — Acknowledged, 
 _Avoid_: audit log, history, event log, activity feed
 
 **Alert**:
-The message announcing that an Episode opened: which Service, when, and the first matching Log Record itself. Exactly one per Episode per channel.
+The message announcing that an Episode opened: which Service, when, and the opening Match itself — the Log Record, or what the probe got back. Exactly one per Episode per channel.
 _Avoid_: notification, alarm
 
 **Subscription**:

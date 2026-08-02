@@ -15,5 +15,13 @@ public sealed class ServiceAlertingSettings
 
     public Sensitivity? Sensitivity { get; set; }
     public int? QuietWindowMinutes { get; set; }
+
+    /// <summary>
+    /// Where Bugler asks this Service whether it is alive, and the Health Check Watch's only
+    /// switch: null means nobody is asking. Never inherited from the Application — every Service
+    /// answers at its own address, so there is nothing to inherit.
+    /// </summary>
+    public string? HealthCheckUrl { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; }
 }

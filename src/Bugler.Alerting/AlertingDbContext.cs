@@ -47,6 +47,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             settings.HasKey(s => s.ServiceId);
             settings.Property(s => s.ServiceId).HasConversion(ServiceIdConverter);
             settings.Property(s => s.ApplicationId).HasConversion(ApplicationIdConverter);
+            settings.Property(s => s.HealthCheckUrl).HasMaxLength(500);
             settings.HasIndex(s => s.ApplicationId);
             settings.ToTable(table => table.HasCheckConstraint(
                 "ck_service_settings_quiet_window", "quiet_window_minutes >= 1"));
@@ -86,11 +87,13 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             episode.Property(e => e.ApplicationId).HasConversion(ApplicationIdConverter);
             episode.Property(e => e.Fingerprint).HasMaxLength(300);
             episode.Property(e => e.FirstMatchDetail).HasMaxLength(500);
-            // The invariant: at most one open Episode per kind of trouble per Service.
-            // Also the open-episode scan.
-            // Named HasIndex overloads make two distinct indexes over the same columns; the
+            // The invariant: at most one open Episode per kind of trouble per Service. The Watch
+            // is part of the key because a Fingerprint means something different under each — a
+            // log whose body happens to read like the Health Check Watch's reserved kind is a
+            // different trouble, not the same one. Also the open-episode scan.
+            // Named HasIndex overloads make two distinct indexes over overlapping columns; the
             // explicit database names keep the snake_case convention from renaming them.
-            episode.HasIndex(e => new { e.ServiceId, e.Fingerprint }, "one_open_per_kind")
+            episode.HasIndex(e => new { e.ServiceId, e.Watch, e.Fingerprint }, "one_open_per_kind")
                 .IsUnique()
                 .HasFilter("closed_at IS NULL")
                 .HasDatabaseName("ix_episodes_one_open_per_kind");

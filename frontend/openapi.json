@@ -1464,7 +1464,14 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetServiceAlertingResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2951,6 +2958,21 @@
           }
         }
       },
+      "HealthCheckProbeDto": {
+        "required": [
+          "alive",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "alive": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
       "IssuedApiKeyDto": {
         "required": [
           "id",
@@ -3465,7 +3487,8 @@
         "required": [
           "serviceId",
           "sensitivity",
-          "quietWindowMinutes"
+          "quietWindowMinutes",
+          "healthCheckUrl"
         ],
         "type": "object",
         "properties": {
@@ -3491,6 +3514,12 @@
               "string"
             ],
             "format": "int32"
+          },
+          "healthCheckUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3799,7 +3828,8 @@
       "SetServiceAlertingRequest": {
         "required": [
           "sensitivity",
-          "quietWindowMinutes"
+          "quietWindowMinutes",
+          "healthCheckUrl"
         ],
         "type": "object",
         "properties": {
@@ -3821,6 +3851,30 @@
               "string"
             ],
             "format": "int32"
+          },
+          "healthCheckUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetServiceAlertingResponse": {
+        "required": [
+          "healthCheck"
+        ],
+        "type": "object",
+        "properties": {
+          "healthCheck": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HealthCheckProbeDto"
+              }
+            ]
           }
         }
       },
@@ -4165,7 +4219,8 @@
       },
       "Watch": {
         "enum": [
-          "Logs"
+          "Logs",
+          "HealthCheck"
         ]
       }
     }

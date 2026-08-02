@@ -172,7 +172,7 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
         var put = await _harness.Client.PutAsJsonAsync(
             $"/api/admin/services/{_harness.ServiceId}/alerting",
             new { sensitivity = "ErrorsAndWarnings", quietWindowMinutes = 25 });
-        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
 
         var detail = await _harness.Client.GetFromJsonAsync<EpisodeDetailDto>(
             $"/api/alerting/episodes/{id}/detail");
