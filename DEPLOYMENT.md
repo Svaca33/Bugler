@@ -210,6 +210,13 @@ Two things to get right, because neither fails loudly:
 An IP allowlist in front of the ingest paths is worth having where the senders are known and few.
 Treat it as a second lock: the API key is what actually proves who is exporting.
 
+**Bugler counts guesses, not requests.** Signing in and asking for a reset link are budgeted per
+e-mail address, so guessing at an account is bounded no matter where the guessing comes from
+(ADR 0021). Nothing is counted per client address, because behind your proxy every request arrives
+from the same one and a limit keyed on it would refuse the whole company together. A ceiling on raw
+request volume is therefore the proxy's to set, in the same way the certificate and the HTTPS
+redirect are.
+
 ## First run
 
 Open the UI and create the first account immediately. **Whoever registers first becomes the

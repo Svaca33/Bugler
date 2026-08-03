@@ -1,3 +1,4 @@
+using Bugler.Access.Authentication;
 using Bugler.Access.Users;
 using Bugler.Mail;
 using Microsoft.AspNetCore.Http;
@@ -36,9 +37,18 @@ internal static class ResetPasswordEndpoints
         IMailQueue mail,
         IOptions<AccessOptions> options,
         ISmtpSettingsSource smtpSettings,
+        AttemptBudgets budgets,
+        HttpContext httpContext,
         ILogger<ResetTicket> logger,
         CancellationToken cancellationToken)
     {
+        // The Attempt Budget bounds the asking; MailInterval below bounds the sending. The two are
+        // paced alike, and neither stands in for the other (ADR 0021).
+        if (!budgets.TryResetRequest(request.Email, out var retryAfter))
+        {
+            return AttemptBudgets.Refuse(httpContext, retryAfter);
+        }
+
         if (!IsAvailable(options.Value, await smtpSettings.GetCurrentAsync(cancellationToken)))
         {
             // Nothing about any User is given away by admitting this server cannot send mail —
@@ -46,7 +56,7 @@ internal static class ResetPasswordEndpoints
             return Results.NotFound("This server cannot send mail, so passwords cannot be reset by link.");
         }
 
-        var email = request.Email.Trim().ToLowerInvariant();
+        var email = AttemptBudgets.KeyOf(request.Email);
         var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == email && u.DeactivatedAt == null, cancellationToken);
         if (user is not null)

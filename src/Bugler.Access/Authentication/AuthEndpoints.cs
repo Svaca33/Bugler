@@ -90,10 +90,29 @@ internal static class AuthEndpoints
         LoginRequest request,
         AccessDbContext dbContext,
         IPasswordHasher<User> hasher,
+        AttemptBudgets budgets,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
+        // Before the lookup and long before the hasher: an address that has spent its Attempt
+        // Budget buys no work at all, which is the point of having one (ADR 0021).
+        if (!budgets.TrySignIn(request.Email, out var retryAfter))
+        {
+            return AttemptBudgets.Refuse(httpContext, retryAfter);
+        }
+
+        // Neither a missing password nor one longer than any that can be set can be an account's,
+        // so both are refused exactly as a wrong one is. The length is what keeps the promise
+        // Passwords.MaximumLength makes, on the one endpoint where an anonymous caller reaches the
+        // hasher; the null is what the hasher would otherwise throw over.
+        if (request.Password is null or { Length: > Passwords.MaximumLength })
+        {
+            return Results.Unauthorized();
+        }
+
+        // The same normalisation the budget was spent under, and deliberately the same function:
+        // an address that named one budget must name one User.
+        var email = AttemptBudgets.KeyOf(request.Email);
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (user is null || user.DeactivatedAt is not null ||

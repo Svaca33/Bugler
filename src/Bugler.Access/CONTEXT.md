@@ -41,6 +41,14 @@ Setting a new password without knowing the old one, proven by holding a Reset Ti
 Session of the User, because whoever asks for one is by their own account holding none.
 _Avoid_: recovery, forgotten password
 
+**Attempt Budget**:
+What one e-mail address may spend on the doors that answer before anyone is signed in: signing in,
+and asking for a reset link. It belongs to the address rather than to a User — every address that
+asks has one, including addresses belonging to nobody, so a spent budget never tells whoever asked
+whether an account is behind it. It refills continuously rather than at the turn of an hour, so
+spending somebody else's on purpose costs them a moment and never their account.
+_Avoid_: rate limit, throttle, lockout, ban
+
 **Reset Ticket**:
 One User's single-use permission to set a new password, worth presenting for an hour. Its secret
 exists only in the mail that carried it — Bugler keeps a fingerprint, enough to recognise the ticket

@@ -37,6 +37,9 @@ public static class AccessModule
             .UseSnakeCaseNamingConvention());
 
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+        // One set of Attempt Budgets for the whole server, held for its lifetime: what they count
+        // is how often an address may ask, which is not a fact about any one request (ADR 0021).
+        services.AddSingleton<AttemptBudgets>();
         services.AddHttpContextAccessor();
         services.AddScoped<IReadVisibility, GrantedVisibility>();
         services.AddScoped<IMailRecipients, MailRecipientResolver>();
