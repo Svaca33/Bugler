@@ -45,11 +45,23 @@ public sealed class BuglerHarness : IAsyncDisposable
         string? publicBaseUrl = null)
     {
         var harness = new BuglerHarness();
-        await harness.InitializeAsync(configure, publicBaseUrl);
+        await harness.InitializeAsync(configure, publicBaseUrl, claim: true);
         return harness;
     }
 
-    private async Task InitializeAsync(Action<IWebHostBuilder>? configure, string? publicBaseUrl)
+    /// <summary>
+    /// A Bugler nobody has set up yet: no Admin, no Application, and <see cref="Client"/> anonymous
+    /// like any other. For the tests that are about the claiming itself.
+    /// </summary>
+    public static async Task<BuglerHarness> StartUnclaimedAsync()
+    {
+        var harness = new BuglerHarness();
+        await harness.InitializeAsync(configure: null, publicBaseUrl: null, claim: false);
+        return harness;
+    }
+
+    private async Task InitializeAsync(
+        Action<IWebHostBuilder>? configure, string? publicBaseUrl, bool claim)
     {
         await _postgres.StartAsync();
 
@@ -73,6 +85,11 @@ public sealed class BuglerHarness : IAsyncDisposable
         }
 
         Client = CreateAnonymousClient();
+
+        if (!claim)
+        {
+            return;
+        }
 
         var setup = await Client.PostAsJsonAsync(
             "/api/auth/setup",

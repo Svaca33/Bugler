@@ -1,3 +1,4 @@
+using System.Data;
 using System.Diagnostics;
 using System.Security.Claims;
 using Bugler.Access.ResetPassword;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace Bugler.Access.Authentication;
 
@@ -45,7 +47,16 @@ internal static class AuthEndpoints
     /// <summary>The User's Security Stamp as it stood when this Session was minted.</summary>
     internal const string SecurityStampClaim = "access.security_stamp";
 
-    /// <summary>First run: no users exist yet — whoever sets up the server becomes Admin.</summary>
+    /// <summary>
+    /// First run: no users exist yet — whoever sets up the server becomes Admin.
+    /// </summary>
+    /// <remarks>
+    /// Serializable, because "nobody has claimed this server" is a fact about rows that are not
+    /// there: the unique index on the e-mail does not catch two requests carrying two different
+    /// addresses, and both would read an empty table and both would write an Admin. Postgres takes
+    /// a predicate lock over that empty scan, so one of the two is refused at the end and is told
+    /// what it would have been told a moment later anyway — the server is already set up.
+    /// </remarks>
     public static async Task<IResult> Setup(
         SetupRequest request,
         AccessDbContext dbContext,
@@ -55,6 +66,9 @@ internal static class AuthEndpoints
         CancellationToken cancellationToken)
     {
         var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable, cancellationToken);
 
         if (await dbContext.Users.AnyAsync(cancellationToken))
         {
@@ -84,11 +98,29 @@ internal static class AuthEndpoints
         };
         Passwords.Set(admin, request.Password, hasher);
         dbContext.Users.Add(admin);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (Exception failure) when (IsSerializationFailure(failure))
+        {
+            return Results.Conflict(messages.SetupAlreadyCompleted);
+        }
 
         await SignInAsync(httpContext, admin, staySignedIn: false);
         return Results.Ok(await ToCurrentUserAsync(admin, dbContext, cancellationToken));
     }
+
+    /// <summary>
+    /// The loser of the race, in either of the two places it can be named: PostgreSQL may raise
+    /// 40001 on the statement or on the commit, and a statement's version arrives wrapped by EF.
+    /// </summary>
+    private static bool IsSerializationFailure(Exception failure) =>
+        failure is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure }
+        || failure.InnerException is PostgresException
+        { SqlState: PostgresErrorCodes.SerializationFailure };
 
     /// <summary>
     /// What the sign-in page needs before it can render: whether this server is still unclaimed,
