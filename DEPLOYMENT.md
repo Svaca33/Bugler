@@ -207,6 +207,14 @@ Two things to get right, because neither fails loudly:
   eventually disagree (ADR 0019). Bugler says which of the two it chose in its startup log, and
   warns when the answer is the wrong one.
 
+**Do not have the proxy add a Content-Security-Policy.** Bugler serves the UI under its own, fitted
+to what the SPA loads (ADR 0022). A browser given two of them enforces both, and a policy is
+enforced as the *intersection* of the two — so a second one that merely looks stricter, or is simply
+somebody's default, silently subtracts from Bugler's and the UI breaks in the browser, where nothing
+in a log will say why. The same goes for `X-Content-Type-Options` and `Referrer-Policy`, which
+Bugler also sends. If your proxy adds security headers by default, exclude Bugler's routes from
+that.
+
 An IP allowlist in front of the ingest paths is worth having where the senders are known and few.
 Treat it as a second lock: the API key is what actually proves who is exporting.
 
