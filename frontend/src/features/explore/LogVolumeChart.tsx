@@ -201,7 +201,9 @@ export function LogVolumeChart(props: {
       label={`${formatBoundary(from)} → ${formatBoundary(to)} · ${describeWidth(resolved.widthMs)} buckets`}
       legend={bands}
     >
-      <div className="relative">
+      {/* Above the list's sticky header (z-10): a tall tooltip hangs below the chart, and without
+          this the header would paint over it. */}
+      <div className="relative z-20">
         {reloading && (
           <div className="bg-background/60 absolute inset-0 z-10 flex items-center justify-center">
             <Spinner />
