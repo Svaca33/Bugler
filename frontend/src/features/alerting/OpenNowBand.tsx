@@ -55,15 +55,22 @@ export function OpenNowBand(props: {
         )}
       </div>
 
-      {props.episodes.map(episode => (
-        <OpenCard
-          key={episode.id}
-          episode={episode}
-          known={props.services.get(episode.serviceId)}
-          myName={myName}
-          onSelect={props.onSelect}
-        />
-      ))}
+      {/*
+        The band is capped: however many Episodes burn at once, it keeps most of the panel for the
+        table below. Past the cap the cards scroll — the line above stays put, so the count and the
+        oldest clock read the same wherever the scroll sits.
+      */}
+      <div className="flex max-h-[34svh] min-h-0 flex-col gap-[9px] overflow-y-auto">
+        {props.episodes.map(episode => (
+          <OpenCard
+            key={episode.id}
+            episode={episode}
+            known={props.services.get(episode.serviceId)}
+            myName={myName}
+            onSelect={props.onSelect}
+          />
+        ))}
+      </div>
     </div>
   );
 }
