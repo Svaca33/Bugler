@@ -16,8 +16,9 @@ public sealed class User
     public Language? Language { get; set; }
 
     /// <summary>
-    /// Rolled whenever the password is written. A Session carries the stamp it was minted from,
-    /// so changing the password ends every Session that came before it (CONTEXT.md: Session).
+    /// Which generation of Sessions still counts. A Session carries the stamp it was minted from,
+    /// so rolling it ends every Session that came before — which is what writing a password does,
+    /// and what signing out does (CONTEXT.md: Session).
     /// </summary>
     public required Guid SecurityStamp { get; set; }
 

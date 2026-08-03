@@ -227,6 +227,29 @@ public sealed class AccessTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, (await elsewhere.GetAsync("/api/auth/me")).StatusCode);
     }
 
+    /// <summary>
+    /// Signing out is not a fact about one browser (ADR 0003): the Stamp is rolled, so the Session
+    /// left behind elsewhere dies with the one that asked — and so would a copy of this one's
+    /// ticket, which is the same thing said about a thief instead of a colleague.
+    /// </summary>
+    [Fact]
+    public async Task Signing_out_ends_the_sessions_left_behind_elsewhere()
+    {
+        const string email = "forgetful@bugler.test";
+        const string password = "Forgetful123!";
+        var here = await _harness.CreateUserClientAsync(email, password, _harness.ApplicationId);
+        var elsewhere = _harness.CreateAnonymousClient();
+        (await elsewhere.PostAsJsonAsync("/api/auth/login", new { email, password })).EnsureSuccessStatusCode();
+        (await elsewhere.GetAsync("/api/auth/me")).EnsureSuccessStatusCode();
+
+        (await here.PostAsync("/api/auth/logout", content: null)).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await here.GetAsync("/api/auth/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await elsewhere.GetAsync("/api/auth/me")).StatusCode);
+        (await _harness.CreateAnonymousClient().PostAsJsonAsync("/api/auth/login", new { email, password }))
+            .EnsureSuccessStatusCode();
+    }
+
     [Fact]
     public async Task A_wrong_current_password_changes_nothing()
     {

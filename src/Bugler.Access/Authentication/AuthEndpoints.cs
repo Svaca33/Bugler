@@ -239,8 +239,32 @@ internal static class AuthEndpoints
         return Results.NoContent();
     }
 
-    public static async Task<IResult> Logout(HttpContext httpContext, CancellationToken cancellationToken)
+    /// <summary>
+    /// Signing out ends every Session of this User, not only the one that asked (ADR 0003). The
+    /// cookie deleted here was never the whole of a Session — a copy of the ticket stays valid on
+    /// its own — so the Security Stamp is rolled instead, and every Session minted before it stops
+    /// counting on its next request.
+    /// </summary>
+    public static async Task<IResult> Logout(
+        ClaimsPrincipal principal,
+        AccessDbContext dbContext,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
     {
+        var userId = GetUserId(principal);
+        var user = userId is null
+            ? null
+            : await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user is not null)
+        {
+            // Rolled and saved before the cookie goes: a write that fails must leave the caller
+            // signed in and told so, never sign them out of this browser alone while the Sessions
+            // they asked to end read on elsewhere.
+            user.SecurityStamp = Guid.CreateVersion7();
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return Results.NoContent();
     }

@@ -32,12 +32,18 @@ The permission for one User to read the telemetry of one Application. References
 _Avoid_: permission, role assignment, ACL entry
 
 **Session**:
-An authenticated sign-in of a User, lasting until logout, expiry, or — unless the User chose to
-stay signed in — until they close the browser. A Session is revalidated against the User behind it on
-each request, so deactivation, deletion or a new password ends it and role changes reach it without
-a re-login. The Session the password was changed from is the one exception: it survives, because
-throwing somebody out of the browser they just used would say nothing about who they are.
+An authenticated sign-in of a User, lasting until they sign out, until it expires, or — unless the
+User chose to stay signed in — until they close the browser. A Session is revalidated against the
+User behind it on each request, so deactivation, deletion or a new password ends it and role changes
+reach it without a re-login. The Session the password was changed from is the one exception: it
+survives, because throwing somebody out of the browser they just used would say nothing about who
+they are.
 _Avoid_: token, login state
+
+**Sign-out**:
+A User ending their Sessions — all of them, in every browser they hold one, not only the one that
+asked (ADR 0003). Nothing about the account changes; only which Sessions still count.
+_Avoid_: logout as a fact about one browser, session close
 
 **Password Change**:
 A User replacing their own password while signed in, proven by the password they are replacing.
