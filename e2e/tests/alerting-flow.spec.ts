@@ -30,7 +30,9 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   // Earlier runs leave episodes with this very body behind, and a stale one would satisfy every
   // locator below while being long since solved. Narrowing to this run's application makes the
   // list contain nothing but what this run produced.
-  await page.getByRole("button", { name: "Episodes" }).click();
+  // Exact, because a name is matched as a case-insensitive substring by default and the `?`
+  // beside the page title is a button named "How episodes work" — only the tab is meant here.
+  await page.getByRole("button", { name: "Episodes", exact: true }).click();
   await selectFilter(page, "All applications", appName);
   const rows = page.getByTestId("episode-rows");
   const newest = rows.getByText("Payment declined: insufficient funds").first();
