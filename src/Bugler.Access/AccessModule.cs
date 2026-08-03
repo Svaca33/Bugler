@@ -37,6 +37,11 @@ public static class AccessModule
             .UseSnakeCaseNamingConvention());
 
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+        // The one thing Access configures about the hasher. Everything else about Identity V3 —
+        // PBKDF2-HMAC-SHA512, the constant-time comparison, the format marker that lets an older
+        // hash still verify — is the framework's and is right as it stands.
+        services.Configure<PasswordHasherOptions>(
+            options => options.IterationCount = Passwords.IterationCount);
         // One set of Attempt Budgets for the whole server, held for its lifetime: what they count
         // is how often an address may ask, which is not a fact about any one request (ADR 0021).
         services.AddSingleton<AttemptBudgets>();

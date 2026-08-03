@@ -20,9 +20,11 @@ namespace Bugler.Access.Authentication;
 internal static class EvenedAnswer
 {
     /// <summary>
-    /// Comfortably above a password verify — PBKDF2 at Identity's defaults costs tens of
-    /// milliseconds — and below what a person retyping a password would notice. Fixed rather than
-    /// measured: a floor that moved with the hardware would be one more thing to observe.
+    /// Above a password verify — PBKDF2-HMAC-SHA512 at <see cref="Users.Passwords.IterationCount"/>
+    /// measures 112 ms on a 2026 developer laptop — and below what a person retyping a password
+    /// would notice. Fixed rather than measured: a floor that moved with the hardware would be one
+    /// more thing to observe. Raising the iteration count spends this margin, so it is a decision
+    /// about this constant too (ADR 0023).
     /// </summary>
     public static readonly TimeSpan Floor = TimeSpan.FromMilliseconds(300);
 

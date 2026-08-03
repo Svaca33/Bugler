@@ -31,11 +31,17 @@ magnitude more, and bounding that would need the global ceiling ADR 0021 deliber
 the one shape that lets a single caller close the sign-in page for everybody. Evening the clock
 instead keeps today's cost profile: an invented address still buys a lookup and a timer.
 
-**What the floor is set against.** Identity's default hasher is PBKDF2 at 100k iterations — tens
-of milliseconds on server hardware — so 300 ms covers the slowest honest path with room to spare,
+**What the floor is set against.** The hasher is PBKDF2-HMAC-SHA512, and one verify measures 112 ms
+on a 2026 developer laptop at the 210 000 iterations `Passwords.IterationCount` sets — 54 ms at the
+100 000 that was in force when this was written. So 300 ms still covers the slowest honest path,
 and sits below what a person retyping their password would notice. It is fixed rather than
 calibrated at startup because a floor that moved with the hardware would be noisy to measure, one
 more moving part to test, and itself something to observe across restarts.
+
+*Amended when the iteration count was raised to the figure OWASP names.* The floor did not move and
+the argument did not change, but the room it has did: the margin over a verify went from roughly
+five-fold to under three. The tail below is therefore a little wider than it was, and the next raise
+of the iteration count is the moment to weigh this constant again rather than assume it.
 
 **What remains, said plainly.** A tail: under enough load a real verify can outgrow the floor, and
 on hardware slow enough it always would. A statistician could read that tail — but reading a

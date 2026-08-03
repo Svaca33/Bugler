@@ -172,11 +172,25 @@ internal static class AuthEndpoints
         var email = AttemptBudgets.KeyOf(request.Email);
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
-        if (user is null || user.DeactivatedAt is not null ||
-            hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password)
-                == PasswordVerificationResult.Failed)
+        // The short-circuit is the point: an address nobody holds, and an account switched off,
+        // both buy the refusal without a verify. What that used to cost in readable time the
+        // evening below covers (ADR 0023).
+        var verification = user is null || user.DeactivatedAt is not null
+            ? PasswordVerificationResult.Failed
+            : hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+
+        if (user is null || verification == PasswordVerificationResult.Failed)
         {
             return await EvenedAnswer.After(started, Results.Unauthorized(), cancellationToken);
+        }
+
+        // The password was right, and its hash was written under a cheaper setting than today's.
+        // Signing in is the only moment the password is in hand to write it again — and the only
+        // way accounts made before the count was raised ever reach it (Passwords.Rehash).
+        if (verification == PasswordVerificationResult.SuccessRehashNeeded)
+        {
+            Passwords.Rehash(user, request.Password, hasher);
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         await SignInAsync(httpContext, user, request.StaySignedIn);

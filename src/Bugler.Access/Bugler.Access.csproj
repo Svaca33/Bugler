@@ -26,6 +26,12 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Bugler.Access.Tests" />
+    <!--
+      The integration tests need the iteration count. Whether a stored hash was written at today's
+      setting is read out of the hash itself, and asserting it against a number copied into the
+      test would prove only that two constants were typed the same way.
+    -->
+    <InternalsVisibleTo Include="Bugler.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>
