@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { api } from "@/api/client";
@@ -11,6 +11,7 @@ import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterGroup, FilterRail } from "@/components/ui/filter-rail";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { facetOptions, serviceLabels, type SourceFilters } from "@/lib/sourceFilter";
+import { RefreshButton } from "./RefreshButton";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
 import { TimeFilterControl } from "./TimeFilterControl";
 
@@ -24,6 +25,13 @@ const GRID = "grid grid-cols-[1fr_196px_200px_96px_66px_74px] items-center gap-4
 export function TracesPage(props: { filters: TraceFilters; onChange: (filters: TraceFilters) => void }) {
   const { filters, onChange } = props;
   const catalog = useCatalog();
+  const queryClient = useQueryClient();
+
+  // One click renews everything the page is showing — the list and the catalog the rail reads.
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["traces", filters] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog"] });
+  };
 
   const traces = useQuery({
     queryKey: ["traces", filters],
@@ -131,7 +139,10 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3.5 px-5 py-3">
           <h1 className="text-sm font-semibold tracking-[-0.1px]">Traces</h1>
-          <span className="ml-auto font-mono text-[11.5px] text-[#6E86A0]">{items.length} traces</span>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="font-mono text-[11.5px] text-[#6E86A0]">{items.length} traces</span>
+            <RefreshButton busy={traces.isFetching} onRefresh={refresh} />
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto">

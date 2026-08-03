@@ -20,6 +20,7 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { tenantOf } from "./format";
 import { LogDetailPanel } from "./LogDetailPanel";
 import { LogVolumeChart } from "./LogVolumeChart";
+import { RefreshButton } from "./RefreshButton";
 import { facetOptions, serviceLabels, type SourceFilters } from "@/lib/sourceFilter";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
 import { TimeFilterControl } from "./TimeFilterControl";
@@ -125,6 +126,20 @@ export function LogsPage(props: {
     // Following is a claim to be watching the end of the stream, and a Filter that ends before the
     // stream does contradicts it. Only the top goes; where the window opens is still the reader's.
     if (filters.to !== undefined) onChange({ ...filters, to: undefined });
+  };
+
+  // One click renews everything the page is showing. The list is *reset* rather than invalidated:
+  // invalidation would re-walk every paged-in page on cursors cut for a window that has moved,
+  // while the reader pressing Refresh is asking for a fresh first page, not their place in history.
+  // Everything else on the page — total, Volume, Release markers, catalog, the open record —
+  // follows along so no panel sits stale beside a fresh list.
+  const refresh = () => {
+    void queryClient.resetQueries({ queryKey: ["logs", filters] });
+    void queryClient.invalidateQueries({ queryKey: ["logs-count", filters] });
+    void queryClient.invalidateQueries({ queryKey: ["logs-volume"] });
+    void queryClient.invalidateQueries({ queryKey: ["releases"] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog"] });
+    void queryClient.invalidateQueries({ queryKey: ["log"] });
   };
 
   const stopFollowing = () => {
@@ -309,6 +324,14 @@ export function LogsPage(props: {
             {/* Follow is not a filter — it is how this list is being read, so it lives on the list. */}
             <div className="ml-auto flex items-center gap-3">
               {!follow && <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>}
+              {/* Follow already renews the list on its own tick, so Refresh steps aside with the
+                  paging and the count: two renewers over one list could only disagree. */}
+              {!follow && (
+                <RefreshButton
+                  busy={logs.isFetching && !logs.isFetchingNextPage}
+                  onRefresh={refresh}
+                />
+              )}
               <Button
                 type="button"
                 variant={follow ? "default" : "outline"}
