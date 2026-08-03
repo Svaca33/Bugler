@@ -4,7 +4,25 @@
    Replace the whole file in the repo, commit, then run /design-sync.
    ========================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* IBM Plex is served by Bugler itself rather than fetched from Google. The Content-Security-Policy
+   names no third-party origin (ADR 0022), and a Bugler inside a closed network could never reach
+   fonts.googleapis.com anyway — there the typography quietly fell back to system faces, after
+   waiting for a timeout to say so.
+
+   Bun inlines these faces into the built stylesheet as `data:` URIs and offers no way not to, which
+   is why `font-src` admits `data:`. It costs a larger first load and gives back the three serialised
+   round trips a remote @import used to spend before a single glyph arrived. Both subsets are
+   imported per face: latin-ext is what carries the diacritics of whatever a Log Record says. */
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-400.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-500.css";
+@import "@fontsource/ibm-plex-sans/latin-ext-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-400.css";
+@import "@fontsource/ibm-plex-mono/latin-ext-500.css";
 @import "tailwindcss";
 @import "tw-animate-css";
 
