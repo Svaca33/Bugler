@@ -29,6 +29,15 @@ internal static class Sql
         _ => value,
     };
 
+    /// <summary>
+    /// Attributes as the write path stored them. The default depth of 64 is left as it is on
+    /// purpose, not by omission: the OTLP parser refuses a message nested past 100 levels, and an
+    /// attribute spends two of those on every level of JSON it produces, so the deepest one a sender
+    /// can get in is around 48 and this limit never decides anything. Raising it would guard nothing
+    /// and would say what Bugler does not mean — that nesting without end is ordinary, and that the
+    /// cost of it belongs to whoever opens the page rather than whoever sent the telemetry.
+    /// <c>NestedAttributeDepthTests</c> is what keeps the two ends from drifting into each other.
+    /// </summary>
     public static JsonElement ParseJson(string json)
     {
         using var document = JsonDocument.Parse(json);
