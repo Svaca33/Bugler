@@ -13,21 +13,26 @@ import { cn } from "@/lib/utils";
 /**
  * The shadcn chart wrapper over Recharts, adapted to Recharts 3 and Tailwind v4.
  *
- * Series colours travel as a config rather than as props on each mark: the container writes one
- * `--color-<key>` custom property per series, scoped to its own id, and the marks reference those.
- * That keeps chart colours in the token layer with every other colour in the kit instead of as
- * hexes sprinkled through feature code, and it is what lets a series be recoloured for dark mode
- * without the chart knowing which mode it is in.
+ * Series colours travel as a config rather than as props on each mark: the container carries one
+ * `--color-<key>` custom property per series and the marks reference those. That keeps chart
+ * colours in the token layer with every other colour in the kit instead of as hexes sprinkled
+ * through feature code, and it is what lets a series be recoloured for dark mode without the chart
+ * knowing which mode it is in — a `color` here is a `var(--…)`, and the token underneath it is what
+ * answers to the theme.
+ *
+ * Upstream shadcn writes these properties through a `<style>` element built by interpolating the
+ * config into a CSS string, with a `theme` branch on each entry naming a light and a dark colour.
+ * Both are gone. The properties are set through React's `style` prop, which reaches the CSSOM and
+ * so never composes markup out of a key that a monitored application chose (ADR 0022); the `theme`
+ * branch went with the element that was its only reason to exist, unused here because the token
+ * layer already resolves light and dark one level further down.
  */
-
-// Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
-
 export type ChartConfig = {
   [key: string]: {
     label?: React.ReactNode;
     icon?: React.ComponentType;
-  } & ({ color?: string; theme?: never } | { color?: never; theme: Record<keyof typeof THEMES, string> });
+    color?: string;
+  };
 };
 
 const ChartContext = React.createContext<{ config: ChartConfig } | null>(null);
@@ -46,23 +51,19 @@ function useChart() {
  * from upstream keeps working code working.
  */
 function Chart({
-  id,
   className,
   children,
   config,
+  style,
   ...props
 }: React.ComponentProps<"div"> & {
   config: ChartConfig;
   children: React.ComponentProps<typeof ResponsiveContainer>["children"];
 }) {
-  const uniqueId = React.useId();
-  const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`;
-
   return (
     <ChartContext.Provider value={{ config }}>
       <div
         data-slot="chart"
-        data-chart={chartId}
         className={cn(
           "flex justify-center text-xs",
           "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground",
@@ -70,37 +71,28 @@ function Chart({
           "[&_.recharts-layer]:outline-none [&_.recharts-surface]:outline-none",
           className,
         )}
+        // A caller's own style wins: these are defaults the config supplies, not the chart's say.
+        style={{ ...seriesColours(config), ...style }}
         {...props}
       >
-        <ChartStyle id={chartId} config={config} />
         <ResponsiveContainer>{children}</ResponsiveContainer>
       </div>
     </ChartContext.Provider>
   );
 }
 
-/** One `--color-<key>` per configured series, per theme, scoped to a single chart instance. */
-function ChartStyle({ id, config }: { id: string; config: ChartConfig }) {
-  const colored = Object.entries(config).filter(([, item]) => item.theme !== undefined || item.color !== undefined);
-
-  if (colored.length === 0) {
-    return null;
-  }
-
-  const css = Object.entries(THEMES)
-    .map(([theme, prefix]) => {
-      const declarations = colored
-        .map(([key, item]) => {
-          const color = item.theme?.[theme as keyof typeof THEMES] ?? item.color;
-          return color === undefined ? null : `  --color-${key}: ${color};`;
-        })
-        .filter(declaration => declaration !== null)
-        .join("\n");
-      return `${prefix} [data-chart=${id}] {\n${declarations}\n}`;
-    })
-    .join("\n");
-
-  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+/**
+ * The `--color-<key>` custom property each configured series is drawn with. Inherited by everything
+ * inside the container, so a mark asks for `var(--color-error)` without knowing which chart it is in
+ * — and two charts on one screen can give the same series name a different colour.
+ */
+function seriesColours(config: ChartConfig): React.CSSProperties {
+  // Custom properties are not in React's CSSProperties, which knows only the named ones.
+  return Object.fromEntries(
+    Object.entries(config)
+      .filter(([, item]) => item.color !== undefined)
+      .map(([key, item]) => [`--color-${key}`, item.color]),
+  ) as React.CSSProperties;
 }
 
 const ChartTooltip = Tooltip;
@@ -225,7 +217,6 @@ export {
   Chart as ChartContainer,
   ChartLegend,
   ChartLegendContent,
-  ChartStyle,
   ChartTooltip,
   ChartTooltipContent,
 };
