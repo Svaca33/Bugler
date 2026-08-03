@@ -79,7 +79,15 @@ app.MapGet("/health", async (HealthProbe probe, CancellationToken cancellationTo
         : Results.Text("Database unreachable", statusCode: StatusCodes.Status503ServiceUnavailable));
 
 var appSurface = app.MapGroup("").ServedOn(Surface.App);
-appSurface.MapOpenApi();
+
+// The document describes the whole API, admin paths included, so it sits behind the same door:
+// any signed-in user. Development alone stays anonymous so `bun run regen-api` can read it
+// without a session; an unrecognized environment locks rather than leaks.
+var openApiDocument = appSurface.MapOpenApi();
+if (!app.Environment.IsDevelopment())
+{
+    openApiDocument.RequireAuthorization();
+}
 
 // Deployment diagnostics and settings, like /health: whether this server can send mail, and
 // where to. Admin-only, because the SMTP settings are the server's, not any application's.

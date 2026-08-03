@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "routes": "tsr watch",
     "arch": "depcruise src",
-    "regen-api": "curl -sf http://localhost:8080/openapi/v1.json -o openapi.json && openapi-typescript openapi.json -o src/api/schema.d.ts"
+    "regen-api": "bun scripts/regen-api.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
