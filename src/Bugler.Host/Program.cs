@@ -54,11 +54,14 @@ await AccessModule.MigrateAsync(app.Services);
 await AlertingModule.MigrateAsync(app.Services);
 await ServerDbContext.MigrateAsync(app.Services);
 
-// The static UI belongs to the app surface only.
+// The static UI belongs to the app surface only — and so does the policy it is served under, which
+// only a browser enforces and no OTLP sender would ever read (ADR 0022). The branch rejoins the
+// pipeline, so the headers reach the REST answers and the SPA fallback too, not just these files.
 bool OnAppSurface(HttpContext context) =>
     !surfaceByPort.TryGetValue(context.Connection.LocalPort, out var surface) || surface == Surface.App;
 app.UseWhen(OnAppSurface, spa =>
 {
+    spa.UseSecurityHeaders();
     spa.UseDefaultFiles();
     spa.UseStaticFiles();
 });
