@@ -14,15 +14,24 @@ import { routeTree } from "./routeTree.gen";
 
 import "./index.css";
 
-const router = createRouter({ routeTree });
+const queryClient = new QueryClient();
+
+const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  // The gate on `/_app` awaits "who is signed in" before the shell renders, so there is a moment
+  // with nothing on screen. It is one call long and usually invisible; this is what shows if the
+  // server is slow enough for the wait to be noticed.
+  defaultPendingComponent: () => (
+    <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>
+  ),
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
 }
-
-const queryClient = new QueryClient();
 
 const elem = document.getElementById("root")!;
 const app = (

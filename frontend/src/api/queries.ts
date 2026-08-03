@@ -1,20 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { api } from "./client";
 
-/** Who is signed in — an app-wide question (layout, admin gate, who acts on an Episode). */
+/**
+ * Who is signed in — an app-wide question (layout, admin gate, who acts on an Episode). Spelled as
+ * shared options rather than only a hook because the gate on `/_app` awaits the same question
+ * before it lets anybody in: the router and the components then read one cache entry, not two.
+ *
+ * Null is an answer, not a failure: 401 is what "nobody" sounds like over HTTP.
+ */
+export const currentUserQuery = queryOptions({
+  queryKey: ["auth", "me"],
+  queryFn: async () => {
+    const { data, response } = await api.GET("/api/auth/me");
+    if (response.status === 401) return null;
+    if (data === undefined) throw new Error("Failed to load session");
+    return data;
+  },
+  retry: false,
+  staleTime: 60_000,
+});
+
 export function useCurrentUser() {
-  return useQuery({
-    queryKey: ["auth", "me"],
-    queryFn: async () => {
-      const { data, response } = await api.GET("/api/auth/me");
-      if (response.status === 401) return null;
-      if (data === undefined) throw new Error("Failed to load session");
-      return data;
-    },
-    retry: false,
-    staleTime: 60_000,
-  });
+  return useQuery(currentUserQuery);
 }
 
 /**

@@ -7,7 +7,12 @@ import { Label } from "@/components/ui/label";
 import { AuthCard, CenteredNote, Field } from "./AuthCard";
 import { useAuthStatus, useLogin, useSetup } from "./useAuth";
 
-export function LoginPage() {
+/**
+ * The two doors that put somebody inside: signing in, and — on a server nobody has claimed yet —
+ * creating the first account. Both end at the same place, the address the visitor was heading for
+ * when they were turned away, which the route has already vouched for.
+ */
+export function LoginPage(props: { destination: string }) {
   const status = useAuthStatus();
 
   if (status.isPending) {
@@ -15,13 +20,16 @@ export function LoginPage() {
   }
 
   return status.data?.needsSetup ? (
-    <SetupForm />
+    <SetupForm destination={props.destination} />
   ) : (
-    <LoginForm resetAvailable={status.data?.passwordResetAvailable === true} />
+    <LoginForm
+      destination={props.destination}
+      resetAvailable={status.data?.passwordResetAvailable === true}
+    />
   );
 }
 
-function LoginForm(props: { resetAvailable: boolean }) {
+function LoginForm(props: { destination: string; resetAvailable: boolean }) {
   const login = useLogin();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -36,7 +44,11 @@ function LoginForm(props: { resetAvailable: boolean }) {
       submitLabel={login.isPending ? "Signing in…" : "Sign in"}
       disabled={login.isPending}
       onSubmit={() =>
-        login.mutate({ email, password, staySignedIn }, { onSuccess: () => navigate({ to: "/dashboard" }) })
+        login.mutate(
+          { email, password, staySignedIn },
+          // Replacing rather than pushing: the sign-in is a step nobody wants to walk back into.
+          { onSuccess: () => navigate({ href: props.destination, replace: true }) },
+        )
       }
       footer={
         // Hidden on a server without SMTP: a link that always promises a mail nobody receives
@@ -74,7 +86,7 @@ function LoginForm(props: { resetAvailable: boolean }) {
   );
 }
 
-function SetupForm() {
+function SetupForm(props: { destination: string }) {
   const setup = useSetup();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -91,7 +103,7 @@ function SetupForm() {
       onSubmit={() =>
         setup.mutate(
           { email, password, displayName: displayName || undefined },
-          { onSuccess: () => navigate({ to: "/dashboard" }) },
+          { onSuccess: () => navigate({ href: props.destination, replace: true }) },
         )
       }
     >
