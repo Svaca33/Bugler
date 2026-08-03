@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using Bugler.Access.ResetPassword;
 using Bugler.Access.Users;
@@ -101,13 +102,17 @@ internal static class AuthEndpoints
             return AttemptBudgets.Refuse(httpContext, retryAfter);
         }
 
+        // Every 401 below leaves in evened time (ADR 0023): whether the work behind it was a
+        // verify, a lookup that found nobody, or nothing at all is not readable from the clock.
+        var started = Stopwatch.GetTimestamp();
+
         // Neither a missing password nor one longer than any that can be set can be an account's,
         // so both are refused exactly as a wrong one is. The length is what keeps the promise
         // Passwords.MaximumLength makes, on the one endpoint where an anonymous caller reaches the
         // hasher; the null is what the hasher would otherwise throw over.
         if (request.Password is null or { Length: > Passwords.MaximumLength })
         {
-            return Results.Unauthorized();
+            return await EvenedAnswer.After(started, Results.Unauthorized(), cancellationToken);
         }
 
         // The same normalisation the budget was spent under, and deliberately the same function:
@@ -119,7 +124,7 @@ internal static class AuthEndpoints
             hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password)
                 == PasswordVerificationResult.Failed)
         {
-            return Results.Unauthorized();
+            return await EvenedAnswer.After(started, Results.Unauthorized(), cancellationToken);
         }
 
         await SignInAsync(httpContext, user, request.StaySignedIn);

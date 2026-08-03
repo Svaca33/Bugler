@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Bugler.Access.Authentication;
 using Bugler.Access.Users;
 using Bugler.Mail;
@@ -56,6 +57,11 @@ internal static class ResetPasswordEndpoints
             return Results.NotFound("This server cannot send mail, so passwords cannot be reset by link.");
         }
 
+        // The sentence below is the same for everybody; the clock must be too (ADR 0023). Issuing
+        // a ticket and queueing a mail cost round-trips that finding nobody does not — and finding
+        // a ticket already standing costs a third amount, which would otherwise say a link is out.
+        var started = Stopwatch.GetTimestamp();
+
         var email = AttemptBudgets.KeyOf(request.Email);
         var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Email == email && u.DeactivatedAt == null, cancellationToken);
@@ -64,7 +70,8 @@ internal static class ResetPasswordEndpoints
             await IssueAndSendAsync(user, dbContext, mail, options.Value.PublicBaseUrl, logger, cancellationToken);
         }
 
-        return Results.Accepted(value: SameAnswerToEverybody);
+        return await EvenedAnswer.After(
+            started, Results.Accepted(value: SameAnswerToEverybody), cancellationToken);
     }
 
     public static async Task<IResult> Reset(

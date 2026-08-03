@@ -49,6 +49,12 @@ whether an account is behind it. It refills continuously rather than at the turn
 spending somebody else's on purpose costs them a moment and never their account.
 _Avoid_: rate limit, throttle, lockout, ban
 
+**Evened Answer**:
+An answer from the doors that reply before anyone is signed in, released only once a fixed floor
+of time has passed — so how long Bugler thought says nothing about what it found. The text of
+these answers was evened first; this evens the clock.
+_Avoid_: constant-time response, timing padding, delay
+
 **Reset Ticket**:
 One User's single-use permission to set a new password, worth presenting for an hour. Its secret
 exists only in the mail that carried it — Bugler keeps a fingerprint, enough to recognise the ticket
