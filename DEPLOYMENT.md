@@ -214,6 +214,13 @@ Two things to get right, because neither fails loudly:
   eventually disagree (ADR 0019). Bugler says which of the two it chose in its startup log, and
   warns when the answer is the wrong one.
 
+**Do not have the proxy strip unknown request headers.** Every mutation from the UI carries
+`Bugler-Request`, and Bugler refuses one that arrives without it — that header is what stops a page
+on another origin from spending a signed-in visitor's Session (ADR 0025). A proxy configured to pass
+only an allowlist of headers will remove it, and the symptom is a UI that reads perfectly and cannot
+save anything, every write coming back `403`. Reads are unaffected, which is what makes it look like
+a Bugler bug rather than a proxy setting.
+
 **Do not have the proxy add a Content-Security-Policy.** Bugler serves the UI under its own, fitted
 to what the SPA loads (ADR 0022). A browser given two of them enforces both, and a policy is
 enforced as the *intersection* of the two — so a second one that merely looks stricter, or is simply

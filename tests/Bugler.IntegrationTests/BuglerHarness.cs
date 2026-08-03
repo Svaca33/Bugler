@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Bugler.Access.ManageUsers;
+using Bugler.Host;
 using Bugler.Registry;
 using Bugler.Registry.Catalog;
 using Bugler.SharedKernel;
@@ -71,7 +72,7 @@ public sealed class BuglerHarness : IAsyncDisposable
             _clientOptions.BaseAddress = new Uri(new Uri(publicBaseUrl).GetLeftPart(UriPartial.Authority));
         }
 
-        Client = _factory.CreateClient(_clientOptions);
+        Client = CreateAnonymousClient();
 
         var setup = await Client.PostAsJsonAsync(
             "/api/auth/setup",
@@ -140,7 +141,21 @@ public sealed class BuglerHarness : IAsyncDisposable
     }
 
     /// <summary>A fresh client with its own cookie jar, not signed in.</summary>
-    public HttpClient CreateAnonymousClient() => _factory.CreateClient(_clientOptions);
+    /// <remarks>
+    /// Names its requests, as the UI does (ADR 0025), so every mutation in these tests is refused
+    /// or allowed for the reason the test is about. The header rides on the OTLP calls too: under
+    /// TestServer no connection arrives on a configured listener, so every request here looks like
+    /// the App surface — in a deployment those senders reach 4318 and are never asked.
+    /// </remarks>
+    public HttpClient CreateAnonymousClient()
+    {
+        var client = CreateUnnamedClient();
+        client.DefaultRequestHeaders.Add(SameOriginMutations.HeaderName, "1");
+        return client;
+    }
+
+    /// <summary>A client that does not name its requests — what a cross-site page's caller looks like.</summary>
+    public HttpClient CreateUnnamedClient() => _factory.CreateClient(_clientOptions);
 
     /// <summary>Creates a non-admin user with the given grants and returns a client signed in as them.</summary>
     public async Task<HttpClient> CreateUserClientAsync(
@@ -157,7 +172,7 @@ public sealed class BuglerHarness : IAsyncDisposable
             grant.EnsureSuccessStatusCode();
         }
 
-        var client = _factory.CreateClient(_clientOptions);
+        var client = CreateAnonymousClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
         login.EnsureSuccessStatusCode();
         return client;

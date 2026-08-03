@@ -179,6 +179,24 @@ curl -i -X POST http://your-server:4318/v1/logs \
 
 An empty body is a valid, empty OTLP request: `200` means the path and the key are good.
 
+## Driving the REST API from a script
+
+The REST API on `:8080` is the UI's own, and it authenticates with the Session cookie — not with a
+Service API key, which is for exports only. A script that signs in and then changes something has to
+send one header of its own:
+
+```bash
+curl -i -X POST https://bugler.example.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Bugler-Request: 1" \
+  -d '{"email":"you@example.com","password":"…"}'
+```
+
+`Bugler-Request` is required on every method that is not a read, its value is never looked at, and
+without it the answer is `403`. It is what keeps a page on another origin from spending your Session:
+such a page can make your browser send the cookie, but it cannot make it send a header
+([ADR 0025](docs/adr/0025-a-mutation-names-itself.md)). Reads need nothing.
+
 ## Development
 
 Prerequisites: .NET 10 SDK, Bun, Docker.

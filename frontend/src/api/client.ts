@@ -8,9 +8,14 @@ export const api = createClient<paths>({ baseUrl: "/" });
 
 // Every request names the language the UI is speaking, so a refusal the UI will show verbatim
 // arrives already in that language (ADR 0024). The server honours only languages it knows.
+//
+// And every request names itself: the server refuses a mutation without this header, because a
+// page on another origin can send the Session cookie along but cannot send a header (ADR 0025).
+// Set on all methods rather than only the unsafe ones — one rule, nothing to keep in step.
 api.use({
   onRequest({ request }) {
     request.headers.set("Accept-Language", getActiveLanguage());
+    request.headers.set("Bugler-Request", "1");
     return request;
   },
 });

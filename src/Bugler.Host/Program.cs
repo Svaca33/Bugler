@@ -68,6 +68,9 @@ bool OnAppSurface(HttpContext context) =>
 app.UseWhen(OnAppSurface, spa =>
 {
     spa.UseSecurityHeaders();
+    // Before routing, so no endpoint on this surface can be added without it (ADR 0025), and
+    // after the headers, so the refusal is dressed like every other answer.
+    spa.UseSameOriginMutations();
     spa.UseDefaultFiles();
     spa.UseStaticFiles();
 });
