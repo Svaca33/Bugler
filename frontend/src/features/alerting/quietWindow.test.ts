@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
+import { cs } from "@/i18n/cs";
+import { en } from "@/i18n/en";
+import { activate } from "@/i18n/runtime";
+
 import {
   describeQuietWindow,
   MAX_QUIET_WINDOW_MINUTES,
@@ -18,6 +22,17 @@ describe("quietWindowWords", () => {
     expect(quietWindowWords(120)).toBe("2 h");
     expect(quietWindowWords(1440)).toBe("1 day");
     expect(quietWindowWords(MAX_QUIET_WINDOW_MINUTES)).toBe("7 days");
+  });
+
+  test("Czech days follow the grammar's plural, not an if-chain", () => {
+    activate("cs", cs);
+    try {
+      expect(quietWindowWords(1440)).toBe("1 den");
+      expect(quietWindowWords(2880)).toBe("2 dny");
+      expect(quietWindowWords(MAX_QUIET_WINDOW_MINUTES)).toBe("7 dní");
+    } finally {
+      activate("en", en);
+    }
   });
 });
 

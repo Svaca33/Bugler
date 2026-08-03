@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bugler.Alerting.DeliverMessages;
+using Bugler.SharedKernel;
 
 namespace Bugler.Alerting.Tests;
 
@@ -17,7 +18,9 @@ public class GoogleChatSenderTests
         MatchDetail: "Payment gateway timed out",
         EpisodeUrl: episodeUrl,
         TextBody: "irrelevant here",
-        HtmlBody: "irrelevant here");
+        HtmlBody: "irrelevant here",
+        OpenEpisodeLabel: "Open episode",
+        Language: Language.English);
 
     private static JsonNode Payload(ComposedAlert alert) =>
         JsonNode.Parse(JsonSerializer.Serialize(GoogleChatSender.BuildPayload(alert)))!;

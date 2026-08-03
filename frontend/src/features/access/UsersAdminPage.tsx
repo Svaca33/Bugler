@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
+import { getMessages } from "@/i18n/runtime";
 
 import { useCurrentUser } from "./useAuth";
 
@@ -21,6 +23,7 @@ const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
 /** Admin management of people: accounts and their per-application read grants. */
 export function UsersAdminPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const catalog = useCatalog();
   const me = useCurrentUser();
@@ -36,7 +39,7 @@ export function UsersAdminPage() {
     queryKey: ["admin", "users"],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/users");
-      if (error !== undefined) throw new Error("Failed to load users");
+      if (error !== undefined) throw new Error(getMessages().users.errors.loadFailed);
       return data;
     },
   });
@@ -49,7 +52,7 @@ export function UsersAdminPage() {
         body: { email, password, displayName: null, isAdmin },
       });
       if (error !== undefined || data === undefined) {
-        throw new Error("Failed to create user (password must have at least 8 characters).");
+        throw new Error(getMessages().users.errors.createFailed);
       }
       return data;
     },
@@ -104,7 +107,7 @@ export function UsersAdminPage() {
         params: { path: { id: userId } },
       });
       if (error !== undefined || data === undefined) {
-        throw new Error("No link was issued — the account may be deactivated.");
+        throw new Error(getMessages().users.errors.ticketNotIssued);
       }
       return data;
     },
@@ -113,7 +116,7 @@ export function UsersAdminPage() {
   const remove = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await api.DELETE("/api/users/{id}", { params: { path: { id: userId } } });
-      if (error !== undefined) throw new Error("Failed to delete user");
+      if (error !== undefined) throw new Error(getMessages().users.errors.deleteFailed);
     },
     onSuccess: () => {
       setPendingDeletion(null);
@@ -135,14 +138,14 @@ export function UsersAdminPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-[18px] overflow-auto px-6 py-5">
       <div className="flex items-center gap-3">
-        <h2 className="text-[17px] font-semibold tracking-[-0.3px]">Users</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.3px]">{t.users.title}</h2>
         <span className="text-[12.5px] text-[#8CA1B8]">
-          {allUsers.length} {allUsers.length === 1 ? "account" : "accounts"}
-          {deactivatedCount > 0 && ` · ${deactivatedCount} deactivated`}
+          {t.users.accountCount(allUsers.length)}
+          {deactivatedCount > 0 && ` · ${t.users.deactivatedCount(deactivatedCount)}`}
         </span>
         <Input
           className="ml-auto w-[232px]"
-          placeholder="Filter by e-mail…"
+          placeholder={t.users.filterPlaceholder}
           value={userFilter}
           onChange={event => setUserFilter(event.target.value)}
         />
@@ -153,9 +156,9 @@ export function UsersAdminPage() {
           className="grid items-end gap-3 border-b border-[#1E344C] bg-[#0B1826] px-[18px] py-3"
           style={{ gridTemplateColumns }}
         >
-          <span className={CAPTION}>E-MAIL</span>
-          <span className={CAPTION}>ROLE</span>
-          <span className={CAPTION}>STATUS</span>
+          <span className={CAPTION}>{t.users.header.email}</span>
+          <span className={CAPTION}>{t.users.header.role}</span>
+          <span className={CAPTION}>{t.users.header.status}</span>
           {applications.length > 0 ? (
             applications.map(app => (
               <span
@@ -168,7 +171,7 @@ export function UsersAdminPage() {
           ) : (
             <span className="text-center font-mono text-[10.5px] text-[#5F7590]">—</span>
           )}
-          <span className={`${CAPTION} text-right`}>ACTIONS</span>
+          <span className={`${CAPTION} text-right`}>{t.users.header.actions}</span>
         </div>
 
         {visibleUsers.map(user => {
@@ -194,14 +197,16 @@ export function UsersAdminPage() {
                     : "bg-[#16283C] text-[#B6C8DA]"
                 } ${user.isDeactivated ? "opacity-60" : ""}`}
               >
-                {user.isAdmin ? "Admin" : "Member"}
+                {user.isAdmin ? t.users.role.admin : t.users.role.member}
               </span>
               {user.isDeactivated ? (
                 <span className="w-fit rounded-[5px] border border-[#22394F] px-2 py-0.5 text-[11px] text-[#7D93AA]">
-                  Deactivated
+                  {t.users.status.deactivated}
                 </span>
               ) : (
-                <span className="text-[11.5px] text-[#8CA1B8]">{isSelf ? "Active · you" : "Active"}</span>
+                <span className="text-[11.5px] text-[#8CA1B8]">
+                  {isSelf ? t.users.status.activeYou : t.users.status.active}
+                </span>
               )}
 
               {user.isDeactivated ? (
@@ -209,14 +214,14 @@ export function UsersAdminPage() {
                   className="text-center text-xs text-[#5F7590]"
                   style={{ gridColumn: `span ${Math.max(applications.length, 1)}` }}
                 >
-                  grants retained, no access while deactivated
+                  {t.users.deactivatedGrantsNote}
                 </span>
               ) : user.isAdmin ? (
                 <span
                   className="rounded-md bg-[#12253A] text-center text-xs leading-[26px] text-[#8CA1B8]"
                   style={{ gridColumn: `span ${Math.max(applications.length, 1)}` }}
                 >
-                  every application — admins are never scoped
+                  {t.users.adminScopeNote}
                 </span>
               ) : applications.length > 0 ? (
                 applications.map(app => {
@@ -227,7 +232,7 @@ export function UsersAdminPage() {
                         type="checkbox"
                         className="size-3.5"
                         style={{ accentColor: "var(--primary)" }}
-                        aria-label={`${user.email} may read ${app.name}`}
+                        aria-label={t.users.mayRead(user.email, app.name)}
                         checked={granted}
                         onChange={() =>
                           (granted ? revoke : grant).mutate({
@@ -258,7 +263,7 @@ export function UsersAdminPage() {
                           issueResetTicket.mutate(user.id);
                         }}
                       >
-                        Reset link
+                        {t.users.actions.resetLink}
                       </button>
                     )}
                     <button
@@ -268,7 +273,7 @@ export function UsersAdminPage() {
                         (user.isDeactivated ? reactivate : deactivate).mutate(user.id)
                       }
                     >
-                      {user.isDeactivated ? "Reactivate" : "Deactivate"}
+                      {user.isDeactivated ? t.users.actions.reactivate : t.users.actions.deactivate}
                     </button>
                     <button
                       type="button"
@@ -278,7 +283,7 @@ export function UsersAdminPage() {
                         setPendingDeletion({ id: user.id, email: user.email });
                       }}
                     >
-                      Delete
+                      {t.users.actions.delete}
                     </button>
                   </>
                 )}
@@ -288,7 +293,7 @@ export function UsersAdminPage() {
         })}
         {visibleUsers.length === 0 && (
           <p className="px-[18px] py-8 text-center text-sm text-[#8CA1B8]">
-            No accounts match the filter.
+            {t.users.noMatches}
           </p>
         )}
       </div>
@@ -301,26 +306,24 @@ export function UsersAdminPage() {
         }}
       >
         <div className="flex items-baseline gap-3">
-          <span className={CAPTION}>CREATE USER</span>
-          <span className="text-[11.5px] text-[#7D93AA]">
-            Grants are assigned in the matrix above once the account exists.
-          </span>
+          <span className={CAPTION}>{t.users.create.caption}</span>
+          <span className="text-[11.5px] text-[#7D93AA]">{t.users.create.grantsHint}</span>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="new-user-email">E-mail</Label>
+            <Label htmlFor="new-user-email">{t.users.create.emailLabel}</Label>
             <Input
               id="new-user-email"
               type="email"
               className="w-[248px]"
-              placeholder="name@company.com"
+              placeholder={t.users.create.emailPlaceholder}
               value={email}
               onChange={event => setEmail(event.target.value)}
               required
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="new-user-password">Password (min 8 characters)</Label>
+            <Label htmlFor="new-user-password">{t.users.create.passwordLabel}</Label>
             <Input
               id="new-user-password"
               type="password"
@@ -338,10 +341,10 @@ export function UsersAdminPage() {
               checked={isAdmin}
               onChange={() => setIsAdmin(!isAdmin)}
             />
-            Server administrator
+            {t.users.create.serverAdministrator}
           </label>
           <Button type="submit" size="sm" disabled={createUser.isPending}>
-            Create user
+            {t.users.create.submit}
           </Button>
         </div>
         {createUser.error !== null && (
@@ -361,16 +364,16 @@ export function UsersAdminPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset link for this user</DialogTitle>
+            <DialogTitle>{t.users.resetTicket.title}</DialogTitle>
             <DialogDescription>
-              Hand <code className="font-mono text-foreground">{ticketFor}</code> this link
-              yourself. It works once, stops working in an hour, and replaces any link they were
-              sent before. Setting a password through it signs the account out everywhere.
+              {t.users.resetTicket.description(
+                <code className="font-mono text-foreground">{ticketFor}</code>,
+              )}
             </DialogDescription>
           </DialogHeader>
 
           {issueResetTicket.isPending && (
-            <p className="text-[12.5px] text-[#8CA1B8]">Issuing…</p>
+            <p className="text-[12.5px] text-[#8CA1B8]">{t.users.resetTicket.issuing}</p>
           )}
           {issueResetTicket.error !== null && (
             <p className="text-[12.5px] text-destructive">{issueResetTicket.error.message}</p>
@@ -383,7 +386,7 @@ export function UsersAdminPage() {
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setTicketFor(null)}>
-              Close
+              {t.users.resetTicket.close}
             </Button>
             <Button
               type="button"
@@ -394,7 +397,7 @@ export function UsersAdminPage() {
                 setCopied(true);
               }}
             >
-              {copied ? "Copied" : "Copy link"}
+              {copied ? t.users.resetTicket.copied : t.users.resetTicket.copyLink}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -412,21 +415,21 @@ export function UsersAdminPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete this user?</DialogTitle>
+            <DialogTitle>{t.users.deletion.title}</DialogTitle>
             <DialogDescription>
-              <code className="font-mono text-foreground">{pendingDeletion?.email}</code> loses their
-              account and every application grant it holds, and their e-mail becomes free for a new
-              account. This cannot be undone — to only take their access away, deactivate them instead.
+              {t.users.deletion.description(
+                <code className="font-mono text-foreground">{pendingDeletion?.email}</code>,
+              )}
             </DialogDescription>
           </DialogHeader>
 
           {remove.error !== null && (
-            <p className="text-[11.5px] text-destructive">Deletion failed — nothing was removed.</p>
+            <p className="text-[11.5px] text-destructive">{t.users.deletion.failed}</p>
           )}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setPendingDeletion(null)}>
-              Cancel
+              {t.users.deletion.cancel}
             </Button>
             <Button
               type="button"
@@ -434,7 +437,7 @@ export function UsersAdminPage() {
               disabled={remove.isPending}
               onClick={() => pendingDeletion !== null && remove.mutate(pendingDeletion.id)}
             >
-              Delete
+              {t.users.deletion.confirm}
             </Button>
           </DialogFooter>
         </DialogContent>

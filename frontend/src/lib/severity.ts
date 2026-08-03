@@ -1,3 +1,5 @@
+import { getMessages } from "@/i18n/runtime";
+
 /** OTel severity numbers: 1-4 TRACE, 5-8 DEBUG, 9-12 INFO, 13-16 WARN, 17-20 ERROR, 21-24 FATAL. */
 export function severityLabel(severityNumber: number): string {
   if (severityNumber >= 21) return "FATAL";
@@ -82,10 +84,13 @@ export function episodeRailClass(severity: number | string | null | undefined): 
   return severityRailClass(severity == null ? 17 : Number(severity));
 }
 
-/** Threshold values for the "minimum severity" filter dropdown. */
-export const severityFilterOptions = [
-  { value: 0, label: "All severities" },
-  { value: 9, label: "Info and above" },
-  { value: 13, label: "Warn and above" },
-  { value: 17, label: "Error and above" },
-] as const;
+/** Threshold values for the "minimum severity" filter dropdown, labelled at call time. */
+export function severityFilterOptions(): { value: number; label: string }[] {
+  const words = getMessages().common.severityFilter;
+  return [
+    { value: 0, label: words.all },
+    { value: 9, label: words.infoAndAbove },
+    { value: 13, label: words.warnAndAbove },
+    { value: 17, label: words.errorAndAbove },
+  ];
+}

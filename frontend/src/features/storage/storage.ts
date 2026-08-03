@@ -7,25 +7,25 @@
 
 export type RateUnit = "second" | "minute" | "hour" | "day" | "week" | "month";
 
+/** The units themselves — their labels are the language catalog's (`storage.rateUnit`). */
 export interface RateStep {
   unit: RateUnit;
-  label: string;
   ms: number;
   projected: boolean;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const PER_DAY: RateStep = { unit: "day", label: "per day", ms: DAY_MS, projected: false };
+const PER_DAY: RateStep = { unit: "day", ms: DAY_MS, projected: false };
 
 /** A month of 30 days: the projection is honest about being a round number, not a calendar. */
 export const RATE_UNITS: RateStep[] = [
-  { unit: "second", label: "per second", ms: 1000, projected: false },
-  { unit: "minute", label: "per minute", ms: 60 * 1000, projected: false },
-  { unit: "hour", label: "per hour", ms: 60 * 60 * 1000, projected: false },
+  { unit: "second", ms: 1000, projected: false },
+  { unit: "minute", ms: 60 * 1000, projected: false },
+  { unit: "hour", ms: 60 * 60 * 1000, projected: false },
   PER_DAY,
-  { unit: "week", label: "per week (projected)", ms: 7 * DAY_MS, projected: true },
-  { unit: "month", label: "per month (projected)", ms: 30 * DAY_MS, projected: true },
+  { unit: "week", ms: 7 * DAY_MS, projected: true },
+  { unit: "month", ms: 30 * DAY_MS, projected: true },
 ];
 
 export function rateStep(unit: RateUnit): RateStep {

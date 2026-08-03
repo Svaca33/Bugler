@@ -1,4 +1,5 @@
 import type { Catalog, Episode } from "@/api/client";
+import { getMessages } from "@/i18n/runtime";
 import { durationMs } from "@/lib/duration";
 
 export type EpisodeStateName = Episode["state"];
@@ -29,11 +30,8 @@ export const DEFAULT_OPENED = "P7D";
 /** The sentinel that keeps "no window" distinguishable from "the default window" in the URL. */
 export const OPENED_ALL = "all";
 
-export const OPENED_PRESETS = [
-  { value: "P1D", label: "Last 24 h", phrase: "in the last 24 h" },
-  { value: "P7D", label: "Last 7 d", phrase: "in the last 7 d" },
-  { value: "P30D", label: "Last 30 d", phrase: "in the last 30 d" },
-] as const;
+/** The OPENED windows on offer; their labels and phrases live in the catalog under these keys. */
+export const OPENED_PRESETS = ["P1D", "P7D", "P30D"] as const;
 
 export function effectiveLifecycle(filters: EpisodesFilters): EpisodeStateName[] {
   return filters.lifecycle ?? DEFAULT_LIFECYCLE;
@@ -76,7 +74,7 @@ export function releasesFrom(openedAt: readonly string[], filters: EpisodesFilte
 /** "in the last 7 d" — the footer's window phrase; undefined when no window narrows. */
 export function openedPhrase(filters: EpisodesFilters): string | undefined {
   const opened = effectiveOpened(filters);
-  return OPENED_PRESETS.find(preset => preset.value === opened)?.phrase;
+  return opened === undefined ? undefined : getMessages().alerting.filters.openedPhrase[opened];
 }
 
 export function hasSourceFilter(filters: EpisodesFilters): boolean {
@@ -123,7 +121,7 @@ export function asLifecycle(value: unknown): EpisodeStateName[] | undefined {
 }
 
 export function asOpened(value: unknown): string | undefined {
-  return value === OPENED_ALL || OPENED_PRESETS.some(preset => preset.value === value)
+  return value === OPENED_ALL || OPENED_PRESETS.some(preset => preset === value)
     ? (value as string)
     : undefined;
 }

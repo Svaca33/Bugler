@@ -1,5 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { getMessages } from "@/i18n/runtime";
 import { api } from "./client";
 
 /**
@@ -14,7 +15,7 @@ export const currentUserQuery = queryOptions({
   queryFn: async () => {
     const { data, response } = await api.GET("/api/auth/me");
     if (response.status === 401) return null;
-    if (data === undefined) throw new Error("Failed to load session");
+    if (data === undefined) throw new Error(getMessages().common.loadFailed.session);
     return data;
   },
   retry: false,
@@ -24,6 +25,22 @@ export const currentUserQuery = queryOptions({
 export function useCurrentUser() {
   return useQuery(currentUserQuery);
 }
+
+/**
+ * What the screens before sign-in need — and what the LanguageProvider reads the server's
+ * language from, which is why it sits here beside "who is signed in": one cache entry serves
+ * the login page and the language choice alike.
+ */
+export const authStatusQuery = queryOptions({
+  queryKey: ["auth", "status"],
+  queryFn: async () => {
+    const { data, error } = await api.GET("/api/auth/status");
+    if (error !== undefined) throw new Error(getMessages().common.loadFailed.session);
+    return data;
+  },
+  retry: false,
+  staleTime: 60_000,
+});
 
 /**
  * The Releases of the Services a Source Filter addresses over a window, plus what each was already

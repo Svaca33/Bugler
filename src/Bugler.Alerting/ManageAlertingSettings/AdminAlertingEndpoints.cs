@@ -65,11 +65,13 @@ internal static class AdminAlertingEndpoints
         SetApplicationAlertingRequest request,
         AlertingDbContext dbContext,
         ICatalogReader catalogReader,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         if (request.QuietWindowMinutes is < 1)
         {
-            return Results.BadRequest("The quiet window must be at least 1 minute.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.QuietWindowAtLeastOneMinute);
         }
 
         var id = new ApplicationId(applicationId);
@@ -99,6 +101,7 @@ internal static class AdminAlertingEndpoints
         Guid applicationId,
         SetChatWebhookRequest request,
         AlertingDbContext dbContext,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         var url = string.IsNullOrWhiteSpace(request.Url) ? null : request.Url.Trim();
@@ -107,7 +110,8 @@ internal static class AdminAlertingEndpoints
                 || parsed.Scheme != Uri.UriSchemeHttps
                 || url.Length > 1000))
         {
-            return Results.BadRequest("The webhook must be an absolute https URL.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.WebhookMustBeHttps);
         }
 
         var id = new ApplicationId(applicationId);
@@ -136,11 +140,13 @@ internal static class AdminAlertingEndpoints
         AlertingDbContext dbContext,
         ICatalogReader catalogReader,
         HealthProbe healthProbe,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         if (request.QuietWindowMinutes is < 1)
         {
-            return Results.BadRequest("The quiet window must be at least 1 minute.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.QuietWindowAtLeastOneMinute);
         }
 
         var healthCheckUrl = string.IsNullOrWhiteSpace(request.HealthCheckUrl)
@@ -154,7 +160,8 @@ internal static class AdminAlertingEndpoints
                 || (address.Scheme != Uri.UriSchemeHttp && address.Scheme != Uri.UriSchemeHttps)
                 || healthCheckUrl.Length > 500))
         {
-            return Results.BadRequest("The health check must be an absolute http or https URL.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.HealthCheckMustBeUrl);
         }
 
         var id = new ServiceId(serviceId);

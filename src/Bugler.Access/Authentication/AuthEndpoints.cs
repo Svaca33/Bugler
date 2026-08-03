@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Bugler.Access.ResetPassword;
 using Bugler.Access.Users;
 using Bugler.Mail;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
@@ -18,10 +19,23 @@ public sealed record LoginRequest(string Email, string Password, bool StaySigned
 
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
-public sealed record CurrentUserDto(
-    Guid Id, string Email, string? DisplayName, bool IsAdmin, IReadOnlyList<Guid> GrantedApplicationIds);
+/// <summary>Null to follow the server's language; a supported code to speak for themselves.</summary>
+public sealed record SetLanguageRequest(string? Language);
 
-public sealed record AuthStatusDto(bool NeedsSetup, bool PasswordResetAvailable);
+public sealed record CurrentUserDto(
+    Guid Id,
+    string Email,
+    string? DisplayName,
+    bool IsAdmin,
+    IReadOnlyList<Guid> GrantedApplicationIds,
+    /// <summary>The Language they chose, or null while they follow the server's.</summary>
+    string? Language);
+
+public sealed record AuthStatusDto(
+    bool NeedsSetup,
+    bool PasswordResetAvailable,
+    /// <summary>The server's language — what the screens before sign-in speak (ADR 0024).</summary>
+    string Language);
 
 internal static class AuthEndpoints
 {
@@ -37,21 +51,25 @@ internal static class AuthEndpoints
         AccessDbContext dbContext,
         IPasswordHasher<User> hasher,
         HttpContext httpContext,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
+        var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         if (await dbContext.Users.AnyAsync(cancellationToken))
         {
-            return Results.Conflict("Setup has already been completed.");
+            return Results.Conflict(messages.SetupAlreadyCompleted);
         }
 
         if (!IsValidEmail(request.Email))
         {
-            return Results.BadRequest("A valid e-mail address is required.");
+            return Results.BadRequest(messages.ValidEmailRequired);
         }
 
         if (!Passwords.IsAcceptable(request.Password))
         {
-            return Results.BadRequest(Passwords.Requirement);
+            return Results.BadRequest(
+                messages.PasswordRequirement(Passwords.MinimumLength, Passwords.MaximumLength));
         }
 
         var admin = new User
@@ -81,11 +99,13 @@ internal static class AuthEndpoints
         AccessDbContext dbContext,
         IOptions<AccessOptions> options,
         ISmtpSettingsSource smtpSettings,
+        IServerLanguage serverLanguage,
         CancellationToken cancellationToken) =>
         new(
             NeedsSetup: !await dbContext.Users.AnyAsync(cancellationToken),
             PasswordResetAvailable: ResetPasswordEndpoints.IsAvailable(
-                options.Value, await smtpSettings.GetCurrentAsync(cancellationToken)));
+                options.Value, await smtpSettings.GetCurrentAsync(cancellationToken)),
+            Language: (await serverLanguage.GetAsync(cancellationToken)).Code);
 
     public static async Task<IResult> Login(
         LoginRequest request,
@@ -142,6 +162,7 @@ internal static class AuthEndpoints
         AccessDbContext dbContext,
         IPasswordHasher<User> hasher,
         HttpContext httpContext,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         var userId = GetUserId(principal);
@@ -154,15 +175,18 @@ internal static class AuthEndpoints
             return Results.Unauthorized();
         }
 
+        var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         if (hasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword)
             == PasswordVerificationResult.Failed)
         {
-            return Results.BadRequest("The current password is not correct.");
+            return Results.BadRequest(messages.CurrentPasswordIncorrect);
         }
 
         if (!Passwords.IsAcceptable(request.NewPassword))
         {
-            return Results.BadRequest(Passwords.Requirement);
+            return Results.BadRequest(
+                messages.PasswordRequirement(Passwords.MinimumLength, Passwords.MaximumLength));
         }
 
         Passwords.Set(user, request.NewPassword, hasher);
@@ -172,6 +196,46 @@ internal static class AuthEndpoints
         // occasion to decide it for them again.
         var existing = await httpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         await SignInAsync(httpContext, user, existing.Properties?.IsPersistent ?? false);
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// A person choosing what language Bugler speaks to them — or handing the choice back to the
+    /// server with null. Takes effect on the next answer; no Session has to be re-minted, because
+    /// the request's language rides in on Accept-Language, never on the cookie (ADR 0024).
+    /// </summary>
+    public static async Task<IResult> SetLanguage(
+        SetLanguageRequest request,
+        ClaimsPrincipal principal,
+        AccessDbContext dbContext,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        var user = userId is null
+            ? null
+            : await dbContext.Users.FirstOrDefaultAsync(
+                u => u.Id == userId && u.DeactivatedAt == null, cancellationToken);
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (request.Language is null)
+        {
+            user.Language = null;
+        }
+        else if (Language.TryParse(request.Language, out var language))
+        {
+            user.Language = language;
+        }
+        else
+        {
+            var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.UnknownLanguage);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
     }
 
@@ -231,7 +295,8 @@ internal static class AuthEndpoints
                 .Select(g => g.ApplicationId.Value)
                 .ToListAsync(cancellationToken);
 
-        return new CurrentUserDto(user.Id, user.Email, user.DisplayName, user.IsAdmin, grants);
+        return new CurrentUserDto(
+            user.Id, user.Email, user.DisplayName, user.IsAdmin, grants, user.Language?.Code);
     }
 
     private static bool IsValidEmail(string email) =>

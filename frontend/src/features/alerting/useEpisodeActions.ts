@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { getMessages } from "@/i18n/runtime";
 
 /**
  * The human hands on an Episode — acknowledge, take over, withdraw, solve — shared by the band
@@ -16,10 +17,11 @@ export function useEpisodeActions(episodeId: string) {
       const { error, response } = await api.POST("/api/alerting/episodes/{id}/acknowledge", {
         params: { path: { id: episodeId } },
       });
+      const words = getMessages().alerting.actions;
       if (response.status === 409) {
-        throw new Error(refusal(error, "Already solved — a Solved Episode is never acknowledged."));
+        throw new Error(refusal(error, words.alreadySolvedNoAck));
       }
-      if (!response.ok) throw new Error("The acknowledgement was not saved.");
+      if (!response.ok) throw new Error(words.ackNotSaved);
     },
     onSettled: refresh,
   });
@@ -29,10 +31,11 @@ export function useEpisodeActions(episodeId: string) {
       const { error, response } = await api.DELETE("/api/alerting/episodes/{id}/acknowledgement", {
         params: { path: { id: episodeId } },
       });
+      const words = getMessages().alerting.actions;
       if (response.status === 409) {
-        throw new Error(refusal(error, "The acknowledgement was not withdrawn."));
+        throw new Error(refusal(error, words.withdrawFailed));
       }
-      if (!response.ok) throw new Error("The acknowledgement was not withdrawn.");
+      if (!response.ok) throw new Error(words.withdrawFailed);
     },
     onSettled: refresh,
   });
@@ -42,8 +45,9 @@ export function useEpisodeActions(episodeId: string) {
       const { error, response } = await api.POST("/api/alerting/episodes/{id}/solve", {
         params: { path: { id: episodeId } },
       });
-      if (response.status === 409) throw new Error(refusal(error, "Already solved by someone else."));
-      if (!response.ok) throw new Error("The verdict was not saved.");
+      const words = getMessages().alerting.actions;
+      if (response.status === 409) throw new Error(refusal(error, words.alreadySolvedByOther));
+      if (!response.ok) throw new Error(words.verdictNotSaved);
     },
     onSettled: refresh,
   });
@@ -52,7 +56,8 @@ export function useEpisodeActions(episodeId: string) {
   return { acknowledge, withdraw, solve, failure };
 }
 
-/** A 409 carries the model's own sentence (e.g. "The action belongs to the newest Episode of its kind."). */
+/** A 409 carries the model's own sentence (e.g. "The action belongs to the newest Episode of its
+ * kind.") — shown verbatim in whatever language the server spoke; the fallback is the catalog's. */
 function refusal(error: unknown, fallback: string): string {
   return typeof error === "string" && error.length > 0 ? error : fallback;
 }

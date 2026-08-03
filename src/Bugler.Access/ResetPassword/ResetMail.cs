@@ -8,19 +8,12 @@ namespace Bugler.Access.ResetPassword;
 /// </summary>
 internal static class ResetMail
 {
-    public static MailMessage Compose(string toEmail, string secret, string publicBaseUrl) =>
+    public static MailMessage Compose(
+        string toEmail, string secret, string publicBaseUrl, AccessMessages messages) =>
         new(
             toEmail,
-            "[Bugler] Set a new password",
-            string.Join(
-                "\n",
-                "Somebody asked to set a new password for this Bugler account.",
-                "",
-                "Set it here — the link works once and stops working in an hour:",
-                Link(secret, publicBaseUrl),
-                "",
-                "If this wasn't you, ignore this mail. Nothing has changed and your",
-                "password still works."));
+            messages.ResetMailSubject,
+            messages.ResetMailBody(Link(secret, publicBaseUrl)));
 
     /// <summary>
     /// The link points at the page, not at the API: a click from a mail is a GET, and what has to

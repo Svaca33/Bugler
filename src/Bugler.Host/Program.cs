@@ -39,6 +39,12 @@ builder.Services.AddDbContext<ServerDbContext>((provider, options) => options
     .UseSnakeCaseNamingConvention());
 builder.Services.Replace(ServiceDescriptor.Singleton<ISmtpSettingsSource, StoredSmtpSettingsSource>());
 
+// The language the server speaks by default, and the language each answer leaves in: the
+// requester's own where Accept-Language names a supported one, the server's otherwise (ADR 0024).
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IServerLanguage, StoredServerLanguageSource>();
+builder.Services.AddScoped<IRequestLanguage, RequestLanguage>();
+
 builder.Services.AddRegistry(builder.Configuration);
 builder.Services.AddIngestion(builder.Configuration);
 builder.Services.AddAccess(builder.Configuration);
@@ -104,6 +110,15 @@ mailAdmin.MapPut("/settings", MailSettingsEndpoints.Save)
     .ProducesProblem(StatusCodes.Status400BadRequest);
 mailAdmin.MapDelete("/settings", MailSettingsEndpoints.Reset)
     .Produces<MailSettingsDto>();
+
+// The server's language sits beside the SMTP settings: both are facts of the deployment, owned
+// by the Host and edited on the same admin screen.
+var serverAdmin = appSurface.MapGroup("/api/admin/server").RequireAuthorization("Admin");
+serverAdmin.MapGet("/language", ServerLanguageEndpoints.Get)
+    .Produces<ServerLanguageDto>();
+serverAdmin.MapPut("/language", ServerLanguageEndpoints.Save)
+    .Produces<ServerLanguageDto>()
+    .ProducesProblem(StatusCodes.Status400BadRequest);
 
 // What the stored telemetry costs, from the context that stores it (ADR 0017): each Service's
 // Footprint and Ingest Rate beside the Effective Retention its purge works from. The group is

@@ -11,10 +11,17 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options)
     : DbContext(options)
 {
     public DbSet<StoredSmtpSettings> SmtpSettings => Set<StoredSmtpSettings>();
+    public DbSet<StoredServerLanguage> ServerLanguage => Set<StoredServerLanguage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("server");
+
+        modelBuilder.Entity<StoredServerLanguage>(language =>
+        {
+            language.Property(l => l.Id).ValueGeneratedNever();
+            language.Property(l => l.Language).HasMaxLength(20);
+        });
 
         modelBuilder.Entity<StoredSmtpSettings>(settings =>
         {

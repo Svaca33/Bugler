@@ -3,10 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type Sensitivity } from "@/api/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
 
 import {
   QuietWindowField,
-  SENSITIVITY_LABELS,
   SensitivityField,
   useApplicationAlerting,
 } from "./ApplicationAlertingCard";
@@ -29,6 +29,7 @@ interface AlertingBody {
  * nothing: every service answers at its own address.
  */
 export function ServiceAlertingOverride(props: { applicationId: string; serviceId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const alerting = useApplicationAlerting(props.applicationId);
 
@@ -38,7 +39,7 @@ export function ServiceAlertingOverride(props: { applicationId: string; serviceI
         params: { path: { serviceId: props.serviceId } },
         body,
       });
-      if (error !== undefined) throw new Error("Failed to save the alerting override");
+      if (error !== undefined) throw new Error(t.registry.alertingCard.overrideSaveFailed);
       return data;
     },
     onSuccess: () =>
@@ -56,7 +57,7 @@ export function ServiceAlertingOverride(props: { applicationId: string; serviceI
     override?.quietWindowMinutes == null ? null : Number(override.quietWindowMinutes);
   const healthCheckUrl = override?.healthCheckUrl ?? null;
   const applicationSensitivity =
-    SENSITIVITY_LABELS[data.sensitivity ?? data.defaults.sensitivity ?? "Errors"];
+    t.registry.alertingCard.sensitivity[data.sensitivity ?? data.defaults.sensitivity ?? "Errors"];
   const applicationQuietWindow = data.quietWindowMinutes ?? data.defaults.quietWindowMinutes;
 
   const current: AlertingBody = {
@@ -67,11 +68,11 @@ export function ServiceAlertingOverride(props: { applicationId: string; serviceI
 
   return (
     <div className="flex flex-col gap-3">
-      <WatchGroup label="LOGS">
+      <WatchGroup label={t.registry.alertingCard.logsWatch}>
         <SensitivityField
           id={`override-sensitivity-${props.serviceId}`}
           value={override?.sensitivity}
-          inheritLabel={`Inherit (${applicationSensitivity})`}
+          inheritLabel={t.registry.alertingCard.inheritOption(applicationSensitivity)}
           disabled={save.isPending}
           onChange={sensitivity => save.mutate({ ...current, sensitivity })}
         />
@@ -84,7 +85,7 @@ export function ServiceAlertingOverride(props: { applicationId: string; serviceI
         />
       </WatchGroup>
 
-      <WatchGroup label="HEALTH CHECK">
+      <WatchGroup label={t.registry.alertingCard.healthCheckWatch}>
         <HealthCheckField
           serviceId={props.serviceId}
           url={healthCheckUrl}
@@ -124,6 +125,7 @@ function HealthCheckField(props: {
   probe: { alive: boolean; detail: string } | null;
   onSave: (url: string | null) => void;
 }) {
+  const t = useT();
   const commit = (raw: string) => {
     const next = raw.trim() === "" ? null : raw.trim();
     if (next !== props.url) {
@@ -133,7 +135,9 @@ function HealthCheckField(props: {
 
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={`override-health-${props.serviceId}`}>URL</Label>
+      <Label htmlFor={`override-health-${props.serviceId}`}>
+        {t.registry.alertingCard.healthCheckUrlLabel}
+      </Label>
       <Input
         id={`override-health-${props.serviceId}`}
         // Keyed on the saved value so a fresh one from the server replaces what is on screen.
@@ -160,13 +164,15 @@ function HealthCheckField(props: {
             props.probe.alive ? "text-[#5FBF8F]" : "text-[#F0685A]"
           }`}
         >
-          {props.probe.alive ? "answered" : "no answer"} · {props.probe.detail}
+          {props.probe.alive
+            ? t.registry.alertingCard.healthCheckAnswered
+            : t.registry.alertingCard.healthCheckNoAnswer}{" "}
+          · {props.probe.detail}
         </p>
       )}
       <p className="max-w-[400px] text-[11.5px] text-[#7D93AA]">
-        Empty means nobody asks. Anything but a 2xx — including a redirect — counts as down, and
-        three failures in a row open an episode. <code>localhost</code> here means inside Bugler's
-        own container, not your machine.
+        {t.registry.alertingCard.healthCheckHelpBeforeCode} <code>localhost</code>{" "}
+        {t.registry.alertingCard.healthCheckHelpAfterCode}
       </p>
     </div>
   );

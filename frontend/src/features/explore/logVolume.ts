@@ -7,6 +7,8 @@
  * bar in Central Europe is honestly labelled 02:00 rather than pretending to be midnight.
  */
 
+import { getFormatLocale, getMessages } from "@/i18n/runtime";
+
 const MINUTE = 60_000;
 const DAY = 86_400_000;
 
@@ -67,7 +69,7 @@ export function bucketLabel(start: string, window: VolumeWindow): string {
   if (window.widthMs >= DAY) return day(at);
 
   const time = at.toLocaleTimeString(
-    undefined,
+    getFormatLocale(),
     window.widthMs < MINUTE
       ? { hour: "2-digit", minute: "2-digit", second: "2-digit" }
       : { hour: "2-digit", minute: "2-digit" },
@@ -90,9 +92,10 @@ export function describeBucket(start: string, window: VolumeWindow, edge: Bucket
     `${dated ? `${day(opened)} ` : ""}${clock(opened, window.widthMs)}` +
     ` – ${dated && !sameDay ? `${day(closed)} ` : ""}${clock(closed, window.widthMs)}`;
 
-  if (edge === "leading") return `${span} · only partly inside the window`;
-  if (edge === "elapsing") return `${span} · still elapsing`;
-  if (edge === "trailing") return `${span} · cut by the window`;
+  const words = getMessages().explore.volume;
+  if (edge === "leading") return words.bucketPartlyInside(span);
+  if (edge === "elapsing") return words.bucketElapsing(span);
+  if (edge === "trailing") return words.bucketCut(span);
   return span;
 }
 
@@ -105,12 +108,12 @@ export function describeWidth(widthMs: number): string {
 }
 
 function day(date: Date): string {
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "numeric" });
+  return date.toLocaleDateString(getFormatLocale(), { day: "numeric", month: "numeric" });
 }
 
 function clock(date: Date, widthMs: number): string {
   return date.toLocaleTimeString(
-    undefined,
+    getFormatLocale(),
     widthMs < MINUTE
       ? { hour: "2-digit", minute: "2-digit", second: "2-digit" }
       : { hour: "2-digit", minute: "2-digit" },

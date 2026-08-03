@@ -1,0 +1,264 @@
+import type { ReactNode } from "react";
+
+/** The server's Episode lifecycle names — keys into the maps below, never themselves shown. */
+type EpisodeState = "Open" | "Quieted" | "Solved" | "Muted";
+
+/**
+ * Everything the Episodes tab and its panels say: one member per sentence, grouped by surface.
+ * Severity band names (Error, WARN…), "health check", unit abbreviations (min, h, d, s) and the
+ * values that ride in API queries stay out — they are the domain's vocabulary, not a language's.
+ */
+export interface AlertingMessages {
+  page: {
+    title: string;
+    subtitle: string;
+    episodesTab: string;
+    subscriptionsTab: string;
+  };
+
+  /** The left rail: group captions, choice labels, and the OPENED presets by ISO duration. */
+  filters: {
+    lifecycle: string;
+    whoIsOnIt: string;
+    source: string;
+    opened: string;
+    firstLogContains: string;
+    nobodyYet: string;
+    acknowledgedByMe: string;
+    allApplications: string;
+    allNamespaces: string;
+    allEnvironments: string;
+    allServices: string;
+    anyTime: string;
+    searchPlaceholder: string;
+    /** Labels of the OPENED presets, keyed by their ISO duration. */
+    openedPreset: Record<string, string>;
+    /** "in the last 7 d" — the footer's window phrase, keyed by the ISO duration. */
+    openedPhrase: Record<string, string>;
+  };
+
+  state: {
+    /** The badge's compact lowercase voice, keyed by the server's state name. */
+    badge: Record<EpisodeState, string>;
+    /** The rail's capitalized checkbox labels for the same states. */
+    filterLabel: Record<EpisodeState, string>;
+  };
+
+  /** The episodes table: columns, day groups, the footer, and each row's meta line. */
+  list: {
+    columnEpisode: string;
+    columnState: string;
+    columnDuration: string;
+    emptyFiltered: string;
+    emptyNoTrouble: string;
+    loadOlder: string;
+    nothingOlder: string;
+    loadedCount(count: number): string;
+    /** "12 of 40 kinds of trouble in the last 7 d" — `window` is absent when nothing narrows. */
+    countOfTotal(shown: number, total: number, window: string | undefined): string;
+    /** The viewer's own name in an owner mark. */
+    you: string;
+    solvedBy(name: string): string;
+    earlierAck(name: string): string;
+    hideEarlier: string;
+    showEarlier(times: number): string;
+    mutedDuringEpisode: string;
+    /** "5 err" — the band abbreviation stays English in every language. */
+    errCount(count: string | number): string;
+    warnCount(count: string | number): string;
+  };
+
+  /** The triage band above the table: one card per Episode burning right now. */
+  openNow: {
+    title: string;
+    summary(count: number, unheld: number, oldest: string): string;
+    refreshedAgo(ago: string): string;
+    youHold(time: string): string;
+    heldBy(name: string, forTime: string): string;
+    nobodyYet: string;
+  };
+
+  /** Which time this kind of trouble is burning — the recurrence badge on an open card. */
+  recurrence: {
+    firstTime: string;
+    nthTime(n: number): string;
+  };
+
+  /** The Declared Version an Episode opened on (ADR 0016). */
+  version: {
+    on(version: string): string;
+    releasedBefore(ago: string): string;
+    releasedTitle(ago: string): string;
+    runningTitle: string;
+  };
+
+  /** The right-hand detail panel: captions, the lifecycle timeline, volume and recurrence. */
+  detail: {
+    episodeCaption: string;
+    lifecycleCaption: string;
+    volumeCaption: string;
+    notVisible: string;
+    openInLogsLink: string;
+    earlierAckByYou: string;
+    earlierAckBy(name: string): string;
+    /** `version` arrives pre-styled; the sentence decides where it sits. */
+    versionReleasedEarlier(version: ReactNode, ago: string): ReactNode;
+    openedByHealthCheck: string;
+    /** The severity is the band's own name and stays untranslated inside the sentence. */
+    openedByLog(severity: string): string;
+    sensitivity(words: string): string;
+    sensitivityWords: {
+      errorsAndWarnings: string;
+      errors: string;
+      off: string;
+    };
+    alertMailed(subscribers: number): string;
+    deliveryPending: string;
+    /** Suffix after the mail delivery clock, joined with " · " by the component. */
+    postedToChat: string;
+    alertPostedToChat: string;
+    stillMatchingLog(since: string): string;
+    stillMatchingCheck(since: string): string;
+    heldOpenNote: string;
+    autoCloseNote(minutes: number): string;
+    errorsCount(count: number): string;
+    warningsCount(count: number): string;
+    kindFirstCaption: string;
+    kindEarlierCaption(earlier: number): string;
+    thisOne: string;
+    byName(name: string): string;
+    nobody: string;
+    firstOfKind: string;
+    cameBack(times: number): string;
+    isHistory: string;
+    openIt: string;
+  };
+
+  /** The human hands on the timeline, narrated from the Journal (ADR 0006). */
+  journal: {
+    /** Stands in for a deleted account wherever a name would go, lowercase mid-sentence. */
+    formerUser: string;
+    youAcknowledged: string;
+    acknowledged(name: string): string;
+    youTookOver: string;
+    tookOver(name: string): string;
+    youWithdrewYours: string;
+    withdrewTheirOwn(name: string): string;
+    youWithdrewThe: string;
+    withdrewThe(name: string): string;
+    withdrewYours(name: string): string;
+    youWithdrewOf(holder: string): string;
+    withdrewOf(name: string, holder: string): string;
+    solvedByYou: string;
+    solvedBy(name: string): string;
+  };
+
+  /** The Quiet Window a kind of trouble keeps for itself (ADR 0004). */
+  quietWindow: {
+    caption: string;
+    badge(words: string): string;
+    badgeTitle: string;
+    /** Whole days as words — hours and minutes stay unit abbreviations. */
+    days(days: number): string;
+    inheritedFromService(words: string): string;
+    ownDescription(own: string, inherited: string): string;
+    wholeMinutesOnly: string;
+    bounds(maxMinutes: number): string;
+    notSaved: string;
+    fieldLabel: string;
+    emptyInherits: string;
+  };
+
+  /** The one confirmation in Alerting: Solved is final. */
+  solve: {
+    title: string;
+    verdict: string;
+    stillOpen(lastMatchAgo: string): string;
+    cancel: string;
+  };
+
+  /** The hands themselves — buttons shared by the band cards and the detail panel — and the
+   * client-side fallbacks behind them. A 409's own sentence is shown verbatim, never these. */
+  actions: {
+    acknowledge: string;
+    withdraw: string;
+    takeOver: string;
+    solve: string;
+    openInLogs: string;
+    alreadySolvedNoAck: string;
+    ackNotSaved: string;
+    withdrawFailed: string;
+    alreadySolvedByOther: string;
+    verdictNotSaved: string;
+  };
+
+  subscriptions: {
+    summary(services: number, applications: number): string;
+    body(email: string): string;
+    /** What the summary says instead of an address the server has not answered with yet. */
+    accountInbox: string;
+    filterPlaceholder: string;
+    allServicesBadge: string;
+    serviceCount(subscribed: number, total: number): string;
+    sensitivityOff: string;
+    nothingVisible: string;
+    footer: string;
+  };
+
+  /** The first-read explainer behind the `?` — prose with inline emphasis returns ReactNode. */
+  help: {
+    title: string;
+    description: string;
+    fromTroubleLabel: string;
+    step1Title: string;
+    step1Body: ReactNode;
+    step2Title: string;
+    step2Body: ReactNode;
+    step3Title: string;
+    step3Body: ReactNode;
+    step4Title: string;
+    step4Body: ReactNode;
+    howItEndsLabel: string;
+    lane1Title: string;
+    lane1Subtitle: string;
+    lane1WindowNote: string;
+    quietedMark: string;
+    lane1NewEpisode: string;
+    lane2Title: string;
+    lane2Subtitle: string;
+    lane2TookOn: string;
+    lane2WouldHaveQuieted: string;
+    lane2SameEpisode: string;
+    fourStatesLabel: string;
+    stateOpenBody: string;
+    stateQuietedBody: string;
+    stateSolvedBody: string;
+    stateMutedBody: string;
+    actionsSummary: ReactNode;
+    footer: ReactNode;
+    gotIt: string;
+  };
+
+  /** The day separators' and history stamps' words; clocks themselves are locale-neutral. */
+  format: {
+    todayUpper: string;
+    yesterdayUpper: string;
+    todayAt(time: string): string;
+    /** "4th" in English, "4." in Czech — how the language counts an occurrence. */
+    ordinal(n: number): string;
+  };
+
+  /** Thrown by query functions; surfaced wherever a query error is rendered. */
+  errors: {
+    loadEpisodes: string;
+    loadOpenEpisodes: string;
+    countEpisodes: string;
+    loadEpisodeHistory: string;
+    loadEpisode: string;
+    loadHistory: string;
+    countOpenEpisodes: string;
+    loadSubscriptions: string;
+    loadSensitivity: string;
+    saveSubscriptions: string;
+  };
+}

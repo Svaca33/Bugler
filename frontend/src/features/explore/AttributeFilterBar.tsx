@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n";
+import { getMessages } from "@/i18n/runtime";
 
 import {
   displayPath,
@@ -32,6 +34,7 @@ export function AttributeFilterBar(props: {
   layout?: "row" | "column";
 }) {
   const { signal, source, filters, onChange, layout = "row" } = props;
+  const t = useT();
   const column = layout === "column";
   const [picking, setPicking] = useState(false);
   const [pendingKey, setPendingKey] = useState<ObservedKey | null>(null);
@@ -50,7 +53,7 @@ export function AttributeFilterBar(props: {
         signal === "logs"
           ? await api.GET("/api/logs/keys", { params: { query } })
           : await api.GET("/api/traces/keys", { params: { query } });
-      if (error !== undefined) throw new Error("Failed to load observed keys");
+      if (error !== undefined) throw new Error(getMessages().explore.loadFailed.observedKeys);
       return data;
     },
     enabled: picking,
@@ -64,7 +67,7 @@ export function AttributeFilterBar(props: {
   const options: ComboboxOption[] = items.map((key, index) => ({
     value: String(index),
     label: displayPath(key.path),
-    group: key.scope === "attribute" ? "Attributes" : "Resource",
+    group: key.scope === "attribute" ? t.explore.attributes.attributesScope : t.explore.attributes.resourceScope,
   }));
 
   const cancel = () => {
@@ -103,7 +106,7 @@ export function AttributeFilterBar(props: {
           className={full}
           onClick={() => setPicking(true)}
         >
-          + Filter
+          {t.explore.attributes.addFilter}
         </Button>
       )}
       {picking && pendingKey === null && (
@@ -111,8 +114,8 @@ export function AttributeFilterBar(props: {
           className={column ? "w-full" : "w-64"}
           autoFocus
           options={options}
-          placeholder="Filter by key…"
-          emptyText={keys.isPending ? "Loading keys…" : "No keys observed."}
+          placeholder={t.explore.attributes.keyPlaceholder}
+          emptyText={keys.isPending ? t.explore.attributes.loadingKeys : t.explore.attributes.noKeysObserved}
           onSelect={selected => setPendingKey(items[Number(selected)] ?? null)}
           onBlur={cancel}
         />
@@ -126,7 +129,7 @@ export function AttributeFilterBar(props: {
           <Input
             autoFocus
             className={column ? "h-8 w-full" : "h-8 w-44"}
-            placeholder="Value"
+            placeholder={t.explore.attributes.valuePlaceholder}
             value={value}
             onChange={event => setValue(event.target.value)}
             onKeyDown={event => {
@@ -146,9 +149,15 @@ export function AttributeFilterBar(props: {
               className={column ? "flex-1" : undefined}
               onClick={add}
             >
-              Add
+              {t.explore.attributes.add}
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={cancel} aria-label="Cancel filter">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={cancel}
+              aria-label={t.explore.attributes.cancelFilter}
+            >
               ✕
             </Button>
           </span>

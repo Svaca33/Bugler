@@ -1,9 +1,19 @@
 import createClient from "openapi-fetch";
 
+import { getActiveLanguage } from "@/i18n/runtime";
 import type { paths } from "./schema";
 
 /** Typed client over the Bugler REST API; cookies ride along automatically. */
 export const api = createClient<paths>({ baseUrl: "/" });
+
+// Every request names the language the UI is speaking, so a refusal the UI will show verbatim
+// arrives already in that language (ADR 0024). The server honours only languages it knows.
+api.use({
+  onRequest({ request }) {
+    request.headers.set("Accept-Language", getActiveLanguage());
+    return request;
+  },
+});
 
 export type LogRecord =
   NonNullable<paths["/api/logs/{id}"]["get"]["responses"]["200"]["content"]["application/json"]>;

@@ -1,3 +1,5 @@
+import { useT } from "@/i18n";
+
 /**
  * The subscription state the Episodes › Subscriptions tab owns, readable and settable in place —
  * this is the screen where a reader notices they are not being told about a service that keeps
@@ -11,11 +13,12 @@ export function MailToggle(props: {
   applicationName: string;
   onToggle: () => void;
 }) {
+  const t = useT();
   if (props.viaApplication) {
     return (
       <span
         className="text-primary/70 inline-flex shrink-0 items-center"
-        title={`Subscribed through the application ${props.applicationName}`}
+        title={t.overview.mail.viaApplication(props.applicationName)}
         onClick={event => event.stopPropagation()}
       >
         <Envelope filled />
@@ -29,7 +32,7 @@ export function MailToggle(props: {
       className={`inline-flex shrink-0 items-center ${
         props.subscribed ? "text-primary" : "text-[#4A6480] hover:text-[#8CA1B8]"
       }`}
-      title={props.subscribed ? "Subscribed — mail when a new episode opens" : "Not subscribed"}
+      title={props.subscribed ? t.overview.mail.subscribed : t.overview.mail.notSubscribed}
       onClick={event => {
         event.stopPropagation();
         props.onToggle();

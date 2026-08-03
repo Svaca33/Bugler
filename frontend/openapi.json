@@ -121,6 +121,28 @@
         }
       }
     },
+    "/api/auth/language": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLanguageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/auth/password/forgot": {
       "post": {
         "tags": [
@@ -301,6 +323,62 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MailSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/server/language": {
+      "get": {
+        "tags": [
+          "ServerLanguageEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLanguageDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ServerLanguageEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveServerLanguageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLanguageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -2429,7 +2507,8 @@
       "AuthStatusDto": {
         "required": [
           "needsSetup",
-          "passwordResetAvailable"
+          "passwordResetAvailable",
+          "language"
         ],
         "type": "object",
         "properties": {
@@ -2438,6 +2517,9 @@
           },
           "passwordResetAvailable": {
             "type": "boolean"
+          },
+          "language": {
+            "type": "string"
           }
         }
       },
@@ -2589,7 +2671,8 @@
           "email",
           "displayName",
           "isAdmin",
-          "grantedApplicationIds"
+          "grantedApplicationIds",
+          "language"
         ],
         "type": "object",
         "properties": {
@@ -2615,6 +2698,12 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3639,6 +3728,17 @@
           }
         }
       },
+      "SaveServerLanguageRequest": {
+        "required": [
+          "language"
+        ],
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        }
+      },
       "SearchLogsResponse": {
         "required": [
           "items"
@@ -3660,6 +3760,17 @@
           "ErrorsAndWarnings",
           null
         ]
+      },
+      "ServerLanguageDto": {
+        "required": [
+          "language"
+        ],
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          }
+        }
       },
       "ServiceAlertingOverrideDto": {
         "required": [
@@ -3989,6 +4100,20 @@
         "type": "object",
         "properties": {
           "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetLanguageRequest": {
+        "required": [
+          "language"
+        ],
+        "type": "object",
+        "properties": {
+          "language": {
             "type": [
               "null",
               "string"
@@ -4514,6 +4639,9 @@
     },
     {
       "name": "MailSettingsEndpoints"
+    },
+    {
+      "name": "ServerLanguageEndpoints"
     },
     {
       "name": "ReportStorageEndpoint"

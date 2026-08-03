@@ -11,11 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
 
+import { LanguageSelect } from "./LanguageSelect";
 import { useChangePassword } from "./useAuth";
 
-/** A Password Change: proven by the password being replaced, reached from your own e-mail in the header. */
+/** Your account, reached from your own e-mail in the header: the language Bugler speaks to you, and a Password Change proven by the password being replaced. */
 export function ChangePasswordDialog(props: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
   const change = useChangePassword();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -39,79 +42,90 @@ export function ChangePasswordDialog(props: { open: boolean; onOpenChange: (open
     <Dialog open={props.open} onOpenChange={close}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{changed ? "Password changed" : "Change password"}</DialogTitle>
+          <DialogTitle>
+            {changed ? t.access.changePassword.changedTitle : t.access.account.title}
+          </DialogTitle>
           <DialogDescription>
-            {changed
-              ? "Everywhere else you were signed in has been signed out. This browser stays."
-              : "Your current password proves it is you. Signing in elsewhere will need the new one."}
+            {changed ? t.access.changePassword.changedDescription : t.access.account.description}
           </DialogDescription>
         </DialogHeader>
 
         {changed ? (
           <DialogFooter>
             <Button type="button" onClick={() => close(false)}>
-              Done
+              {t.access.changePassword.done}
             </Button>
           </DialogFooter>
         ) : (
-          <form
-            className="grid gap-3.5"
-            onSubmit={event => {
-              event.preventDefault();
-              if (mismatch) return;
-              change.mutate(
-                { currentPassword, newPassword },
-                { onSuccess: () => setChanged(true) },
-              );
-            }}
-          >
-            <div className="grid gap-1.5">
-              <Label htmlFor="current-password">Current password</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={event => setCurrentPassword(event.target.value)}
-                autoFocus
-                required
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="new-password">New password (min 8 characters)</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={event => setNewPassword(event.target.value)}
-                minLength={8}
-                required
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="confirm-password">Repeat new password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmation}
-                onChange={event => setConfirmation(event.target.value)}
-                required
-              />
-            </div>
+          <>
+            <LanguageSelect />
+            <form
+              className="grid gap-3.5 border-t border-border pt-4"
+              onSubmit={event => {
+                event.preventDefault();
+                if (mismatch) return;
+                change.mutate(
+                  { currentPassword, newPassword },
+                  { onSuccess: () => setChanged(true) },
+                );
+              }}
+            >
+              <div className="grid gap-1.5">
+                <Label htmlFor="current-password">
+                  {t.access.changePassword.currentPasswordLabel}
+                </Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={event => setCurrentPassword(event.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-password">{t.access.changePassword.newPasswordLabel}</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={event => setNewPassword(event.target.value)}
+                  minLength={8}
+                  required
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="confirm-password">
+                  {t.access.changePassword.repeatPasswordLabel}
+                </Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmation}
+                  onChange={event => setConfirmation(event.target.value)}
+                  required
+                />
+              </div>
 
-            {mismatch && <p className="text-[12.5px] text-destructive">The two do not match.</p>}
-            {change.error !== null && !mismatch && (
-              <p className="text-[12.5px] text-destructive">{change.error.message}</p>
-            )}
+              {mismatch && (
+                <p className="text-[12.5px] text-destructive">{t.access.passwordsDoNotMatch}</p>
+              )}
+              {change.error !== null && !mismatch && (
+                <p className="text-[12.5px] text-destructive">{change.error.message}</p>
+              )}
 
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => close(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={change.isPending || mismatch}>
-                {change.isPending ? "Changing…" : "Change password"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => close(false)}>
+                  {t.access.changePassword.cancel}
+                </Button>
+                <Button type="submit" disabled={change.isPending || mismatch}>
+                  {change.isPending
+                    ? t.access.changePassword.submitting
+                    : t.access.changePassword.submit}
+                </Button>
+              </DialogFooter>
+            </form>
+          </>
         )}
       </DialogContent>
     </Dialog>

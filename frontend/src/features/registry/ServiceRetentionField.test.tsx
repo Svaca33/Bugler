@@ -1,7 +1,12 @@
 import { expect, test } from "bun:test";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
-import { LOG_RETENTION, RetentionField } from "./ServiceRetentionField";
+import { en } from "@/i18n/en";
+
+import { RetentionField } from "./ServiceRetentionField";
+
+// English is the default language, so the en catalog is what the component renders here.
+const LOG_RETENTION = en.registry.retention.logs;
 
 /**
  * Renders the field over a stored 90-day override against a 30-day server default. The clock it

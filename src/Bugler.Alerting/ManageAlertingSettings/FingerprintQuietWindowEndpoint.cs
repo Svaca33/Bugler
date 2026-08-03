@@ -1,4 +1,5 @@
 using Bugler.Alerting.Settings;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,13 +20,14 @@ internal static class FingerprintQuietWindowEndpoint
         Guid id,
         SetFingerprintQuietWindowRequest request,
         AlertingDbContext dbContext,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         if (request.QuietWindowMinutes is { } requested
             && (requested < 1 || requested > FingerprintQuietWindow.MaxMinutes))
         {
-            return Results.BadRequest(
-                $"The quiet window must be between 1 and {FingerprintQuietWindow.MaxMinutes} minutes.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.QuietWindowBetween(FingerprintQuietWindow.MaxMinutes));
         }
 
         var episode = await dbContext.Episodes.AsNoTracking()
@@ -40,8 +42,8 @@ internal static class FingerprintQuietWindowEndpoint
             // Episodes from before ADR 0002 carry no Fingerprint and never take new matches
             // (that ADR's third consequence), so a window here would be configuration for
             // trouble that can no longer recur.
-            return Results.BadRequest(
-                "This episode predates grouping by kind of trouble and cannot carry a quiet window.");
+            return Results.BadRequest(AlertingMessages
+                .For(await requestLanguage.GetAsync(cancellationToken)).EpisodePredatesGrouping);
         }
 
         var existing = await dbContext.FingerprintQuietWindows.FirstOrDefaultAsync(

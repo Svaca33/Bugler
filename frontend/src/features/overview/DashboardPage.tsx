@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { api } from "@/api/client";
 import { useCatalog, useCurrentUser } from "@/api/queries";
+import { useT } from "@/i18n";
 import { describeDuration, durationMs } from "@/lib/duration";
 import {
   isApplicationSubscribed,
@@ -50,6 +51,7 @@ export function DashboardPage(props: {
   const groupBy =
     props.search.groupBy === undefined ? DEFAULT_GROUP_BY : parseGroupBy(props.search.groupBy);
 
+  const t = useT();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -262,20 +264,18 @@ export function DashboardPage(props: {
   };
 
   const missing = [
-    ...(volume.isError ? ["volume — counts and sparklines show nothing"] : []),
-    ...(episodes.isError ? ["episodes — statuses show nothing"] : []),
+    ...(volume.isError ? [t.overview.errors.volumeAggregate] : []),
+    ...(episodes.isError ? [t.overview.errors.episodesAggregate] : []),
   ];
 
-  const windowPhrase = describeDuration(range).replace(/^Last /, "");
+  const windowDescribed = describeDuration(range);
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-end gap-[18px] border-b border-[#17293D] bg-[#0B1826] px-6 pt-[18px] pb-3.5">
         <div>
-          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">Your services</h1>
-          <p className="text-[12.5px] text-[#8CA1B8]">
-            Every service you can see, and whether it is in trouble right now.
-          </p>
+          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">{t.overview.title}</h1>
+          <p className="text-[12.5px] text-[#8CA1B8]">{t.overview.subtitle}</p>
         </div>
       </div>
 
@@ -295,28 +295,28 @@ export function DashboardPage(props: {
 
       {(missing.length > 0 || update.isError) && (
         <div className="shrink-0 border-b border-[#17293D] px-6 py-1.5 font-mono text-[11px] text-severity-warn">
-          {update.isError && "Failed to save subscriptions. "}
-          {missing.length > 0 && `Unavailable right now: ${missing.join(" · ")}.`}
+          {update.isError && `${t.overview.errors.saveSubscriptions} `}
+          {missing.length > 0 && t.overview.errors.unavailable(missing.join(" · "))}
         </div>
       )}
 
       <div className="min-h-0 flex-1 overflow-auto px-6 pt-4 pb-7">
         {catalog.data === undefined ? (
-          <p className="py-16 text-center text-[13px] text-[#8CA1B8]">Loading…</p>
+          <p className="py-16 text-center text-[13px] text-[#8CA1B8]">{t.common.loading}</p>
         ) : overview.total === 0 ? (
           <p className="py-16 text-center text-[13px] text-[#8CA1B8]">
-            No application is visible to you.
+            {t.overview.empty.noApplication}
           </p>
         ) : overview.shown === 0 ? (
           // A good result — not an error, and no "clear filter" button; the toggle is right there.
           <p className="py-16 text-center text-[13px] text-[#8CA1B8]">
-            Nothing in trouble — no watched service has an open episode.
+            {t.overview.empty.nothingInTrouble}
           </p>
         ) : layout === "table" ? (
           <ServiceTable
             tiles={overview.groups[0]?.services ?? []}
             showVolume={showVolume}
-            windowPhrase={windowPhrase}
+            windowDescribed={windowDescribed}
             isSubscribed={tile => isServiceSubscribed(set, tile.applicationId, tile.serviceId)}
             isViaApplication={tile => isApplicationSubscribed(set, tile.applicationId)}
             onToggleMail={toggleMail}
@@ -332,7 +332,7 @@ export function DashboardPage(props: {
                   <h2 className="text-base font-semibold tracking-[-0.15px]">{group.key}</h2>
                   <GroupBadge inTrouble={group.inTrouble} quieted={group.quieted} />
                   <span className="font-mono text-[11px] text-[#5F7590]">
-                    {group.services.length} {group.services.length === 1 ? "service" : "services"}
+                    {t.overview.serviceCount(group.services.length)}
                   </span>
                 </div>
                 <div

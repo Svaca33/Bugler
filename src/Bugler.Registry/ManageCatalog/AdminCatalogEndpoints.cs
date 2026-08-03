@@ -50,17 +50,22 @@ internal static class AdminCatalogEndpoints
             .ToListAsync(cancellationToken);
 
     public static async Task<IResult> CreateApplication(
-        CreateApplicationRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
+        CreateApplicationRequest request,
+        RegistryDbContext dbContext,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken)
     {
+        var messages = RegistryMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         var name = request.Name.Trim();
         if (name.Length is 0 or > MaxFacetLength)
         {
-            return Results.BadRequest("Application name must be 1-200 characters.");
+            return Results.BadRequest(messages.ApplicationNameLength);
         }
 
         if (await dbContext.Applications.AnyAsync(a => a.Name == name, cancellationToken))
         {
-            return Results.Conflict("An application with this name already exists.");
+            return Results.Conflict(messages.ApplicationNameExists);
         }
 
         var application = new Application
@@ -93,26 +98,31 @@ internal static class AdminCatalogEndpoints
     }
 
     public static async Task<IResult> CreateService(
-        CreateServiceRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
+        CreateServiceRequest request,
+        RegistryDbContext dbContext,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken)
     {
+        var messages = RegistryMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         var serviceNamespace = request.Namespace.Trim();
         var environment = request.Environment.Trim();
         var name = request.Name.Trim();
 
         if (!IsValidFacet(serviceNamespace) || !IsValidFacet(environment) || !IsValidFacet(name))
         {
-            return Results.BadRequest("Namespace, environment and name must each be 1-200 characters.");
+            return Results.BadRequest(messages.ServiceFacetsLength);
         }
 
         if (request.RetentionDays is < 1 || request.TraceRetentionDays is < 1)
         {
-            return Results.BadRequest("Retention must be at least 1 day.");
+            return Results.BadRequest(messages.RetentionAtLeastOneDay);
         }
 
         var applicationId = new ApplicationId(request.ApplicationId);
         if (!await dbContext.Applications.AnyAsync(a => a.Id == applicationId, cancellationToken))
         {
-            return Results.NotFound("Unknown application.");
+            return Results.NotFound(messages.UnknownApplication);
         }
 
         if (await dbContext.Services.AnyAsync(
@@ -122,7 +132,7 @@ internal static class AdminCatalogEndpoints
                      s.Name == name,
                 cancellationToken))
         {
-            return Results.Conflict("This service is already registered for the application.");
+            return Results.Conflict(messages.ServiceAlreadyRegistered);
         }
 
         var service = new Service
@@ -211,11 +221,16 @@ internal static class AdminCatalogEndpoints
     }
 
     public static async Task<IResult> SetRetention(
-        Guid id, SetRetentionRequest request, RegistryDbContext dbContext, CancellationToken cancellationToken)
+        Guid id,
+        SetRetentionRequest request,
+        RegistryDbContext dbContext,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken)
     {
         if (request.RetentionDays is < 1 || request.TraceRetentionDays is < 1)
         {
-            return Results.BadRequest("Retention must be at least 1 day.");
+            var messages = RegistryMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.RetentionAtLeastOneDay);
         }
 
         var serviceId = new ServiceId(id);

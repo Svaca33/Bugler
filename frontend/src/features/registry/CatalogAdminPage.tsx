@@ -6,6 +6,8 @@ import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
+import { getFormatLocale } from "@/i18n/runtime";
 import { serviceLabel } from "@/lib/serviceLabel";
 
 import { ApplicationAlertingCard } from "./ApplicationAlertingCard";
@@ -18,6 +20,7 @@ const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
 /** Admin management of the telemetry topology: applications → services → API keys. */
 export function CatalogAdminPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const catalog = useCatalog();
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
@@ -55,7 +58,9 @@ export function CatalogAdminPage() {
     <div className="flex h-full min-h-0">
       <aside className="flex w-[296px] shrink-0 flex-col border-r border-[#17293D] bg-[#0B1826]">
         <div className="flex items-center px-[18px] pt-3.5 pb-2.5">
-          <span className={CAPTION.replace("0.12em", "0.14em")}>APPLICATIONS</span>
+          <span className={CAPTION.replace("0.12em", "0.14em")}>
+            {t.registry.catalog.applicationsCaption}
+          </span>
           <span className="ml-auto font-mono text-[11px] text-[#6E86A0]">{apps.length}</span>
         </div>
 
@@ -80,7 +85,7 @@ export function CatalogAdminPage() {
                   {app.name}
                 </span>
                 <span className={`text-[11px] ${isSelected ? "text-[#8CA1B8]" : "text-[#7D93AA]"}`}>
-                  {serviceCount} {serviceCount === 1 ? "service" : "services"}
+                  {t.registry.catalog.serviceCount(serviceCount)}
                 </span>
               </button>
             );
@@ -94,16 +99,16 @@ export function CatalogAdminPage() {
             if (newAppName.trim()) createApplication.mutate(newAppName.trim());
           }}
         >
-          <Label htmlFor="new-application">Add application</Label>
+          <Label htmlFor="new-application">{t.registry.catalog.addApplicationLabel}</Label>
           <div className="flex gap-2">
             <Input
               id="new-application"
-              placeholder="e.g. billing-api"
+              placeholder={t.registry.catalog.applicationNamePlaceholder}
               value={newAppName}
               onChange={event => setNewAppName(event.target.value)}
             />
             <Button type="submit" size="sm" disabled={createApplication.isPending}>
-              Add
+              {t.registry.catalog.addButton}
             </Button>
           </div>
         </form>
@@ -117,9 +122,7 @@ export function CatalogAdminPage() {
           onDeleted={() => setSelectedApp(null)}
         />
       ) : (
-        <p className="p-6 text-sm text-[#8CA1B8]">
-          Select an application to manage its services and API keys.
-        </p>
+        <p className="p-6 text-sm text-[#8CA1B8]">{t.registry.catalog.selectApplicationPrompt}</p>
       )}
     </div>
   );
@@ -130,6 +133,7 @@ function TopologyDetail(props: {
   applicationName: string;
   onDeleted: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [issuedKey, setIssuedKey] = useState<{ serviceId: string; plaintext: string } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -189,14 +193,14 @@ function TopologyDetail(props: {
           {props.applicationId}
         </span>
         <span className="ml-auto text-[12.5px] text-[#8CA1B8]">
-          {list.length} {list.length === 1 ? "service" : "services"}
+          {t.registry.catalog.serviceCount(list.length)}
         </span>
         <button
           type="button"
           className="rounded-[5px] px-2 py-[3px] text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
           onClick={() => setConfirmingDelete(true)}
         >
-          Delete application
+          {t.registry.catalog.deleteApplication}
         </button>
       </div>
 
@@ -204,8 +208,8 @@ function TopologyDetail(props: {
         inputId={props.applicationId}
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
-        title={`Delete application "${props.applicationName}"?`}
-        consequence={`This erases ${list.length} ${list.length === 1 ? "service" : "services"}, their API keys and every log and span they ever sent.`}
+        title={t.registry.catalog.deleteApplicationTitle(props.applicationName)}
+        consequence={t.registry.catalog.deleteApplicationConsequence(list.length)}
         phrase={props.applicationName}
         pending={deleteApplication.isPending}
         failed={deleteApplication.isError}
@@ -218,8 +222,7 @@ function TopologyDetail(props: {
         defaultTraceRetentionDays !== undefined &&
         list.length > 0 && (
           <span className={CAPTION}>
-            SERVICES · defaults to {defaultRetentionDays} days of logs and{" "}
-            {defaultTraceRetentionDays} of traces
+            {t.registry.catalog.servicesCaption(defaultRetentionDays, defaultTraceRetentionDays)}
           </span>
         )}
 
@@ -263,6 +266,7 @@ function ServiceCard(props: {
   onIssue: () => void;
   onIssuedSaved: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const keys = useQuery({
@@ -310,14 +314,14 @@ function ServiceCard(props: {
       <div className="flex items-center gap-2.5">
         <span className="font-mono text-[13px] font-medium text-foreground">{label}</span>
         <Button size="sm" variant="secondary" className="ml-auto" onClick={props.onIssue}>
-          Issue key
+          {t.registry.keys.issueButton}
         </Button>
         <button
           type="button"
           className="rounded-[5px] px-2 py-[3px] text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
           onClick={() => setConfirmingDelete(true)}
         >
-          Delete
+          {t.registry.delete}
         </button>
       </div>
 
@@ -325,8 +329,8 @@ function ServiceCard(props: {
         inputId={props.service.id}
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
-        title={`Delete service "${label}"?`}
-        consequence="This erases its API keys and every log and span it ever sent. Traces it shared with other services keep their remaining spans."
+        title={t.registry.catalog.deleteServiceTitle(label)}
+        consequence={t.registry.catalog.deleteServiceConsequence}
         phrase={serviceConfirmationPhrase(props.service)}
         pending={deleteService.isPending}
         failed={deleteService.isError}
@@ -349,8 +353,8 @@ function ServiceCard(props: {
       {props.issuedPlaintext !== null && (
         <div className="flex flex-col gap-2 rounded-[9px] border border-[rgba(233,164,60,0.55)] bg-[rgba(233,164,60,0.10)] p-3.5">
           <p className="text-[12.5px] font-semibold text-[#F6E3C4]">
-            New key for {label}{" "}
-            <span className="font-normal text-[#D9A45E]">— shown once, copy it now</span>
+            {t.registry.keys.newKeyFor(label)}{" "}
+            <span className="font-normal text-[#D9A45E]">{t.registry.keys.shownOnce}</span>
           </p>
           <code
             data-testid="issued-key"
@@ -363,10 +367,10 @@ function ServiceCard(props: {
               size="sm"
               onClick={() => navigator.clipboard.writeText(props.issuedPlaintext ?? "")}
             >
-              Copy
+              {t.registry.keys.copyButton}
             </Button>
             <Button size="sm" variant="ghost" onClick={props.onIssuedSaved}>
-              I saved it
+              {t.registry.keys.savedItButton}
             </Button>
           </div>
         </div>
@@ -374,7 +378,7 @@ function ServiceCard(props: {
 
       {activeKeys.length > 0 ? (
         <div className="flex flex-col gap-1.5">
-          <span className={CAPTION}>ACTIVE KEYS · {activeKeys.length}</span>
+          <span className={CAPTION}>{t.registry.keys.activeKeysCaption(activeKeys.length)}</span>
           {activeKeys.map(key => (
             <div
               key={key.id}
@@ -384,21 +388,21 @@ function ServiceCard(props: {
                 key_{key.id.replaceAll("-", "").slice(0, 8)}
               </span>
               <span className="text-[11.5px] text-[#7D93AA]">
-                {new Date(key.createdAt).toLocaleDateString()}
+                {new Date(key.createdAt).toLocaleDateString(getFormatLocale())}
               </span>
               <button
                 type="button"
                 className="ml-auto rounded-[5px] px-2 py-[3px] text-[11.5px] text-[#F0685A] hover:bg-[rgba(229,84,74,0.14)]"
                 onClick={() => revoke.mutate(key.id)}
               >
-                Revoke
+                {t.registry.keys.revokeButton}
               </button>
             </div>
           ))}
         </div>
       ) : (
         <p className="rounded-lg border border-dashed border-input p-3 text-xs text-[#8CA1B8]">
-          No API key yet — this service cannot send telemetry until you issue one.
+          {t.registry.keys.noKeyYet}
         </p>
       )}
     </div>
@@ -410,6 +414,7 @@ function AddServiceForm(props: {
   defaultRetentionDays: number | undefined;
   defaultTraceRetentionDays: number | undefined;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [namespace, setNamespace] = useState("");
   const [environment, setEnvironment] = useState("");
@@ -453,40 +458,40 @@ function AddServiceForm(props: {
         if (complete) createService.mutate();
       }}
     >
-      <span className={CAPTION}>ADD SERVICE</span>
+      <span className={CAPTION}>{t.registry.catalog.addServiceCaption}</span>
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="new-service-namespace">Namespace (deployment)</Label>
+          <Label htmlFor="new-service-namespace">{t.registry.catalog.namespaceLabel}</Label>
           <Input
             id="new-service-namespace"
             className="w-[176px]"
-            placeholder="e.g. demo"
+            placeholder={t.registry.catalog.namespacePlaceholder}
             value={namespace}
             onChange={event => setNamespace(event.target.value)}
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="new-service-environment">Environment</Label>
+          <Label htmlFor="new-service-environment">{t.registry.catalog.environmentLabel}</Label>
           <Input
             id="new-service-environment"
             className="w-[136px]"
-            placeholder="e.g. prod"
+            placeholder={t.registry.catalog.environmentPlaceholder}
             value={environment}
             onChange={event => setEnvironment(event.target.value)}
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="new-service-name">Service name</Label>
+          <Label htmlFor="new-service-name">{t.registry.catalog.serviceNameLabel}</Label>
           <Input
             id="new-service-name"
             className="w-[176px]"
-            placeholder="e.g. backend"
+            placeholder={t.registry.catalog.serviceNamePlaceholder}
             value={name}
             onChange={event => setName(event.target.value)}
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="new-service-retention">Log retention (days)</Label>
+          <Label htmlFor="new-service-retention">{t.registry.retention.logs.label}</Label>
           <Input
             id="new-service-retention"
             className="w-[136px]"
@@ -498,7 +503,7 @@ function AddServiceForm(props: {
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="new-service-trace-retention">Trace retention (days)</Label>
+          <Label htmlFor="new-service-trace-retention">{t.registry.retention.traces.label}</Label>
           <Input
             id="new-service-trace-retention"
             className="w-[136px]"
@@ -514,16 +519,18 @@ function AddServiceForm(props: {
           />
         </div>
         <Button type="submit" size="sm" disabled={!complete || createService.isPending}>
-          Add service
+          {t.registry.catalog.addServiceButton}
         </Button>
       </div>
       <p className="text-[11.5px] text-[#7D93AA]">
-        One process, one registration: a backend and a mobile client of the same deployment are two
-        services with their own keys. Leave either retention empty to follow the server default
-        {props.defaultRetentionDays === undefined || props.defaultTraceRetentionDays === undefined
-          ? ""
-          : ` — ${props.defaultRetentionDays} days of logs, ${props.defaultTraceRetentionDays} of traces`}
-        .
+        {t.registry.catalog.addServiceHelp(
+          props.defaultRetentionDays === undefined || props.defaultTraceRetentionDays === undefined
+            ? null
+            : {
+                logDays: props.defaultRetentionDays,
+                traceDays: props.defaultTraceRetentionDays,
+              },
+        )}
       </p>
     </form>
   );

@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { useT } from "@/i18n";
+
 import { AuthCard, Field } from "./AuthCard";
 import { useResetPassword } from "./useAuth";
 
@@ -9,6 +11,7 @@ import { useResetPassword } from "./useAuth";
  * back in a request body — a click from a mail is a GET, and nobody has typed a password yet.
  */
 export function ResetPasswordPage(props: { token: string }) {
+  const t = useT();
   const reset = useResetPassword();
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState("");
@@ -19,14 +22,14 @@ export function ResetPasswordPage(props: { token: string }) {
   if (props.token.length === 0) {
     return (
       <AuthCard
-        title="Something is missing from that link"
-        description="This address carries no reset link. Open the one from the mail, or ask for a new one."
+        title={t.access.reset.missingToken.title}
+        description={t.access.reset.missingToken.description}
         footer={
           <Link
             to="/forgot-password"
             className="text-center text-[12.5px] text-[#8CA1B8] underline-offset-2 hover:text-[#DCE8F3] hover:underline"
           >
-            Ask for a link
+            {t.access.reset.missingToken.askForLink}
           </Link>
         }
       />
@@ -35,10 +38,10 @@ export function ResetPasswordPage(props: { token: string }) {
 
   return (
     <AuthCard
-      title="Set a new password"
-      description="Once it is set, every session of this account is signed out — sign in again with the new password."
-      error={mismatch ? "The two do not match." : reset.error?.message}
-      submitLabel={reset.isPending ? "Setting…" : "Set password"}
+      title={t.access.reset.title}
+      description={t.access.reset.description}
+      error={mismatch ? t.access.passwordsDoNotMatch : reset.error?.message}
+      submitLabel={reset.isPending ? t.access.reset.submitting : t.access.reset.submit}
       disabled={reset.isPending || mismatch}
       onSubmit={() => {
         if (mismatch) return;
@@ -54,12 +57,12 @@ export function ResetPasswordPage(props: { token: string }) {
           to="/forgot-password"
           className="text-center text-[12.5px] text-[#8CA1B8] underline-offset-2 hover:text-[#DCE8F3] hover:underline"
         >
-          Ask for a new link
+          {t.access.reset.askForNewLink}
         </Link>
       }
     >
       <Field
-        label="New password (min 8 characters)"
+        label={t.access.reset.newPasswordLabel}
         type="password"
         value={newPassword}
         onChange={setNewPassword}
@@ -67,7 +70,7 @@ export function ResetPasswordPage(props: { token: string }) {
         autoFocus
       />
       <Field
-        label="Repeat new password"
+        label={t.access.reset.repeatPasswordLabel}
         type="password"
         value={confirmation}
         onChange={setConfirmation}

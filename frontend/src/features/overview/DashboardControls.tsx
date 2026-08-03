@@ -1,17 +1,9 @@
+import { useT } from "@/i18n";
+
 import { ALL_FACETS, type Facet } from "./serviceOverview";
 
-const WINDOWS = [
-  { value: "PT1H", label: "Last 1 h" },
-  { value: "P1D", label: "Last 24 h" },
-  { value: "P7D", label: "Last 7 d" },
-];
-
-const FACET_LABELS: Record<Facet, string> = {
-  app: "Application",
-  namespace: "Namespace",
-  environment: "Environment",
-  service: "Service",
-};
+/** The three windows the board offers — labelled by the shared range presets. */
+const WINDOW_VALUES = ["PT1H", "P1D", "P7D"];
 
 const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 const SHELL = "flex gap-0.5 rounded-[7px] border border-[#1E344C] bg-[#12253A] p-0.5";
@@ -30,22 +22,23 @@ export function DashboardControls(props: {
   onVolume: (show: boolean) => void;
   onGroupBy: (facets: Facet[]) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-[#17293D] bg-background px-6">
-      <span className={CAPTION}>WINDOW</span>
+      <span className={CAPTION}>{t.overview.controls.windowCaption}</span>
       <div className={SHELL}>
-        {WINDOWS.map(window => (
+        {WINDOW_VALUES.map(value => (
           <button
-            key={window.value}
+            key={value}
             type="button"
             className={`rounded-[5px] px-2.5 py-1 font-mono text-[11px] whitespace-nowrap ${
-              props.range === window.value
+              props.range === value
                 ? "bg-[#1B3049] text-[#F6C170]"
                 : "text-[#8CA1B8] hover:text-foreground"
             }`}
-            onClick={() => props.onRange(window.value)}
+            onClick={() => props.onRange(value)}
           >
-            {window.label}
+            {t.common.rangePreset[value] ?? value}
           </button>
         ))}
       </div>
@@ -59,7 +52,7 @@ export function DashboardControls(props: {
         }`}
         onClick={() => props.onTrouble(!props.trouble)}
       >
-        Only services in trouble
+        {t.overview.controls.troubleOnly}
       </button>
 
       <button
@@ -71,13 +64,13 @@ export function DashboardControls(props: {
         }`}
         onClick={() => props.onVolume(!props.showVolume)}
       >
-        Volume
+        {t.overview.controls.volume}
       </button>
 
       {/* Cards only: the table is one flat list by design. */}
       {props.layout === "cards" && (
         <>
-          <span className={CAPTION}>GROUP BY</span>
+          <span className={CAPTION}>{t.overview.controls.groupByCaption}</span>
           {ALL_FACETS.map(facet => {
             const active = props.groupBy.includes(facet);
             return (
@@ -97,7 +90,7 @@ export function DashboardControls(props: {
                   )
                 }
               >
-                {FACET_LABELS[facet]}
+                {t.overview.controls.facet[facet]}
               </button>
             );
           })}
@@ -105,11 +98,13 @@ export function DashboardControls(props: {
       )}
 
       <div className="ml-auto flex items-center gap-2.5">
-        <span className="font-mono text-[11px] text-[#6E86A0]">{props.shown} shown</span>
+        <span className="font-mono text-[11px] text-[#6E86A0]">
+          {t.overview.controls.shown(props.shown)}
+        </span>
         <div className={SHELL}>
           <button
             type="button"
-            title="Cards"
+            title={t.overview.controls.cardsTitle}
             className={`flex h-6 w-7 items-center justify-center rounded-[5px] ${
               props.layout === "cards"
                 ? "bg-[#1B3049] text-[#F6C170]"
@@ -121,7 +116,7 @@ export function DashboardControls(props: {
           </button>
           <button
             type="button"
-            title="Table"
+            title={t.overview.controls.tableTitle}
             className={`flex h-6 w-7 items-center justify-center rounded-[5px] ${
               props.layout === "table"
                 ? "bg-[#1B3049] text-[#F6C170]"

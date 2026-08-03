@@ -1,3 +1,4 @@
+import { useT } from "@/i18n";
 import { describeMillis } from "@/lib/duration";
 import type { VersionAtInstant } from "@/lib/releases";
 
@@ -15,6 +16,7 @@ import type { VersionAtInstant } from "@/lib/releases";
  */
 export function VersionAtOpen(props: { at: VersionAtInstant | undefined; className?: string }) {
   const { at } = props;
+  const t = useT();
   if (at === undefined) return null;
 
   const released = at.releasedMsBefore !== undefined;
@@ -22,11 +24,11 @@ export function VersionAtOpen(props: { at: VersionAtInstant | undefined; classNa
     <span
       className={`${released ? "text-primary" : ""} ${props.className ?? ""}`.trim()}
       title={released
-        ? `Released ${describeMillis(at.releasedMsBefore!)} before this episode opened`
-        : "The version this service was running when the episode opened"}
+        ? t.alerting.version.releasedTitle(describeMillis(at.releasedMsBefore!))
+        : t.alerting.version.runningTitle}
     >
-      on {at.version}
-      {released && ` · released ${describeMillis(at.releasedMsBefore!)} before`}
+      {t.alerting.version.on(at.version)}
+      {released && ` · ${t.alerting.version.releasedBefore(describeMillis(at.releasedMsBefore!))}`}
     </span>
   );
 }

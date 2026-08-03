@@ -13,17 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useT } from "@/i18n";
 
 const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 
 /** The value the Select uses for "no setting — the defaults apply". */
 const INHERIT = "__inherit__";
-
-export const SENSITIVITY_LABELS: Record<Sensitivity, string> = {
-  Off: "Off",
-  Errors: "Errors",
-  ErrorsAndWarnings: "Errors + warnings",
-};
 
 export function useApplicationAlerting(applicationId: string) {
   return useQuery({
@@ -44,6 +39,7 @@ export function useApplicationAlerting(applicationId: string) {
  * its host ever comes back.
  */
 export function ApplicationAlertingCard(props: { applicationId: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const alerting = useApplicationAlerting(props.applicationId);
   const invalidate = () =>
@@ -55,7 +51,7 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
         params: { path: { applicationId: props.applicationId } },
         body,
       });
-      if (error !== undefined) throw new Error("Failed to save alerting settings");
+      if (error !== undefined) throw new Error(t.registry.alertingCard.saveFailed);
     },
     onSuccess: invalidate,
   });
@@ -68,17 +64,19 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
   // The generated client types integers as `number | string`; the UI works in numbers.
   const quietWindow = data.quietWindowMinutes == null ? null : Number(data.quietWindowMinutes);
 
+  const defaultSensitivityLabel =
+    t.registry.alertingCard.sensitivity[data.defaults.sensitivity ?? "Errors"];
+
   return (
     <div className="flex flex-col gap-3 rounded-[11px] border border-[#1E344C] bg-card p-4">
       <span className={CAPTION}>
-        ALERTING · defaults {SENSITIVITY_LABELS[data.defaults.sensitivity ?? "Errors"]} ·{" "}
-        {data.defaults.quietWindowMinutes} min quiet window
+        {t.registry.alertingCard.caption(defaultSensitivityLabel, data.defaults.quietWindowMinutes)}
       </span>
       <div className="flex flex-wrap items-end gap-3">
         <SensitivityField
           id={`alerting-sensitivity-${props.applicationId}`}
           value={data.sensitivity}
-          inheritLabel={`Default (${SENSITIVITY_LABELS[data.defaults.sensitivity ?? "Errors"]})`}
+          inheritLabel={t.registry.alertingCard.defaultOption(defaultSensitivityLabel)}
           disabled={save.isPending}
           onChange={sensitivity =>
             save.mutate({ sensitivity, quietWindowMinutes: quietWindow })}
@@ -88,11 +86,7 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
           value={quietWindow}
           placeholder={`${data.defaults.quietWindowMinutes}`}
           disabled={save.isPending}
-          help={
-            "How an episode ends: once the service logs nothing the sensitivity matches for "
-            + "this many minutes, the episode closes and the all clear goes out. Every new "
-            + "matching log restarts the countdown. Leave empty to use the default."
-          }
+          help={t.registry.alertingCard.quietWindowHelp}
           onCommit={quietWindowMinutes =>
             save.mutate({ sensitivity: data.sensitivity ?? null, quietWindowMinutes })}
         />
@@ -101,11 +95,7 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
       {save.error !== null && (
         <p className="text-[12.5px] text-[#F0685A]">{save.error.message}</p>
       )}
-      <p className="text-[11.5px] text-[#7D93AA]">
-        Off closes open episodes immediately and silently. Who gets mailed is each person's own
-        choice under Episodes → Subscriptions; the webhook posts every episode of this application
-        to one Google Chat space.
-      </p>
+      <p className="text-[11.5px] text-[#7D93AA]">{t.registry.alertingCard.explainer}</p>
     </div>
   );
 }
@@ -117,9 +107,10 @@ export function SensitivityField(props: {
   disabled: boolean;
   onChange: (value: Sensitivity | null) => void;
 }) {
+  const t = useT();
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={props.id}>Sensitivity</Label>
+      <Label htmlFor={props.id}>{t.registry.alertingCard.sensitivityLabel}</Label>
       <Select
         value={props.value ?? INHERIT}
         onValueChange={next => props.onChange(next === INHERIT ? null : (next as Sensitivity))}
@@ -130,9 +121,11 @@ export function SensitivityField(props: {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={INHERIT}>{props.inheritLabel}</SelectItem>
-          <SelectItem value="Off">{SENSITIVITY_LABELS.Off}</SelectItem>
-          <SelectItem value="Errors">{SENSITIVITY_LABELS.Errors}</SelectItem>
-          <SelectItem value="ErrorsAndWarnings">{SENSITIVITY_LABELS.ErrorsAndWarnings}</SelectItem>
+          <SelectItem value="Off">{t.registry.alertingCard.sensitivity.Off}</SelectItem>
+          <SelectItem value="Errors">{t.registry.alertingCard.sensitivity.Errors}</SelectItem>
+          <SelectItem value="ErrorsAndWarnings">
+            {t.registry.alertingCard.sensitivity.ErrorsAndWarnings}
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -147,6 +140,7 @@ export function QuietWindowField(props: {
   help?: string;
   onCommit: (value: number | null) => void;
 }) {
+  const t = useT();
   const commit = (raw: string) => {
     const trimmed = raw.trim();
     const next = trimmed === "" ? null : Number(trimmed);
@@ -162,7 +156,7 @@ export function QuietWindowField(props: {
   return (
     <div className="grid gap-1.5">
       <div className="flex items-center gap-1.5">
-        <Label htmlFor={props.id}>Quiet window (min)</Label>
+        <Label htmlFor={props.id}>{t.registry.alertingCard.quietWindowLabel}</Label>
         {props.help !== undefined && <HelpTip text={props.help} />}
       </div>
       <Input
@@ -205,6 +199,7 @@ function WebhookField(props: {
   applicationId: string;
   webhook: ApplicationAlerting["chatWebhook"];
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [url, setUrl] = useState("");
@@ -218,7 +213,7 @@ function WebhookField(props: {
           body: { url: next },
         },
       );
-      if (error !== undefined) throw new Error("The webhook must be an absolute https URL.");
+      if (error !== undefined) throw new Error(t.registry.alertingCard.webhookInvalid);
     },
     onSuccess: () => {
       setEditing(false);
@@ -230,13 +225,13 @@ function WebhookField(props: {
   if (props.webhook != null && !editing) {
     return (
       <div className="grid gap-1.5">
-        <Label>Google Chat webhook</Label>
+        <Label>{t.registry.alertingCard.webhookLabel}</Label>
         <div className="flex h-9 items-center gap-2">
           <span className="rounded-[5px] bg-[#16283C] px-[7px] py-0.5 font-mono text-[10.5px] text-[#A9BDD1]">
-            set · {props.webhook.domain}
+            {t.registry.alertingCard.webhookSet(props.webhook.domain)}
           </span>
           <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-            Replace
+            {t.registry.alertingCard.replaceButton}
           </Button>
           <Button
             size="sm"
@@ -245,7 +240,7 @@ function WebhookField(props: {
             disabled={saveWebhook.isPending}
             onClick={() => saveWebhook.mutate(null)}
           >
-            Remove
+            {t.registry.alertingCard.removeButton}
           </Button>
         </div>
       </div>
@@ -254,7 +249,9 @@ function WebhookField(props: {
 
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={`alerting-webhook-${props.applicationId}`}>Google Chat webhook</Label>
+      <Label htmlFor={`alerting-webhook-${props.applicationId}`}>
+        {t.registry.alertingCard.webhookLabel}
+      </Label>
       <div className="flex items-center gap-2">
         <Input
           id={`alerting-webhook-${props.applicationId}`}
@@ -268,11 +265,11 @@ function WebhookField(props: {
           disabled={url.trim() === "" || saveWebhook.isPending}
           onClick={() => saveWebhook.mutate(url.trim())}
         >
-          Save
+          {t.registry.alertingCard.saveButton}
         </Button>
         {props.webhook != null && (
           <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-            Cancel
+            {t.registry.cancel}
           </Button>
         )}
       </div>

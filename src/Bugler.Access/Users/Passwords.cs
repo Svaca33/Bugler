@@ -18,9 +18,6 @@ internal static class Passwords
     /// </summary>
     public const int MaximumLength = 256;
 
-    public static string Requirement =>
-        $"A password of {MinimumLength} to {MaximumLength} characters is required.";
-
     public static bool IsAcceptable(string? password) =>
         password is not null && password.Length is >= MinimumLength and <= MaximumLength;
 

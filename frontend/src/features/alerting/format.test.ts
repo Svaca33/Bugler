@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
+import { cs } from "@/i18n/cs";
+import { en } from "@/i18n/en";
+import { activate } from "@/i18n/runtime";
+
 import { dayLabel, ordinal } from "./format";
 
 describe("ordinal", () => {
@@ -12,6 +16,17 @@ describe("ordinal", () => {
     expect(ordinal(12)).toBe("12th");
     expect(ordinal(13)).toBe("13th");
     expect(ordinal(22)).toBe("22nd");
+  });
+
+  test("speaks Czech when Czech is active — a number and a period", () => {
+    activate("cs", cs);
+    try {
+      expect(ordinal(1)).toBe("1.");
+      expect(ordinal(4)).toBe("4.");
+      expect(ordinal(22)).toBe("22.");
+    } finally {
+      activate("en", en);
+    }
   });
 });
 

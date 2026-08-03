@@ -1,5 +1,6 @@
 import { ZoomInIcon, ZoomOutIcon } from "lucide-react";
 
+import { useT } from "@/i18n";
 import {
   displayPath,
   flattenLeaves,
@@ -16,6 +17,7 @@ export function AttributeLeafList(props: {
   filters: AttributeFilter[];
   onToggle: (filter: AttributeFilter, active: boolean) => void;
 }) {
+  const t = useT();
   const leaves = flattenLeaves(props.attributes);
   if (leaves.length === 0) {
     return <p className="px-2.5 font-mono text-[11.5px] text-[#5F7590]">—</p>;
@@ -37,8 +39,12 @@ export function AttributeLeafList(props: {
             {filter !== null ? (
               <button
                 type="button"
-                aria-label={active ? `Stop filtering by ${label}` : `Filter by ${label}`}
-                title={active ? "Remove this filter" : "Filter by this value"}
+                aria-label={
+                  active ? t.explore.attributes.stopFilteringBy(label) : t.explore.attributes.filterBy(label)
+                }
+                title={
+                  active ? t.explore.attributes.removeFilterTitle : t.explore.attributes.filterByValueTitle
+                }
                 className={`mt-[2px] shrink-0 ${active ? "text-primary" : "text-[#5F7590] hover:text-foreground"}`}
                 onClick={() => props.onToggle(filter, active)}
               >

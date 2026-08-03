@@ -62,6 +62,11 @@ public sealed class DeliveryRunner(
         var webhookByApplication = await LoadWebhooksAsync(dbContext, episodes, cancellationToken);
         var chatSender = scope.ServiceProvider.GetRequiredService<IChatSender>();
 
+        // A chat card has no person behind it, so it is spoken in the server's language; each
+        // mail is spoken in its recipient's, which rode in on the MailRecipient (ADR 0024).
+        var chatLanguage = await scope.ServiceProvider.GetRequiredService<IServerLanguage>()
+            .GetAsync(cancellationToken);
+
         foreach (var delivery in due)
         {
             var episode = episodes[delivery.EpisodeId];
@@ -78,7 +83,8 @@ public sealed class DeliveryRunner(
             else
             {
                 await AttemptChatAsync(
-                    delivery, episode, identity, webhookByApplication, chatSender, cancellationToken);
+                    delivery, episode, identity, webhookByApplication, chatSender, chatLanguage,
+                    cancellationToken);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -99,18 +105,19 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        if (!recipients.EmailByUser.TryGetValue(delivery.UserId!.Value, out var email))
+        if (!recipients.ByUser.TryGetValue(delivery.UserId!.Value, out var recipient))
         {
             // Deactivated or ungranted right now. Dormant, not dead: they may be let back in
             // before the TTL runs out, so the row simply stays due.
             return;
         }
 
-        var alert = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
+        var alert = MessageComposer.ComposeAlert(
+            episode, identity, options.Value.PublicBaseUrl, recipient.Language);
         await AttemptAsync(
             delivery,
             () => mailSender.SendAsync(
-                new MailMessage(email, alert.Subject, alert.TextBody, alert.HtmlBody),
+                new MailMessage(recipient.Email, alert.Subject, alert.TextBody, alert.HtmlBody),
                 cancellationToken));
     }
 
@@ -120,6 +127,7 @@ public sealed class DeliveryRunner(
         CatalogService identity,
         IReadOnlyDictionary<ApplicationId, string> webhookByApplication,
         IChatSender chatSender,
+        Language chatLanguage,
         CancellationToken cancellationToken)
     {
         if (!webhookByApplication.TryGetValue(episode.ApplicationId, out var webhookUrl))
@@ -129,7 +137,8 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var alert = MessageComposer.ComposeAlert(episode, identity, options.Value.PublicBaseUrl);
+        var alert = MessageComposer.ComposeAlert(
+            episode, identity, options.Value.PublicBaseUrl, chatLanguage);
         await AttemptAsync(
             delivery,
             () => chatSender.SendAsync(webhookUrl, alert, cancellationToken));
@@ -176,7 +185,7 @@ public sealed class DeliveryRunner(
         IReadOnlyDictionary<Guid, Episode> episodes,
         CancellationToken cancellationToken)
     {
-        var emailByUser = new Dictionary<Guid, string>();
+        var byUser = new Dictionary<Guid, MailRecipient>();
         var unknown = new HashSet<Guid>();
 
         var byApplication = due
@@ -188,13 +197,13 @@ public sealed class DeliveryRunner(
             var result = await mailRecipients.ResolveAsync(userIds, group.Key, cancellationToken);
             foreach (var recipient in result.Deliverable)
             {
-                emailByUser[recipient.UserId] = recipient.Email;
+                byUser[recipient.UserId] = recipient;
             }
 
             unknown.UnionWith(result.UnknownUserIds);
         }
 
-        return new RecipientDirectory(emailByUser, unknown);
+        return new RecipientDirectory(byUser, unknown);
     }
 
     private static async Task<Dictionary<ApplicationId, string>> LoadWebhooksAsync(
@@ -219,5 +228,5 @@ public sealed class DeliveryRunner(
         error.Length <= 2000 ? error : error[..2000];
 
     private sealed record RecipientDirectory(
-        Dictionary<Guid, string> EmailByUser, HashSet<Guid> Unknown);
+        Dictionary<Guid, MailRecipient> ByUser, HashSet<Guid> Unknown);
 }

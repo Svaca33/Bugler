@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FilterGroup, FilterRail } from "@/components/ui/filter-rail";
 import { FilterSelect } from "@/components/ui/filter-select";
+import { useT } from "@/i18n";
 import { facetOptions } from "@/lib/sourceFilter";
 
 import {
@@ -30,6 +31,7 @@ export function EpisodesFilterRail(props: {
   onChange: (filters: EpisodesFilters) => void;
 }) {
   const { filters, counts, onChange } = props;
+  const t = useT();
   const catalog = useCatalog();
   const applications = catalog.data?.applications ?? [];
   const [search, setSearch] = useState(filters.q ?? "");
@@ -64,7 +66,7 @@ export function EpisodesFilterRail(props: {
         onChange({});
       }}
     >
-      <FilterGroup label="LIFECYCLE">
+      <FilterGroup label={t.alerting.filters.lifecycle}>
         {EPISODE_STATES.map(state => (
           <div key={state} className="flex items-center gap-[9px]">
             <Checkbox
@@ -73,7 +75,7 @@ export function EpisodesFilterRail(props: {
               onCheckedChange={() => toggleState(state)}
             />
             <Label htmlFor={`lifecycle-${state}`} className="font-normal text-[12.5px]">
-              {state}
+              {t.alerting.state.filterLabel[state]}
             </Label>
             <span
               className={`ml-auto font-mono text-[11px] ${
@@ -86,10 +88,10 @@ export function EpisodesFilterRail(props: {
         ))}
       </FilterGroup>
 
-      <FilterGroup label="WHO IS ON IT">
+      <FilterGroup label={t.alerting.filters.whoIsOnIt}>
         {([
-          { value: "none", label: "Nobody yet" },
-          { value: "me", label: "Acknowledged by me" },
+          { value: "none", label: t.alerting.filters.nobodyYet },
+          { value: "me", label: t.alerting.filters.acknowledgedByMe },
         ] as const).map(option => (
           <div key={option.value} className="flex items-center gap-[9px]">
             <Checkbox
@@ -106,10 +108,10 @@ export function EpisodesFilterRail(props: {
         ))}
       </FilterGroup>
 
-      <FilterGroup label="SOURCE">
+      <FilterGroup label={t.alerting.filters.source}>
         <FilterSelect
           className="w-full"
-          placeholder="All applications"
+          placeholder={t.alerting.filters.allApplications}
           value={filters.applicationId}
           options={applications.map(a => ({ value: a.id, label: a.name }))}
           onChange={applicationId =>
@@ -123,35 +125,38 @@ export function EpisodesFilterRail(props: {
         />
         <FilterSelect
           className="w-full"
-          placeholder="All namespaces"
+          placeholder={t.alerting.filters.allNamespaces}
           value={filters.namespace}
           options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
           onChange={namespace => onChange({ ...filters, namespace })}
         />
         <FilterSelect
           className="w-full"
-          placeholder="All environments"
+          placeholder={t.alerting.filters.allEnvironments}
           value={filters.environment}
           options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
           onChange={environment => onChange({ ...filters, environment })}
         />
         <FilterSelect
           className="w-full"
-          placeholder="All services"
+          placeholder={t.alerting.filters.allServices}
           value={filters.service}
           options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
           onChange={service => onChange({ ...filters, service })}
         />
       </FilterGroup>
 
-      <FilterGroup label="OPENED">
+      <FilterGroup label={t.alerting.filters.opened}>
         <FilterSelect
           className="w-full"
-          placeholder="Any time"
+          placeholder={t.alerting.filters.anyTime}
           value={(filters.opened ?? DEFAULT_OPENED) === OPENED_ALL
             ? undefined
             : filters.opened ?? DEFAULT_OPENED}
-          options={OPENED_PRESETS.map(p => ({ value: p.value, label: p.label }))}
+          options={OPENED_PRESETS.map(value => ({
+            value,
+            label: t.alerting.filters.openedPreset[value] ?? value,
+          }))}
           // The default window keeps a clean URL; "Any time" must be said out loud (see OPENED_ALL).
           onChange={value =>
             onChange({
@@ -161,7 +166,7 @@ export function EpisodesFilterRail(props: {
         />
       </FilterGroup>
 
-      <FilterGroup label="FIRST LOG CONTAINS">
+      <FilterGroup label={t.alerting.filters.firstLogContains}>
         <form
           onSubmit={event => {
             event.preventDefault();
@@ -169,7 +174,7 @@ export function EpisodesFilterRail(props: {
           }}
         >
           <Input
-            placeholder="timeout, deadlock…"
+            placeholder={t.alerting.filters.searchPlaceholder}
             value={search}
             onChange={event => setSearch(event.target.value)}
           />

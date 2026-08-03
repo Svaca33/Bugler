@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
 
 import { AuthCard, CenteredNote, Field } from "./AuthCard";
 import { useAuthStatus, useLogin, useSetup } from "./useAuth";
@@ -13,10 +14,11 @@ import { useAuthStatus, useLogin, useSetup } from "./useAuth";
  * when they were turned away, which the route has already vouched for.
  */
 export function LoginPage(props: { destination: string }) {
+  const t = useT();
   const status = useAuthStatus();
 
   if (status.isPending) {
-    return <CenteredNote>Loading…</CenteredNote>;
+    return <CenteredNote>{t.common.loading}</CenteredNote>;
   }
 
   return status.data?.needsSetup ? (
@@ -30,6 +32,7 @@ export function LoginPage(props: { destination: string }) {
 }
 
 function LoginForm(props: { destination: string; resetAvailable: boolean }) {
+  const t = useT();
   const login = useLogin();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -38,10 +41,10 @@ function LoginForm(props: { destination: string; resetAvailable: boolean }) {
 
   return (
     <AuthCard
-      title="Sign in to Bugler"
-      description="Use your local Bugler account."
+      title={t.access.login.title}
+      description={t.access.login.description}
       error={login.error?.message}
-      submitLabel={login.isPending ? "Signing in…" : "Sign in"}
+      submitLabel={login.isPending ? t.access.login.submitting : t.access.login.submit}
       disabled={login.isPending}
       onSubmit={() =>
         login.mutate(
@@ -58,20 +61,25 @@ function LoginForm(props: { destination: string; resetAvailable: boolean }) {
             to="/forgot-password"
             className="text-center text-[12.5px] text-[#8CA1B8] underline-offset-2 hover:text-[#DCE8F3] hover:underline"
           >
-            Forgot your password?
+            {t.access.login.forgotPassword}
           </Link>
         ) : undefined
       }
     >
       <Field
-        label="E-mail"
+        label={t.access.emailLabel}
         type="email"
         value={email}
         onChange={setEmail}
-        placeholder="you@company.com"
+        placeholder={t.access.emailPlaceholder}
         autoFocus
       />
-      <Field label="Password" type="password" value={password} onChange={setPassword} />
+      <Field
+        label={t.access.login.passwordLabel}
+        type="password"
+        value={password}
+        onChange={setPassword}
+      />
       <div className="flex items-center gap-2">
         <Checkbox
           id="stay-signed-in"
@@ -79,7 +87,7 @@ function LoginForm(props: { destination: string; resetAvailable: boolean }) {
           onCheckedChange={checked => setStaySignedIn(checked === true)}
         />
         <Label htmlFor="stay-signed-in" className="font-normal">
-          Stay signed in
+          {t.access.login.staySignedIn}
         </Label>
       </div>
     </AuthCard>
@@ -87,6 +95,7 @@ function LoginForm(props: { destination: string; resetAvailable: boolean }) {
 }
 
 function SetupForm(props: { destination: string }) {
+  const t = useT();
   const setup = useSetup();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -95,10 +104,10 @@ function SetupForm(props: { destination: string }) {
 
   return (
     <AuthCard
-      title="Welcome to Bugler"
-      description="Create the first account. It becomes the server administrator."
+      title={t.access.setup.title}
+      description={t.access.setup.description}
       error={setup.error?.message}
-      submitLabel={setup.isPending ? "Creating…" : "Create admin account"}
+      submitLabel={setup.isPending ? t.access.setup.submitting : t.access.setup.submit}
       disabled={setup.isPending}
       onSubmit={() =>
         setup.mutate(
@@ -107,16 +116,22 @@ function SetupForm(props: { destination: string }) {
         )
       }
     >
-      <Field label="Name" type="text" value={displayName} onChange={setDisplayName} autoFocus />
       <Field
-        label="E-mail"
+        label={t.access.setup.nameLabel}
+        type="text"
+        value={displayName}
+        onChange={setDisplayName}
+        autoFocus
+      />
+      <Field
+        label={t.access.emailLabel}
         type="email"
         value={email}
         onChange={setEmail}
-        placeholder="you@company.com"
+        placeholder={t.access.emailPlaceholder}
       />
       <Field
-        label="Password (min 8 characters)"
+        label={t.access.setup.passwordLabel}
         type="password"
         value={password}
         onChange={setPassword}

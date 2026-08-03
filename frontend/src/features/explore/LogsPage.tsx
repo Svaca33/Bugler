@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/ui/filter-chip";
 import { Input } from "@/components/ui/input";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useT } from "@/i18n";
+import { getMessages } from "@/i18n/runtime";
 import { formatTime } from "@/lib/format";
 import { severityClass, severityFilterOptions, severityLabel, severityRailClass } from "@/lib/severity";
 
@@ -62,6 +64,7 @@ export function LogsPage(props: {
   onSelectLog: (id: number | undefined) => void;
 }) {
   const { filters, onChange, selectedLogId, onSelectLog } = props;
+  const t = useT();
   const catalog = useCatalog();
   const queryClient = useQueryClient();
   const [follow, setFollow] = useState(false);
@@ -81,7 +84,7 @@ export function LogsPage(props: {
           },
         },
       });
-      if (error !== undefined) throw new Error("Failed to load logs");
+      if (error !== undefined) throw new Error(getMessages().explore.loadFailed.logs);
       return data;
     },
     initialPageParam: undefined as { before: string; beforeId: number } | undefined,
@@ -106,7 +109,7 @@ export function LogsPage(props: {
         signal,
         params: { query: { ...logQuery(filters), limit: FOLLOW_PAGE, ...cursor } },
       });
-      if (error !== undefined) throw new Error("Failed to load logs");
+      if (error !== undefined) throw new Error(getMessages().explore.loadFailed.logs);
       return data.items;
     },
     onGiveUp: () => setFollow(false),
@@ -157,7 +160,7 @@ export function LogsPage(props: {
       const { data, error } = await api.GET("/api/logs/count", {
         params: { query: logQuery(filters) },
       });
-      if (error !== undefined) throw new Error("Failed to count log records");
+      if (error !== undefined) throw new Error(getMessages().explore.loadFailed.logCount);
       return data;
     },
     enabled: !follow,
@@ -178,7 +181,7 @@ export function LogsPage(props: {
         params: { path: { id: selectedLogId! } },
       });
       if (response.status === 404) return null;
-      if (data === undefined) throw new Error("Failed to load the log record");
+      if (data === undefined) throw new Error(getMessages().explore.loadFailed.logRecord);
       return data;
     },
     enabled: selectedLogId !== undefined && selectedFromList === undefined,
@@ -192,8 +195,8 @@ export function LogsPage(props: {
   // it, and what it declines to say it declines to say in numbers too (Exploration ADR 0004).
   const counted =
     total.data === undefined
-      ? `${items.length} loaded`
-      : `${items.length} of ${total.data.total}${total.data.capped ? "+" : ""} records`;
+      ? t.explore.logs.loaded(items.length)
+      : t.explore.logs.counted(items.length, Number(total.data.total), total.data.capped);
 
   return (
     <div className="flex h-full min-h-0">
@@ -206,21 +209,21 @@ export function LogsPage(props: {
         }}
       >
         {filters.traceId !== undefined && (
-          <FilterGroup label="SCOPE">
+          <FilterGroup label={t.explore.rail.scopeGroup}>
             <FilterChip
               className="w-full"
-              removeLabel="Leave the trace"
+              removeLabel={t.explore.rail.leaveTrace}
               onRemove={() => onChange({ ...filters, traceId: undefined })}
             >
-              Trace: {filters.traceId.slice(0, 8)}…
+              {t.explore.rail.traceScope(filters.traceId.slice(0, 8))}
             </FilterChip>
           </FilterGroup>
         )}
 
-        <FilterGroup label="SOURCE">
+        <FilterGroup label={t.explore.rail.sourceGroup}>
           <FilterSelect
             className="w-full"
-            placeholder="All applications"
+            placeholder={t.explore.rail.allApplications}
             value={filters.applicationId}
             options={applications.map(a => ({ value: a.id, label: a.name }))}
             onChange={applicationId =>
@@ -235,28 +238,28 @@ export function LogsPage(props: {
           />
           <FilterSelect
             className="w-full"
-            placeholder="All namespaces"
+            placeholder={t.explore.rail.allNamespaces}
             value={filters.namespace}
             options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
             onChange={namespace => onChange({ ...filters, namespace })}
           />
           <FilterSelect
             className="w-full"
-            placeholder="All environments"
+            placeholder={t.explore.rail.allEnvironments}
             value={filters.environment}
             options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
             onChange={environment => onChange({ ...filters, environment })}
           />
           <FilterSelect
             className="w-full"
-            placeholder="All services"
+            placeholder={t.explore.rail.allServices}
             value={filters.service}
             options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
             onChange={service => onChange({ ...filters, service })}
           />
         </FilterGroup>
 
-        <FilterGroup label="TIME">
+        <FilterGroup label={t.explore.rail.timeGroup}>
           <TimeFilterControl
             layout="column"
             value={filters}
@@ -264,12 +267,12 @@ export function LogsPage(props: {
           />
         </FilterGroup>
 
-        <FilterGroup label="SEVERITY">
+        <FilterGroup label={t.explore.rail.severityGroup}>
           <FilterSelect
             className="w-full"
-            placeholder="All severities"
+            placeholder={t.common.severityFilter.all}
             value={filters.severityMin?.toString()}
-            options={severityFilterOptions
+            options={severityFilterOptions()
               .filter(o => o.value > 0)
               .map(o => ({ value: o.value.toString(), label: o.label }))}
             onChange={value =>
@@ -278,7 +281,7 @@ export function LogsPage(props: {
           />
         </FilterGroup>
 
-        <FilterGroup label="MESSAGE">
+        <FilterGroup label={t.explore.rail.messageGroup}>
           <form
             className="flex flex-col gap-2"
             onSubmit={event => {
@@ -287,17 +290,17 @@ export function LogsPage(props: {
             }}
           >
             <Input
-              placeholder="Search in message…"
+              placeholder={t.explore.rail.searchPlaceholder}
               value={search}
               onChange={event => setSearch(event.target.value)}
             />
             <Button type="submit" variant="secondary" size="sm" className="w-full">
-              Search
+              {t.explore.rail.search}
             </Button>
           </form>
         </FilterGroup>
 
-        <FilterGroup label="ATTRIBUTES">
+        <FilterGroup label={t.explore.rail.attributesGroup}>
           <AttributeFilterBar
             layout="column"
             signal="logs"
@@ -315,7 +318,7 @@ export function LogsPage(props: {
           className="flex h-full min-w-0 flex-col"
         >
           <div className="flex items-center gap-3.5 px-5 py-3">
-            <h1 className="text-sm font-semibold tracking-[-0.1px]">Log records</h1>
+            <h1 className="text-sm font-semibold tracking-[-0.1px]">{t.explore.logs.title}</h1>
             {/* The one thing a followed list says about itself: that it is still running. Without
                 it a stream nothing is arriving into looks the same as one that has stopped. */}
             {follow && (
@@ -338,7 +341,7 @@ export function LogsPage(props: {
                 size="sm"
                 onClick={() => (follow ? stopFollowing() : startFollowing())}
               >
-                {follow ? "Follow ●" : "Follow"}
+                {follow ? t.explore.logs.following : t.explore.logs.follow}
               </Button>
             </div>
           </div>
@@ -363,11 +366,11 @@ export function LogsPage(props: {
               className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
             >
               <span />
-              <span>TIME</span>
-              <span>SEVERITY</span>
-              <span>SERVICE</span>
-              <span>TENANT</span>
-              <span>MESSAGE</span>
+              <span>{t.explore.logs.headers.time}</span>
+              <span>{t.explore.logs.headers.severity}</span>
+              <span>{t.explore.logs.headers.service}</span>
+              <span>{t.explore.logs.headers.tenant}</span>
+              <span>{t.explore.logs.headers.message}</span>
             </div>
             <div data-testid="log-rows">
               {items.map(log => {
@@ -416,10 +419,10 @@ export function LogsPage(props: {
               })}
               {items.length === 0 && !logs.isPending && (
                 <div className="flex flex-col items-center gap-3 py-16">
-                  <p className="text-[#8CA1B8]">{emptyStateMessage("log records", filters)}</p>
+                  <p className="text-[#8CA1B8]">{emptyStateMessage("logRecords", filters)}</p>
                   {widerPresets(filters).length > 0 && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[#6E86A0] text-xs">Widen to</span>
+                      <span className="text-[#6E86A0] text-xs">{t.explore.timeFilter.widenTo}</span>
                       {widerPresets(filters).map(preset => (
                         <Button
                           key={preset.value}
@@ -448,7 +451,11 @@ export function LogsPage(props: {
                 disabled={!logs.hasNextPage || logs.isFetchingNextPage}
                 onClick={() => logs.fetchNextPage()}
               >
-                {logs.isFetchingNextPage ? "Loading…" : logs.hasNextPage ? "Load older" : "No older records"}
+                {logs.isFetchingNextPage
+                  ? t.common.loading
+                  : logs.hasNextPage
+                    ? t.explore.logs.loadOlder
+                    : t.explore.logs.noOlderRecords}
               </Button>
               <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
             </div>

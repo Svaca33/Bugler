@@ -9,7 +9,8 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 
-import { RANGE_PRESETS, RANGE_UNITS, toDuration, type RangeUnit } from "@/lib/duration";
+import { useT } from "@/i18n";
+import { rangePresets, rangeUnits, toDuration, type RangeUnit } from "@/lib/duration";
 
 import {
   instantToLocalInput,
@@ -32,6 +33,8 @@ export function TimeFilterControl(props: {
   layout?: "row" | "column";
 }) {
   const { value, onChange, layout = "row" } = props;
+  const t = useT();
+  const words = t.explore.timeFilter;
   const column = layout === "column";
   const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState("45");
@@ -39,7 +42,9 @@ export function TimeFilterControl(props: {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const preset = RANGE_PRESETS.find(option => option.value === value.range);
+  const presets = rangePresets();
+  const units = rangeUnits();
+  const preset = presets.find(option => option.value === value.range);
   const isCustom =
     preset === undefined &&
     (value.range !== undefined || value.from !== undefined || value.to !== undefined);
@@ -77,45 +82,45 @@ export function TimeFilterControl(props: {
           }
         }}
       >
-        <SelectTrigger className={column ? "w-full" : "w-48"} size="sm" aria-label="Time range">
+        <SelectTrigger className={column ? "w-full" : "w-48"} size="sm" aria-label={words.timeRangeAria}>
           <span className="truncate">{timeFilterLabel(value)}</span>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={ALL}>All time</SelectItem>
-          {RANGE_PRESETS.map(option => (
+          <SelectItem value={ALL}>{words.allTime}</SelectItem>
+          {presets.map(option => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>
           ))}
-          <SelectItem value={CUSTOM}>Custom…</SelectItem>
+          <SelectItem value={CUSTOM}>{words.custom}</SelectItem>
         </SelectContent>
       </Select>
 
       {isCustom && !editing && (
         <Button type="button" variant="ghost" size="sm" className={column ? "w-full" : undefined} onClick={openEditor}>
-          Edit
+          {words.edit}
         </Button>
       )}
 
       {editing && (
         <div className="bg-popover flex flex-col gap-2 rounded-md border p-2">
           <div className={column ? "flex flex-col gap-1.5" : "flex items-center gap-1.5"}>
-            <span className={endLabel}>Last</span>
+            <span className={endLabel}>{words.last}</span>
             <span className={column ? "flex gap-1.5" : "contents"}>
               <Input
                 type="number"
                 min={1}
                 className={column ? "h-8 w-16" : "h-8 w-20"}
-                aria-label="Amount"
+                aria-label={words.amountAria}
                 value={amount}
                 onChange={event => setAmount(event.target.value)}
               />
               <Select value={unit} onValueChange={selected => setUnit(selected as RangeUnit)}>
-                <SelectTrigger className={column ? "flex-1" : "w-28"} size="sm" aria-label="Unit">
-                  <span>{RANGE_UNITS.find(option => option.value === unit)?.label}</span>
+                <SelectTrigger className={column ? "flex-1" : "w-28"} size="sm" aria-label={words.unitAria}>
+                  <span>{units.find(option => option.value === unit)?.label}</span>
                 </SelectTrigger>
                 <SelectContent>
-                  {RANGE_UNITS.map(option => (
+                  {units.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -128,32 +133,32 @@ export function TimeFilterControl(props: {
               variant="secondary"
               size="sm"
               className={column ? "w-full" : undefined}
-              aria-label="Apply relative range"
+              aria-label={words.applyRelativeAria}
               disabled={duration === undefined}
               onClick={() => duration !== undefined && apply({ range: duration })}
             >
-              Apply
+              {words.apply}
             </Button>
           </div>
 
           <div className={column ? "flex flex-col gap-1.5" : "flex items-center gap-1.5"}>
-            <span className={endLabel}>From</span>
+            <span className={endLabel}>{words.from}</span>
             {/* Local wall clock in, UTC on the wire — the same time the list shows you. */}
             <Input
               type="datetime-local"
               step={1}
               className={column ? "h-8 w-full" : "h-8 w-52"}
-              aria-label="From"
+              aria-label={words.from}
               value={from}
               onChange={event => setFrom(event.target.value)}
             />
             {/* Inline the ends read "From … to …"; stacked they are two labelled fields. */}
-            <span className="text-muted-foreground text-xs">{column ? "To" : "to"}</span>
+            <span className="text-muted-foreground text-xs">{column ? words.to : words.toInline}</span>
             <Input
               type="datetime-local"
               step={1}
               className={column ? "h-8 w-full" : "h-8 w-52"}
-              aria-label="To"
+              aria-label={words.to}
               value={to}
               onChange={event => setTo(event.target.value)}
             />
@@ -163,17 +168,17 @@ export function TimeFilterControl(props: {
                 variant="secondary"
                 size="sm"
                 className={column ? "flex-1" : undefined}
-                aria-label="Apply absolute range"
+                aria-label={words.applyAbsoluteAria}
                 disabled={endsBeforeItStarts}
                 onClick={() => apply({ from: fromInstant, to: toInstant })}
               >
-                Apply
+                {words.apply}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label="Cancel time range"
+                aria-label={words.cancelAria}
                 onClick={() => setEditing(false)}
               >
                 ✕
@@ -182,11 +187,9 @@ export function TimeFilterControl(props: {
           </div>
 
           {endsBeforeItStarts && (
-            <p className="text-destructive text-xs">This range ends before it starts.</p>
+            <p className="text-destructive text-xs">{words.endsBeforeItStarts}</p>
           )}
-          <p className="text-muted-foreground text-[11px]">
-            Empty ends stay open. Times are in your local time zone.
-          </p>
+          <p className="text-muted-foreground text-[11px]">{words.hint}</p>
         </div>
       )}
     </>

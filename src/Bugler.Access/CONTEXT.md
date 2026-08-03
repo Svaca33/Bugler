@@ -20,6 +20,13 @@ _Avoid_: suspension, disabling, locking, soft delete
 The permanent removal of a User together with their Application Grants, freeing their e-mail for a new account. Not a stronger Deactivation but a different answer: an end rather than a pause, and neither one is a step towards the other.
 _Avoid_: purge, offboarding, archiving
 
+**Language**:
+The language Bugler speaks to a person — the UI, a mail, a refusal — carrying its formatting
+conventions with it. A User may choose one for themselves; while they haven't (null), they follow
+whatever the server speaks, today and after an admin changes it. Machine-facing text (logs,
+health answers, severity band names) is not spoken in a Language at all.
+_Avoid_: locale, culture, region, i18n setting
+
 **Application Grant**:
 The permission for one User to read the telemetry of one Application. References the Application by id only, outlives the User's Deactivation, and dies with their Deletion.
 _Avoid_: permission, role assignment, ACL entry

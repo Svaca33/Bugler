@@ -6,6 +6,8 @@ import { api, type TraceSpan } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useT } from "@/i18n";
+import { getMessages } from "@/i18n/runtime";
 import { formatTime } from "@/lib/format";
 
 import { removeFilter, upsertFilter, type AttributeFilter } from "./attributeFilters";
@@ -23,6 +25,7 @@ const GRID = "grid grid-cols-[300px_1fr_90px] items-center gap-3 px-5";
 
 export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilters }) {
   const { listFilters } = props;
+  const t = useT();
   const [selected, setSelected] = useState<TraceSpan | null>(null);
   const navigate = useNavigate();
   const catalog = useCatalog();
@@ -45,17 +48,17 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
         params: { path: { traceId: props.traceId } },
       });
       if (response.status === 404) return null;
-      if (data === undefined) throw new Error("Failed to load trace");
+      if (data === undefined) throw new Error(getMessages().explore.loadFailed.trace);
       return data;
     },
   });
 
   if (trace.isPending) {
-    return <p className="p-6 text-muted-foreground">Loading trace…</p>;
+    return <p className="p-6 text-muted-foreground">{t.explore.traceDetail.loading}</p>;
   }
 
   if (trace.data == null) {
-    return <p className="p-6 text-muted-foreground">Trace not found (or not visible to you).</p>;
+    return <p className="p-6 text-muted-foreground">{t.explore.traceDetail.notFound}</p>;
   }
 
   const spans = trace.data.spans;
@@ -82,24 +85,24 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
             search={listFilters}
             className="text-[12.5px] text-muted-foreground hover:text-foreground"
           >
-            Traces
+            {t.explore.traces.title}
           </Link>
           <span className="text-[#2C4560]">/</span>
           <h1 className="min-w-0 truncate font-mono text-[13px] text-[#B6C8DA]">{props.traceId}</h1>
           <span className="ml-auto whitespace-nowrap font-mono text-[11.5px] text-[#6E86A0]">
-            {totalMs.toFixed(0)} ms · {spans.length} spans
+            {totalMs.toFixed(0)} ms · {t.explore.traceDetail.spansCount(spans.length)}
             {errorCount > 0 && (
               <>
                 {" · "}
                 <span className="text-[#F0685A]">
-                  {errorCount} {errorCount === 1 ? "error" : "errors"}
+                  {t.explore.traceDetail.errorsCount(errorCount)}
                 </span>
               </>
             )}
           </span>
           <Button asChild variant="secondary" size="sm">
             <Link to="/" search={{ traceId: props.traceId }}>
-              View correlated logs
+              {t.explore.traceDetail.viewCorrelatedLogs}
             </Link>
           </Button>
         </div>
@@ -108,9 +111,9 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
           <div
             className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
           >
-            <span>SPAN</span>
-            <span>TIMELINE · 0 → {totalMs.toFixed(0)} ms</span>
-            <span className="text-right">DURATION</span>
+            <span>{t.explore.traceDetail.headers.span}</span>
+            <span>{t.explore.traceDetail.headers.timeline(totalMs.toFixed(0))}</span>
+            <span className="text-right">{t.explore.traceDetail.headers.duration}</span>
           </div>
           {rows.map(row => {
             const isSelected = selected?.id === row.span.id;
@@ -170,20 +173,23 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
           }
         >
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[5px]">
-            <DetailRow label="Span" value={selected.spanId} />
-            <DetailRow label="Parent" value={selected.parentSpanId ?? "—"} />
-            <DetailRow label="Kind" value={KIND_LABELS[Number(selected.kind)] ?? String(selected.kind)} />
-            <DetailRow label="Service" value={labels.get(selected.serviceId) ?? "—"} />
-            <DetailRow label="Start" value={formatTime(selected.startTime)} />
+            <DetailRow label={t.explore.traceDetail.rows.span} value={selected.spanId} />
+            <DetailRow label={t.explore.traceDetail.rows.parent} value={selected.parentSpanId ?? "—"} />
             <DetailRow
-              label="Status"
+              label={t.explore.traceDetail.rows.kind}
+              value={KIND_LABELS[Number(selected.kind)] ?? String(selected.kind)}
+            />
+            <DetailRow label={t.explore.traceDetail.rows.service} value={labels.get(selected.serviceId) ?? "—"} />
+            <DetailRow label={t.explore.traceDetail.rows.start} value={formatTime(selected.startTime)} />
+            <DetailRow
+              label={t.explore.traceDetail.rows.status}
               value={selected.statusCode === 2 ? `ERROR ${selected.statusMessage ?? ""}` : "OK"}
               valueClass={selected.statusCode === 2 ? "text-[#F0685A]" : undefined}
             />
           </dl>
           <section className="grid gap-1.5">
             <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5F7590]">
-              Attributes
+              {t.explore.sections.attributes}
             </h3>
             <AttributeLeafList
               attributes={selected.attributes}
@@ -194,7 +200,7 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
           </section>
           <section className="grid gap-1.5">
             <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5F7590]">
-              Resource
+              {t.explore.sections.resource}
             </h3>
             <AttributeLeafList
               attributes={selected.resourceAttributes}
@@ -205,7 +211,7 @@ export function TraceDetailPage(props: { traceId: string; listFilters: TraceFilt
           </section>
           <section className="grid gap-1.5">
             <h3 className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#5F7590]">
-              Events
+              {t.explore.sections.events}
             </h3>
             <JsonBlock value={selected.events} />
           </section>

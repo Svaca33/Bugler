@@ -171,6 +171,11 @@ namespace Bugler.Access.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_admin");
 
+                    b.Property<string>("Language")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("language");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")

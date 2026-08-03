@@ -6,6 +6,7 @@ import { api, type Episode } from "@/api/client";
 import { useCatalog, useCurrentUser, useReleases } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useT } from "@/i18n";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
@@ -50,6 +51,7 @@ export function EpisodesPage(props: {
   onSelect: (id: string | undefined) => void;
 }) {
   const { filters, onChange, selectedId, onSelect } = props;
+  const t = useT();
   const catalog = useCatalog();
   const currentUser = useCurrentUser();
   const navigate = useNavigate();
@@ -86,7 +88,7 @@ export function EpisodesPage(props: {
           },
         },
       });
-      if (error !== undefined) throw new Error("Failed to load episodes");
+      if (error !== undefined) throw new Error(t.alerting.errors.loadEpisodes);
       return data;
     },
     initialPageParam: undefined as string | undefined,
@@ -107,7 +109,7 @@ export function EpisodesPage(props: {
           query: { state: ["Open"], limit: 100, from: openedFrom(filters), ...shared },
         },
       });
-      if (error !== undefined) throw new Error("Failed to load open episodes");
+      if (error !== undefined) throw new Error(t.alerting.errors.loadOpenEpisodes);
       return data.items;
     },
     refetchInterval: REFETCH_MS,
@@ -122,7 +124,7 @@ export function EpisodesPage(props: {
           query: { latestPerFingerprint: true, from: openedFrom(filters), ...shared },
         },
       });
-      if (error !== undefined) throw new Error("Failed to count episodes");
+      if (error !== undefined) throw new Error(t.alerting.errors.countEpisodes);
       return data;
     },
     refetchInterval: REFETCH_MS,
@@ -174,10 +176,8 @@ export function EpisodesPage(props: {
     : lifecycle.reduce((sum, state) => sum + Number(counts.data[stateKey[state]]), 0);
   const windowPhrase = openedPhrase(filters);
   const counted = total === undefined
-    ? `${items.length} loaded`
-    : `${items.length} of ${total} kinds of trouble${
-      windowPhrase !== undefined ? ` ${windowPhrase}` : ""
-    }`;
+    ? t.alerting.list.loadedCount(items.length)
+    : t.alerting.list.countOfTotal(items.length, total, windowPhrase);
 
   const narrowed = [
     filters.lifecycle, filters.ack, filters.applicationId, filters.namespace,
@@ -206,9 +206,9 @@ export function EpisodesPage(props: {
               className={`${GRID} sticky top-0 z-10 h-7 border-b border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
             >
               <span />
-              <span>EPISODE</span>
-              <span>STATE</span>
-              <span className="text-right">DURATION</span>
+              <span>{t.alerting.list.columnEpisode}</span>
+              <span>{t.alerting.list.columnState}</span>
+              <span className="text-right">{t.alerting.list.columnDuration}</span>
             </div>
             <div data-testid="episode-rows">
               <EpisodeRows
@@ -221,9 +221,7 @@ export function EpisodesPage(props: {
               />
               {items.length === 0 && !episodes.isLoading && (
                 <p className="py-16 text-center text-[#8CA1B8]">
-                  {narrowed
-                    ? "No episodes match the state filter."
-                    : "No episodes — no watched service has logged trouble yet."}
+                  {narrowed ? t.alerting.list.emptyFiltered : t.alerting.list.emptyNoTrouble}
                 </p>
               )}
             </div>
@@ -237,10 +235,10 @@ export function EpisodesPage(props: {
               onClick={() => episodes.fetchNextPage()}
             >
               {episodes.isFetchingNextPage
-                ? "Loading…"
+                ? t.common.loading
                 : episodes.hasNextPage
-                  ? "Load older"
-                  : "Nothing older"}
+                  ? t.alerting.list.loadOlder
+                  : t.alerting.list.nothingOlder}
             </Button>
             <span className="font-mono text-[11px] whitespace-nowrap text-[#6E86A0]">{counted}</span>
           </div>
@@ -349,6 +347,7 @@ function EpisodeRow(props: {
   onSelect: (id: string) => void;
 }) {
   const { episode, known, selected } = props;
+  const t = useT();
   const muted = episode.state === "Muted";
   const open = episode.state === "Open";
   const heldByMe = episode.acknowledgedBy !== null && episode.acknowledgedBy === props.myName;
@@ -357,13 +356,15 @@ function EpisodeRow(props: {
   // A fresh, unclaimed episode still tells who sat on the earlier one of its kind — Solve wipes
   // those marks, so whatever this names is unresolved work someone believed they were on.
   const owner = episode.acknowledgedBy !== null
-    ? heldByMe ? "you" : episode.acknowledgedBy
+    ? heldByMe ? t.alerting.list.you : episode.acknowledgedBy
     : episode.solvedBy !== null
-      ? `solved by ${episode.solvedBy}`
+      ? t.alerting.list.solvedBy(episode.solvedBy)
       : episode.earlierAcknowledgedBy !== null
-        ? `earlier ack: ${
-          episode.earlierAcknowledgedBy === props.myName ? "you" : episode.earlierAcknowledgedBy
-        }`
+        ? t.alerting.list.earlierAck(
+          episode.earlierAcknowledgedBy === props.myName
+            ? t.alerting.list.you
+            : episode.earlierAcknowledgedBy,
+        )
         : undefined;
 
   // The recurrence badge doubles as the fold: the count is the reason the history exists, so it
@@ -373,10 +374,8 @@ function EpisodeRow(props: {
       type="button"
       className="cursor-pointer rounded-sm border border-[#2C4159] px-[5px] text-[#A9BDD1] hover:border-[#44607F] hover:text-[#DCE8F3]"
       title={props.expanded
-        ? "Hide the earlier episodes"
-        : `This kind of trouble burned ${
-          priorCount === 1 ? "once" : `${priorCount} times`
-        } before — show them`}
+        ? t.alerting.list.hideEarlier
+        : t.alerting.list.showEarlier(priorCount)}
       onClick={event => {
         event.stopPropagation();
         props.onToggleHistory?.();
@@ -419,7 +418,7 @@ function EpisodeRow(props: {
           <span>{clock(episode.openedAt)}</span>
           {muted ? (
             <>
-              <span>alerting turned off during the episode</span>
+              <span>{t.alerting.list.mutedDuringEpisode}</span>
               {historyToggle}
             </>
           ) : (
@@ -429,9 +428,13 @@ function EpisodeRow(props: {
                 <HealthCheckBadge />
               ) : (
                 <>
-                  <span className="text-severity-error">{episode.errorCount} err</span>
+                  <span className="text-severity-error">
+                    {t.alerting.list.errCount(episode.errorCount)}
+                  </span>
                   {Number(episode.warnCount) > 0 && (
-                    <span className="text-severity-warn">{episode.warnCount} warn</span>
+                    <span className="text-severity-warn">
+                      {t.alerting.list.warnCount(episode.warnCount)}
+                    </span>
                   )}
                 </>
               )}
@@ -470,6 +473,7 @@ function GroupHistory(props: {
   onSelect: (id: string) => void;
 }) {
   const { face } = props;
+  const t = useT();
   const history = useInfiniteQuery({
     queryKey: ["alerts", "group-history", face.serviceId, face.fingerprint],
     queryFn: async ({ pageParam }) => {
@@ -483,7 +487,7 @@ function GroupHistory(props: {
           },
         },
       });
-      if (error !== undefined) throw new Error("Failed to load the episode history");
+      if (error !== undefined) throw new Error(t.alerting.errors.loadEpisodeHistory);
       return data;
     },
     // Starting the keyset at the face keeps it out of its own history.
@@ -507,7 +511,7 @@ function GroupHistory(props: {
         />
       ))}
       {history.isPending && (
-        <p className="px-5 py-2 pl-[52px] font-mono text-[11px] text-[#5F7590]">Loading…</p>
+        <p className="px-5 py-2 pl-[52px] font-mono text-[11px] text-[#5F7590]">{t.common.loading}</p>
       )}
       {history.hasNextPage && (
         <button
@@ -516,7 +520,7 @@ function GroupHistory(props: {
           disabled={history.isFetchingNextPage}
           onClick={() => history.fetchNextPage()}
         >
-          {history.isFetchingNextPage ? "Loading…" : "Load older"}
+          {history.isFetchingNextPage ? t.common.loading : t.alerting.list.loadOlder}
         </button>
       )}
     </div>
@@ -534,6 +538,7 @@ function HistoryRow(props: {
   onSelect: (id: string) => void;
 }) {
   const { episode, selected } = props;
+  const t = useT();
   return (
     <div
       data-testid="history-row"
@@ -545,11 +550,13 @@ function HistoryRow(props: {
       <span />
       <span className="flex min-w-0 items-center gap-[9px] overflow-hidden pl-4 font-mono text-[11px] whitespace-nowrap text-[#7D93AA]">
         <span>{historyStamp(episode.openedAt, props.now)}</span>
-        <span className="text-severity-error">{episode.errorCount} err</span>
+        <span className="text-severity-error">{t.alerting.list.errCount(episode.errorCount)}</span>
         {Number(episode.warnCount) > 0 && (
-          <span className="text-severity-warn">{episode.warnCount} warn</span>
+          <span className="text-severity-warn">{t.alerting.list.warnCount(episode.warnCount)}</span>
         )}
-        {episode.solvedBy !== null && <span className="truncate">solved by {episode.solvedBy}</span>}
+        {episode.solvedBy !== null && (
+          <span className="truncate">{t.alerting.list.solvedBy(episode.solvedBy)}</span>
+        )}
       </span>
       <StateBadge state={episode.state} />
       {episode.closedAt == null ? (

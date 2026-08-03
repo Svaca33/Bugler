@@ -1,6 +1,7 @@
 import { RotateCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 
 /**
  * Asks the page's questions again, now. It re-runs the queries exactly as filtered: a relative
@@ -8,13 +9,14 @@ import { Button } from "@/components/ui/button";
  * records are reason enough to ask twice about the same stretch of the past.
  */
 export function RefreshButton(props: { busy: boolean; onRefresh: () => void }) {
+  const t = useT();
   return (
     <Button
       type="button"
       variant="outline"
       size="icon-sm"
-      aria-label="Refresh"
-      title="Refresh"
+      aria-label={t.explore.refresh}
+      title={t.explore.refresh}
       disabled={props.busy}
       onClick={props.onRefresh}
     >

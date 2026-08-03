@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { LogRecord } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { formatTime } from "@/lib/format";
 import { severityClass, severityLabel } from "@/lib/severity";
 
@@ -18,6 +19,7 @@ export function LogDetailPanel(props: {
   onClose: () => void;
 }) {
   const { log, filters, onFiltersChange } = props;
+  const t = useT();
   const catalog = useCatalog();
   const toggle = (filter: AttributeFilter, active: boolean) =>
     onFiltersChange(active ? removeFilter(filters, filter) : upsertFilter(filters, filter));
@@ -28,37 +30,37 @@ export function LogDetailPanel(props: {
       onClose={props.onClose}
       title={
         <>
-          <h2 className="text-sm font-semibold tracking-[-0.1px]">Log record</h2>
+          <h2 className="text-sm font-semibold tracking-[-0.1px]">{t.explore.logDetail.title}</h2>
           <span className="font-mono text-sm font-medium text-[#A9BDD1]">#{log.id}</span>
         </>
       }
     >
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-[5px]">
-        <Row label="Time" value={formatTime(log.timestamp)} />
+        <Row label={t.explore.logDetail.rows.time} value={formatTime(log.timestamp)} />
         <Row
-          label="Severity"
+          label={t.explore.logDetail.rows.severity}
           value={log.severityText || severityLabel(severity)}
           valueClass={severityClass(severity)}
         />
-        <Row label="Service" value={service ?? "—"} />
-        <Row label="Scope" value={log.scopeName ?? "—"} />
-        <Row label="Span" value={log.spanId ?? "—"} />
+        <Row label={t.explore.logDetail.rows.service} value={service ?? "—"} />
+        <Row label={t.explore.logDetail.rows.scope} value={log.scopeName ?? "—"} />
+        <Row label={t.explore.logDetail.rows.span} value={log.spanId ?? "—"} />
       </dl>
 
       {log.traceId != null && (
         <Button asChild variant="secondary" size="sm" className="w-full">
           <Link to="/traces/$traceId" params={{ traceId: log.traceId }}>
-            View trace {log.traceId.slice(0, 8)}…
+            {t.explore.logDetail.viewTrace(log.traceId.slice(0, 8))}
           </Link>
         </Button>
       )}
 
-      <Section title="Message">
+      <Section title={t.explore.sections.message}>
         <pre className="whitespace-pre-wrap break-words rounded-[7px] bg-[#16283C] p-2.5 font-mono text-[11.5px] leading-[1.55] text-[#DCE8F3]">
           {log.body}
         </pre>
       </Section>
-      <Section title="Attributes">
+      <Section title={t.explore.sections.attributes}>
         <AttributeLeafList
           attributes={log.attributes}
           scope="attribute"
@@ -66,7 +68,7 @@ export function LogDetailPanel(props: {
           onToggle={toggle}
         />
       </Section>
-      <Section title="Resource">
+      <Section title={t.explore.sections.resource}>
         <AttributeLeafList
           attributes={log.resourceAttributes}
           scope="resource"

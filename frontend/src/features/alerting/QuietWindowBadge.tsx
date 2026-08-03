@@ -1,4 +1,5 @@
 import type { Episode } from "@/api/client";
+import { useT } from "@/i18n";
 
 import { quietWindowWords } from "./quietWindow";
 
@@ -8,6 +9,7 @@ import { quietWindowWords } from "./quietWindow";
  * discovered only in the detail panel.
  */
 export function QuietWindowBadge(props: { episode: Episode }) {
+  const t = useT();
   const own = props.episode.fingerprintQuietWindowMinutes;
   if (own == null) {
     return null;
@@ -16,9 +18,9 @@ export function QuietWindowBadge(props: { episode: Episode }) {
   return (
     <span
       className="flex-none rounded-sm border border-[#2C4159] px-[5px] text-[#A9BDD1]"
-      title="This kind of trouble keeps its own quiet window instead of the service's"
+      title={t.alerting.quietWindow.badgeTitle}
     >
-      quiet window {quietWindowWords(Number(own))}
+      {t.alerting.quietWindow.badge(quietWindowWords(Number(own)))}
     </span>
   );
 }

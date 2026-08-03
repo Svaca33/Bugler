@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Bugler.Mail;
+using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using MimeKit;
 
@@ -55,29 +56,32 @@ internal static class MailSettingsEndpoints
     public static async Task<IResult> Save(
         SaveMailSettingsRequest request,
         ServerDbContext dbContext,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
+        var messages = HostMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         var host = request.Host?.Trim() ?? "";
         if (host.Length == 0)
         {
-            return Invalid("The SMTP server is required — a host name or an IP address.");
+            return Invalid(messages.SmtpHostRequired);
         }
 
         if (request.Port is < 1 or > 65535)
         {
-            return Invalid("The port must be between 1 and 65535.");
+            return Invalid(messages.SmtpPortOutOfRange);
         }
 
         if (!Enum.IsDefined(request.Security))
         {
-            return Invalid("Unknown security mode.");
+            return Invalid(messages.UnknownSecurityMode);
         }
 
         var from = request.From?.Trim() ?? "";
         if (from.Length == 0 || !from.Contains('@') || !MailboxAddress.TryParse(from, out _))
         {
             // The one field SMTP itself insists on: a message has a sender or it does not exist.
-            return Invalid("The From address must be a valid mail address.");
+            return Invalid(messages.FromAddressInvalid);
         }
 
         var row = await dbContext.SmtpSettings.FirstOrDefaultAsync(cancellationToken);

@@ -36,8 +36,8 @@ test("local wall clock survives the round trip through the wire format", () => {
 });
 
 test("the empty state names the window instead of blaming the filters", () => {
-  expect(emptyStateMessage("log records", { range: "PT1H" })).toBe("No log records in the last 1 h.");
-  expect(emptyStateMessage("log records", {})).toBe("No log records match the current filters.");
+  expect(emptyStateMessage("logRecords", { range: "PT1H" })).toBe("No log records in the last 1 h.");
+  expect(emptyStateMessage("logRecords", {})).toBe("No log records match the current filters.");
 });
 
 test("widening is offered only upwards, and only for a relative range", () => {

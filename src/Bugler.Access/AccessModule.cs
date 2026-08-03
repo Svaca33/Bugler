@@ -104,6 +104,7 @@ public static class AccessModule
         endpoints.MapPost("/api/auth/login", AuthEndpoints.Login).AllowAnonymous()
             .Produces<CurrentUserDto>();
         endpoints.MapPost("/api/auth/password/change", AuthEndpoints.ChangePassword).RequireAuthorization();
+        endpoints.MapPost("/api/auth/language", AuthEndpoints.SetLanguage).RequireAuthorization();
         endpoints.MapPost("/api/auth/password/forgot", ResetPasswordEndpoints.Forgot).AllowAnonymous();
         endpoints.MapPost("/api/auth/password/reset", ResetPasswordEndpoints.Reset).AllowAnonymous();
         endpoints.MapPost("/api/auth/logout", AuthEndpoints.Logout).RequireAuthorization();

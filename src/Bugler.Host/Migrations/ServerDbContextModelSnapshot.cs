@@ -23,6 +23,28 @@ namespace Bugler.Host.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Bugler.Host.StoredServerLanguage", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("language");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_server_language");
+
+                    b.ToTable("server_language", "server");
+                });
+
             modelBuilder.Entity("Bugler.Host.StoredSmtpSettings", b =>
                 {
                     b.Property<int>("Id")

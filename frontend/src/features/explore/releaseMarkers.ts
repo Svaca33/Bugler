@@ -1,3 +1,4 @@
+import { getFormatLocale, getMessages } from "@/i18n/runtime";
 import type { Release } from "@/lib/releases";
 
 import type { VolumeWindow } from "./logVolume";
@@ -59,7 +60,7 @@ export function markerLabel(marker: ReleaseMarker): string {
   const [first] = marker.releases;
   return marker.releases.length === 1 && first !== undefined
     ? first.version
-    : `${marker.releases.length} releases`;
+    : getMessages().explore.volume.releasesCount(marker.releases.length);
 }
 
 /** What the marker says in full — one line per Release, service names resolved by the caller. */
@@ -70,7 +71,7 @@ export function describeMarker(
   return marker.releases
     .map(release => {
       const service = serviceLabels.get(release.serviceId);
-      const when = new Date(release.at).toLocaleString();
+      const when = new Date(release.at).toLocaleString(getFormatLocale());
       return `${when} · ${service === undefined ? "" : `${service} · `}`
         + `${release.previousVersion} → ${release.version}`;
     })

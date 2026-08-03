@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
 
 import { confirmationMatches } from "./deletionConfirmation";
 
@@ -30,6 +31,7 @@ export function DeleteConfirmation(props: {
   failed: boolean;
   onConfirm: () => void;
 }) {
+  const t = useT();
   const [typed, setTyped] = useState("");
   const armed = confirmationMatches(typed, props.phrase);
 
@@ -51,12 +53,16 @@ export function DeleteConfirmation(props: {
         >
           <DialogHeader>
             <DialogTitle>{props.title}</DialogTitle>
-            <DialogDescription>{props.consequence} This cannot be undone.</DialogDescription>
+            <DialogDescription>
+              {props.consequence} {t.registry.deleteDialog.cannotBeUndone}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-1.5">
             <Label htmlFor={`confirm-${props.inputId}`}>
-              Type <code className="font-mono text-foreground">{props.phrase}</code> to confirm
+              {t.registry.deleteDialog.typeBeforePhrase}{" "}
+              <code className="font-mono text-foreground">{props.phrase}</code>{" "}
+              {t.registry.deleteDialog.typeAfterPhrase}
             </Label>
             <Input
               id={`confirm-${props.inputId}`}
@@ -68,15 +74,15 @@ export function DeleteConfirmation(props: {
           </div>
 
           {props.failed && (
-            <p className="text-[11.5px] text-destructive">Deletion failed — nothing was removed.</p>
+            <p className="text-[11.5px] text-destructive">{t.registry.deleteDialog.failed}</p>
           )}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
-              Cancel
+              {t.registry.cancel}
             </Button>
             <Button type="submit" variant="destructive" disabled={!armed || props.pending}>
-              Delete
+              {t.registry.delete}
             </Button>
           </DialogFooter>
         </form>

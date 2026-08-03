@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Bugler.Access.Authentication;
 using Bugler.Access.Users;
 using Bugler.Mail;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,22 +17,6 @@ public sealed record ResetPasswordRequest(string Token, string NewPassword);
 
 internal static class ResetPasswordEndpoints
 {
-    /// <summary>
-    /// One answer for every outcome. Whoever asks must not learn whether the address belongs to an
-    /// account — the sign-in form already refuses to say so, and a side door that did would make
-    /// that refusal pointless.
-    /// </summary>
-    private const string SameAnswerToEverybody =
-        "If an account uses that address, a link to set a new password is on its way to it.";
-
-    /// <summary>
-    /// Said to whoever presents a ticket that buys nothing, whatever is wrong with it. They hold
-    /// the secret, so the distinction would leak nothing — but a single sentence is the one that
-    /// says the useful thing: ask again.
-    /// </summary>
-    private const string LinkNoLongerWorks =
-        "This link no longer works. Ask for a new one and use the newest mail.";
-
     public static async Task<IResult> Forgot(
         ForgotPasswordRequest request,
         AccessDbContext dbContext,
@@ -40,6 +25,8 @@ internal static class ResetPasswordEndpoints
         ISmtpSettingsSource smtpSettings,
         AttemptBudgets budgets,
         HttpContext httpContext,
+        IRequestLanguage requestLanguage,
+        IServerLanguage serverLanguage,
         ILogger<ResetTicket> logger,
         CancellationToken cancellationToken)
     {
@@ -50,11 +37,13 @@ internal static class ResetPasswordEndpoints
             return AttemptBudgets.Refuse(httpContext, retryAfter);
         }
 
+        var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         if (!IsAvailable(options.Value, await smtpSettings.GetCurrentAsync(cancellationToken)))
         {
             // Nothing about any User is given away by admitting this server cannot send mail —
             // and a button that always promises a link nobody ever receives is worse.
-            return Results.NotFound("This server cannot send mail, so passwords cannot be reset by link.");
+            return Results.NotFound(messages.ServerCannotSendMail);
         }
 
         // The sentence below is the same for everybody; the clock must be too (ADR 0023). Issuing
@@ -67,19 +56,26 @@ internal static class ResetPasswordEndpoints
             .FirstOrDefaultAsync(u => u.Email == email && u.DeactivatedAt == null, cancellationToken);
         if (user is not null)
         {
-            await IssueAndSendAsync(user, dbContext, mail, options.Value.PublicBaseUrl, logger, cancellationToken);
+            // The mail speaks the account's language, not the asker's: whoever reads it is the
+            // account's owner, and the asker may be nobody they know.
+            var mailWords = AccessMessages.For(
+                user.Language ?? await serverLanguage.GetAsync(cancellationToken));
+            await IssueAndSendAsync(
+                user, dbContext, mail, options.Value.PublicBaseUrl, mailWords, logger, cancellationToken);
         }
 
         return await EvenedAnswer.After(
-            started, Results.Accepted(value: SameAnswerToEverybody), cancellationToken);
+            started, Results.Accepted(value: messages.ResetLinkOnItsWay), cancellationToken);
     }
 
     public static async Task<IResult> Reset(
         ResetPasswordRequest request,
         AccessDbContext dbContext,
         IPasswordHasher<User> hasher,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
+        var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
         var fingerprint = ResetTickets.Fingerprint(request.Token ?? "");
         var ticket = await dbContext.ResetTickets
             .FirstOrDefaultAsync(t => t.Fingerprint == fingerprint, cancellationToken);
@@ -94,14 +90,15 @@ internal static class ResetPasswordEndpoints
 
         if (RedemptionDecision.Decide(state, DateTimeOffset.UtcNow) != Redemption.Accepted)
         {
-            return Results.BadRequest(LinkNoLongerWorks);
+            return Results.BadRequest(messages.ResetLinkNoLongerWorks);
         }
 
         // Only now, with a ticket that would have worked: a password Bugler refuses must not
         // spend the one thing standing between this person and their account.
         if (!Passwords.IsAcceptable(request.NewPassword))
         {
-            return Results.BadRequest(Passwords.Requirement);
+            return Results.BadRequest(
+                messages.PasswordRequirement(Passwords.MinimumLength, Passwords.MaximumLength));
         }
 
         Passwords.Set(user!, request.NewPassword, hasher);
@@ -164,6 +161,7 @@ internal static class ResetPasswordEndpoints
         AccessDbContext dbContext,
         IMailQueue mail,
         string publicBaseUrl,
+        AccessMessages messages,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -173,7 +171,7 @@ internal static class ResetPasswordEndpoints
             return;
         }
 
-        if (!mail.TryEnqueue(ResetMail.Compose(user.Email, secret, publicBaseUrl)))
+        if (!mail.TryEnqueue(ResetMail.Compose(user.Email, secret, publicBaseUrl, messages)))
         {
             // The secret exists only in this method: nothing can pick this up later, and the
             // caller was told the same sentence either way. Asking again in two minutes works.

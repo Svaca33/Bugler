@@ -1,4 +1,5 @@
-import { describeDuration, durationMs, RANGE_PRESETS } from "@/lib/duration";
+import { getFormatLocale, getMessages } from "@/i18n/runtime";
+import { describeDuration, durationMs, rangePresets } from "@/lib/duration";
 
 /**
  * Time Filter model (ADR 0002, Exploration): either a Relative Range — an ISO-8601 duration the
@@ -30,31 +31,37 @@ export function asInstant(value: unknown): string | undefined {
 
 /** The label on the control: what window the list is showing right now. */
 export function timeFilterLabel(value: TimeFilterValue): string {
+  const words = getMessages().explore.timeFilter;
   if (value.range !== undefined) return describeDuration(value.range);
   if (value.from !== undefined && value.to !== undefined) {
     return `${shortTime(value.from)} → ${shortTime(value.to)}`;
   }
-  if (value.from !== undefined) return `From ${shortTime(value.from)}`;
-  if (value.to !== undefined) return `Until ${shortTime(value.to)}`;
-  return "All time";
+  if (value.from !== undefined) return words.fromInstant(shortTime(value.from));
+  if (value.to !== undefined) return words.untilInstant(shortTime(value.to));
+  return words.allTime;
 }
 
 /** Names the window, so an empty list never reads as "nothing was ever ingested". */
-export function emptyStateMessage(subject: string, value: TimeFilterValue): string {
+export function emptyStateMessage(
+  subject: "logRecords" | "traces",
+  value: TimeFilterValue,
+): string {
+  const words = getMessages().explore.timeFilter;
+  const named = words.subjects[subject];
   if (value.range !== undefined) {
-    return `No ${subject} in the ${describeDuration(value.range).toLowerCase()}.`;
+    return words.noneInLast(named, describeDuration(value.range));
   }
   if (value.from !== undefined || value.to !== undefined) {
-    return `No ${subject} in ${timeFilterLabel(value)}.`;
+    return words.noneIn(named, timeFilterLabel(value));
   }
-  return `No ${subject} match the current filters.`;
+  return words.noneMatch(named);
 }
 
 /** The two next-wider presets, offered when the current window turned up nothing. */
 export function widerPresets(value: TimeFilterValue): { value: string; label: string }[] {
   if (value.range === undefined) return [];
   const current = durationMs(value.range) ?? 0;
-  return RANGE_PRESETS.filter(preset => (durationMs(preset.value) ?? 0) > current).slice(0, 2);
+  return rangePresets().filter(preset => (durationMs(preset.value) ?? 0) > current).slice(0, 2);
 }
 
 /** Browser-local wall clock from a datetime-local field → the instant the API takes. */
@@ -78,7 +85,7 @@ export function instantToLocalInput(instant: string | undefined): string {
 
 function shortTime(instant: string): string {
   const date = new Date(instant);
-  return `${date.toLocaleDateString()} ${date.getHours().toString().padStart(2, "0")}:${date
+  return `${date.toLocaleDateString(getFormatLocale())} ${date.getHours().toString().padStart(2, "0")}:${date
     .getMinutes()
     .toString()
     .padStart(2, "0")}`;

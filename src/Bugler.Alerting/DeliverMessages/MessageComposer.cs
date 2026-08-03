@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using Bugler.Alerting.Episodes;
 using Bugler.Registry.Contracts;
+using Bugler.SharedKernel;
 
 namespace Bugler.Alerting.DeliverMessages;
 
@@ -26,26 +27,32 @@ public sealed record ComposedAlert(
     string MatchDetail,
     string? EpisodeUrl,
     string TextBody,
-    string HtmlBody);
+    string HtmlBody,
+    /// <summary>The button under the quoted evidence, in the Alert's own Language.</summary>
+    string OpenEpisodeLabel,
+    /// <summary>The Language the Alert is spoken in — the recipient's for mail, the server's for chat.</summary>
+    Language Language);
 
 /// <summary>
 /// Turns an Episode into the words that leave Bugler — the Alert only, since ADR 0003 retired
 /// the All Clear. Everything comes from the Episode row and the catalog — composition never
-/// reads telemetry, so a purged first log changes nothing here.
+/// reads telemetry, so a purged first log changes nothing here. The Language is the caller's to
+/// choose: whose eyes the message is for is a fact about the Delivery, not the Episode.
 /// </summary>
 public static class MessageComposer
 {
     public static ComposedAlert ComposeAlert(
-        Episode episode, CatalogService identity, string publicBaseUrl)
+        Episode episode, CatalogService identity, string publicBaseUrl, Language language)
     {
+        var messages = AlertingMessages.For(language);
         var place = $"{identity.ApplicationName} {identity.Namespace}/{identity.Environment}/{identity.Name}";
         var severity = episode.FirstMatchSeverity is { } band ? SeverityLabel(band) : null;
         var instant = Instant(episode.FirstMatchAt);
-        var body = episode.FirstMatchDetail ?? "(no body)";
+        var body = episode.FirstMatchDetail ?? messages.NoBody;
         var episodeUrl = publicBaseUrl.Length == 0
             ? null
             : $"{publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}";
-        var words = Words.For(episode.Watch);
+        var words = messages.WordsFor(episode.Watch);
 
         var headline = $"{words.Subject} {place}";
 
@@ -59,26 +66,20 @@ public static class MessageComposer
             MatchInstant: instant,
             MatchDetail: body,
             EpisodeUrl: episodeUrl,
-            TextBody: ComposeText(place, words, severity, instant, body, episodeUrl),
-            HtmlBody: ComposeHtml(place, words, severity, instant, body, episodeUrl));
-    }
-
-    /// <summary>
-    /// The three phrases that differ by Watch. Everything else about an Alert — the place, the
-    /// stamp, the evidence, the link — is the same message whichever watch found the trouble.
-    /// </summary>
-    internal sealed record Words(string Subject, string Opening, string EvidenceLabel)
-    {
-        public static Words For(Watch watch) => watch switch
-        {
-            Watch.HealthCheck => new Words(
-                "No answer from", "stopped answering its health check.", "Health check"),
-            _ => new Words("Trouble in", "started logging trouble.", "First log"),
-        };
+            TextBody: ComposeText(place, words, severity, instant, body, episodeUrl, messages),
+            HtmlBody: ComposeHtml(place, words, severity, instant, body, episodeUrl, messages, language),
+            OpenEpisodeLabel: messages.OpenEpisodeButton,
+            Language: language);
     }
 
     private static string ComposeText(
-        string place, Words words, string? severity, string instant, string body, string? episodeUrl)
+        string place,
+        AlertWords words,
+        string? severity,
+        string instant,
+        string body,
+        string? episodeUrl,
+        AlertingMessages messages)
     {
         var lines = new List<string>
         {
@@ -94,7 +95,7 @@ public static class MessageComposer
         if (episodeUrl is not null)
         {
             lines.Add("");
-            lines.Add($"Episode: {episodeUrl}");
+            lines.Add($"{messages.EpisodeLinkLabel}: {episodeUrl}");
         }
 
         return string.Join("\n", lines);
@@ -103,18 +104,25 @@ public static class MessageComposer
     // The same message for eyes that render HTML: brass on warm paper, matching the UI's light
     // theme. Inline styles only — mail clients strip everything else.
     private static string ComposeHtml(
-        string place, Words words, string? severity, string instant, string body, string? episodeUrl)
+        string place,
+        AlertWords words,
+        string? severity,
+        string instant,
+        string body,
+        string? episodeUrl,
+        AlertingMessages messages,
+        Language language)
     {
         var button = episodeUrl is null
             ? ""
             : $"""
                <p style="margin:20px 0 0;">
-               <a href="{WebUtility.HtmlEncode(episodeUrl)}" style="display:inline-block;background:#B26E0E;color:#FFF8EC;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px;">Open episode</a>
+               <a href="{WebUtility.HtmlEncode(episodeUrl)}" style="display:inline-block;background:#B26E0E;color:#FFF8EC;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px;">{WebUtility.HtmlEncode(messages.OpenEpisodeButton)}</a>
                </p>
                """;
 
         return $"""
-                <html>
+                <html lang="{language.Code}">
                 <body style="margin:0;padding:24px;background:#F4EDDD;">
                 <div style="max-width:560px;margin:0 auto;background:#FFFCF4;border:1px solid #E3D5B4;border-radius:8px;padding:24px;font-family:'Segoe UI',Arial,sans-serif;color:#2B2416;">
                 <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> {WebUtility.HtmlEncode(words.Opening)}</p>
@@ -130,6 +138,8 @@ public static class MessageComposer
     private static string Stamp(string? severity, string instant) =>
         severity is null ? instant : $"{severity}, {instant}";
 
+    // Severity Band names are the domain's own vocabulary, the same in every Language — a Czech
+    // developer reads ERROR, not CHYBA.
     private static string SeverityLabel(short severityNumber) => severityNumber switch
     {
         >= 21 => "FATAL",
@@ -139,6 +149,8 @@ public static class MessageComposer
         _ => "DEBUG",
     };
 
+    // Invariant and UTC in every Language: a timestamp in an alert is read across time zones and
+    // pasted into searches, so it stays a machine format rather than prose.
     private static string Instant(DateTimeOffset instant) =>
         instant.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture);
 }

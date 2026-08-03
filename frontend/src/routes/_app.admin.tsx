@@ -5,6 +5,7 @@ import { useCurrentUser } from "@/features/access/useAuth";
 import { CatalogAdminPage } from "@/features/registry/CatalogAdminPage";
 import { ServerAdminPage } from "@/features/server/ServerAdminPage";
 import { StorageAdminPage } from "@/features/storage/StorageAdminPage";
+import { useT } from "@/i18n";
 
 type AdminSection = "topology" | "storage" | "people" | "server";
 
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/_app/admin")({
 });
 
 function AdminRoute() {
+  const t = useT();
   const user = useCurrentUser();
   const { section } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -34,27 +36,29 @@ function AdminRoute() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-end gap-6 border-b border-[#17293D] bg-[#0B1826] px-6 pt-5">
         <div className="flex flex-col gap-1 pb-3.5">
-          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">Administration</h1>
-          <p className="text-[12.5px] text-[#8CA1B8]">What sends telemetry, and who may read it.</p>
+          <h1 className="text-[19px] font-semibold tracking-[-0.4px]">
+            {t.server.adminShell.title}
+          </h1>
+          <p className="text-[12.5px] text-[#8CA1B8]">{t.server.adminShell.subtitle}</p>
         </div>
         <nav className="ml-auto flex gap-0.5">
           <Tab
-            label="Topology"
+            label={t.server.adminShell.tabs.topology}
             active={section === "topology"}
             onClick={() => navigate({ search: { section: "topology" }, replace: true })}
           />
           <Tab
-            label="Storage"
+            label={t.server.adminShell.tabs.storage}
             active={section === "storage"}
             onClick={() => navigate({ search: { section: "storage" }, replace: true })}
           />
           <Tab
-            label="People"
+            label={t.server.adminShell.tabs.people}
             active={section === "people"}
             onClick={() => navigate({ search: { section: "people" }, replace: true })}
           />
           <Tab
-            label="Server"
+            label={t.server.adminShell.tabs.server}
             active={section === "server"}
             onClick={() => navigate({ search: { section: "server" }, replace: true })}
           />

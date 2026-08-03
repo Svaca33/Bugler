@@ -6,6 +6,7 @@ import { useCatalog, useCurrentUser } from "@/api/queries";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/i18n";
 import { serviceLabel } from "@/lib/serviceLabel";
 import {
   isApplicationSubscribed,
@@ -20,6 +21,7 @@ import {
  * future; a service checkbox watches just that one. Every click sends the next full picture.
  */
 export function SubscriptionsPanel() {
+  const t = useT();
   const queryClient = useQueryClient();
   const catalog = useCatalog();
   const currentUser = useCurrentUser();
@@ -29,7 +31,7 @@ export function SubscriptionsPanel() {
     queryKey: ["alerts", "subscriptions"],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/subscriptions");
-      if (error !== undefined) throw new Error("Failed to load subscriptions");
+      if (error !== undefined) throw new Error(t.alerting.errors.loadSubscriptions);
       return data;
     },
   });
@@ -40,7 +42,7 @@ export function SubscriptionsPanel() {
     queryKey: ["alerts", "sensitivity"],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/sensitivity");
-      if (error !== undefined) throw new Error("Failed to load alerting sensitivity");
+      if (error !== undefined) throw new Error(t.alerting.errors.loadSensitivity);
       return new Map(data.items.map(item => [item.serviceId, item.off]));
     },
   });
@@ -50,7 +52,7 @@ export function SubscriptionsPanel() {
       const { error } = await api.PUT("/api/alerting/subscriptions", {
         body: { applicationIds: next.applicationIds, serviceIds: next.serviceIds },
       });
-      if (error !== undefined) throw new Error("Failed to save subscriptions");
+      if (error !== undefined) throw new Error(t.alerting.errors.saveSubscriptions);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alerts", "subscriptions"] }),
   });
@@ -87,21 +89,17 @@ export function SubscriptionsPanel() {
     })
     .filter(entry => entry.services.length > 0 || needle === "");
 
-  const email = currentUser.data?.email ?? "your account inbox";
+  const email = currentUser.data?.email ?? t.alerting.subscriptions.accountInbox;
 
   return (
     <div className="h-full overflow-auto">
       <div className="mx-auto flex max-w-[760px] flex-col gap-4 px-6 py-[22px]">
         <div className="rounded-[11px] border border-[#1E344C] bg-card p-[14px_16px]">
           <p className="text-[13.5px] font-semibold">
-            You are mailed about {coveredServices.size} service
-            {coveredServices.size === 1 ? "" : "s"} in {coveredApplications.size} application
-            {coveredApplications.size === 1 ? "" : "s"}
+            {t.alerting.subscriptions.summary(coveredServices.size, coveredApplications.size)}
           </p>
           <p className="mt-1 text-[12.5px] text-[#8CA1B8]">
-            Mail lands in {email} when a subscribed service opens a new episode — there is no
-            mail when it closes. Subscribing an application covers all its services — including
-            ones registered later.
+            {t.alerting.subscriptions.body(email)}
           </p>
         </div>
 
@@ -110,7 +108,7 @@ export function SubscriptionsPanel() {
         )}
 
         <Input
-          placeholder="Filter applications and services"
+          placeholder={t.alerting.subscriptions.filterPlaceholder}
           className="max-w-sm"
           value={filter}
           onChange={event => setFilter(event.target.value)}
@@ -141,11 +139,11 @@ export function SubscriptionsPanel() {
                 </Label>
                 {applicationSubscribed ? (
                   <span className="rounded-[5px] bg-[#16283C] px-1.5 font-mono text-[10px] tracking-[0.08em] text-[#A9BDD1]">
-                    ALL SERVICES, PRESENT AND FUTURE
+                    {t.alerting.subscriptions.allServicesBadge}
                   </span>
                 ) : ownCount > 0 && (
                   <span className="font-mono text-[10px] tracking-[0.08em] text-[#5F7590]">
-                    {ownCount} OF {application.services.length} SERVICES
+                    {t.alerting.subscriptions.serviceCount(ownCount, application.services.length)}
                   </span>
                 )}
               </div>
@@ -177,7 +175,7 @@ export function SubscriptionsPanel() {
                     </Label>
                     {off && (
                       <span className="ml-auto rounded border border-[#22394F] px-1.5 font-mono text-[11px] whitespace-nowrap text-[#6E86A0]">
-                        SENSITIVITY OFF
+                        {t.alerting.subscriptions.sensitivityOff}
                       </span>
                     )}
                   </div>
@@ -188,16 +186,10 @@ export function SubscriptionsPanel() {
         })}
 
         {applications.length === 0 && !catalog.isPending && (
-          <p className="text-[#8CA1B8]">
-            Nothing to subscribe to — no application is visible to you.
-          </p>
+          <p className="text-[#8CA1B8]">{t.alerting.subscriptions.nothingVisible}</p>
         )}
 
-        <p className="text-[11.5px] text-[#6E86A0]">
-          Mail is your own choice; the Google Chat webhook of an application posts every episode
-          regardless of who is subscribed. Detection itself — sensitivity and the quiet window —
-          lives in Admin → Topology.
-        </p>
+        <p className="text-[11.5px] text-[#6E86A0]">{t.alerting.subscriptions.footer}</p>
       </div>
     </div>
   );

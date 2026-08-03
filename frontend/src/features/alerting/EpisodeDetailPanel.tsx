@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DetailPanel } from "@/components/ui/detail-panel";
 import { Input } from "@/components/ui/input";
+import { useT, type Messages } from "@/i18n";
 import { canConfigureAlerting } from "@/lib/capabilities";
 import { describeMillis } from "@/lib/duration";
 import { formatTime } from "@/lib/format";
@@ -33,6 +34,8 @@ const STATE_TEXT: Record<Episode["state"], string> = {
   Muted: "text-[#6E86A0]",
 };
 
+type AlertingWords = Messages["alerting"];
+
 /**
  * The right-hand detail of one Episode: its subject, its lifecycle as a timeline, the volume it
  * burned through, and every earlier Episode of its kind. Same chrome and remembered width as the
@@ -47,6 +50,8 @@ export function EpisodeDetailPanel(props: {
   onOpenLogs: (episode: Episode) => void;
   onSelectEpisode: (id: string) => void;
 }) {
+  const t = useT();
+
   // The detail is fetched even when the list row is at hand: the timeline needs the deliveries
   // and the effective settings, which no list row carries. A URL-selected episode outside the
   // loaded pages arrives the same way.
@@ -57,7 +62,7 @@ export function EpisodeDetailPanel(props: {
         params: { path: { id: props.id } },
       });
       if (response.status === 404) return null;
-      if (data === undefined) throw new Error("Failed to load the episode");
+      if (data === undefined) throw new Error(t.alerting.errors.loadEpisode);
       return data;
     },
     refetchInterval: 30_000,
@@ -69,7 +74,7 @@ export function EpisodeDetailPanel(props: {
     <DetailPanel
       title={
         episode === undefined ? (
-          <span className={CAPTION}>EPISODE</span>
+          <span className={CAPTION}>{t.alerting.detail.episodeCaption}</span>
         ) : (
           <span className="flex items-center gap-2">
             <StateBadge state={episode.state} />
@@ -86,9 +91,7 @@ export function EpisodeDetailPanel(props: {
     >
       {episode === undefined ? (
         <p className="text-[12.5px] text-[#8CA1B8]">
-          {detail.data === null
-            ? "This episode is not visible to you — or it no longer exists."
-            : "Loading…"}
+          {detail.data === null ? t.alerting.detail.notVisible : t.common.loading}
         </p>
       ) : (
         <EpisodeBody
@@ -113,6 +116,7 @@ function EpisodeBody(props: {
   onSelectEpisode: (id: string) => void;
 }) {
   const { episode, detail, known, version } = props;
+  const t = useT();
   const currentUser = useCurrentUser();
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
@@ -125,7 +129,7 @@ function EpisodeBody(props: {
           query: { serviceId: [episode.serviceId], fingerprint: episode.fingerprint, limit: 50 },
         },
       });
-      if (error !== undefined) throw new Error("Failed to load the history");
+      if (error !== undefined) throw new Error(t.alerting.errors.loadHistory);
       return data;
     },
   });
@@ -185,7 +189,7 @@ function EpisodeBody(props: {
               className="ml-auto text-[11.5px] whitespace-nowrap text-primary hover:underline"
               onClick={() => props.onOpenLogs(episode)}
             >
-              Open in logs ›
+              {t.alerting.detail.openInLogsLink}
             </button>
           )}
         </div>
@@ -193,13 +197,14 @@ function EpisodeBody(props: {
 
       {/* Lifecycle */}
       <div className="flex flex-col gap-2">
-        <p className={CAPTION}>LIFECYCLE</p>
+        <p className={CAPTION}>{t.alerting.detail.lifecycleCaption}</p>
         <div className="grid grid-cols-[9px_1fr] gap-x-[11px] gap-y-3">
           {episode.earlierAcknowledgedBy !== null && episode.acknowledgedAt === null && (
             <Moment dot="bg-[#22394F]">
               <p className="text-[12.5px]">
-                An earlier episode of this kind was acknowledged by{" "}
-                {episode.earlierAcknowledgedBy === myName ? "you" : episode.earlierAcknowledgedBy}
+                {episode.earlierAcknowledgedBy === myName
+                  ? t.alerting.detail.earlierAckByYou
+                  : t.alerting.detail.earlierAckBy(episode.earlierAcknowledgedBy)}
               </p>
               {episode.earlierAcknowledgedAt !== null && (
                 <p className="font-mono text-[11px] text-[#7D93AA]">
@@ -215,8 +220,10 @@ function EpisodeBody(props: {
           {version?.releasedMsBefore !== undefined && (
             <Moment dot="bg-primary">
               <p className="text-[12.5px]">
-                <span className="text-primary">{version.version}</span> released{" "}
-                {describeMillis(version.releasedMsBefore)} earlier
+                {t.alerting.detail.versionReleasedEarlier(
+                  <span className="text-primary">{version.version}</span>,
+                  describeMillis(version.releasedMsBefore),
+                )}
               </p>
               <p className="font-mono text-[11px] text-[#7D93AA]">
                 {clock(new Date(Date.parse(episode.openedAt) - version.releasedMsBefore).toISOString())}
@@ -227,39 +234,40 @@ function EpisodeBody(props: {
           <Moment dot={isError ? "bg-severity-error-rail" : "bg-severity-warn-rail"}>
             <p className="text-[12.5px]">
               {isHealthCheck
-                ? "Opened by a health check that stopped answering"
-                : `Opened by an ${severityLabel(severity)} log`}
+                ? t.alerting.detail.openedByHealthCheck
+                : t.alerting.detail.openedByLog(severityLabel(severity))}
             </p>
             <p className="font-mono text-[11px] text-[#7D93AA]">
               {clock(episode.openedAt)}
-              {version !== undefined && ` · on ${version.version}`}
+              {version !== undefined && ` · ${t.alerting.version.on(version.version)}`}
               {/* Sensitivity is the logs watch's setting and governs nothing here. */}
               {!isHealthCheck && detail !== undefined
-                && ` · sensitivity ${sensitivityWords(detail.effectiveSensitivity)}`}
+                && ` · ${t.alerting.detail.sensitivity(
+                  sensitivityWords(t.alerting, detail.effectiveSensitivity),
+                )}`}
             </p>
           </Moment>
 
           {detail?.mailAlert != null && (
             <Moment dot="bg-[#22394F]">
               <p className="text-[12.5px]">
-                Alert mailed to {detail.mailAlert.subscriberCount} subscriber
-                {Number(detail.mailAlert.subscriberCount) === 1 ? "" : "s"}
+                {t.alerting.detail.alertMailed(Number(detail.mailAlert.subscriberCount))}
               </p>
               <p className="font-mono text-[11px] text-[#7D93AA]">
                 {detail.mailAlert.firstDeliveredAt != null
                   ? clock(detail.mailAlert.firstDeliveredAt)
-                  : "delivery pending"}
-                {detail.chatAlert != null && " · posted to Google Chat"}
+                  : t.alerting.detail.deliveryPending}
+                {detail.chatAlert != null && ` · ${t.alerting.detail.postedToChat}`}
               </p>
             </Moment>
           )}
           {detail?.mailAlert == null && detail?.chatAlert != null && (
             <Moment dot="bg-[#22394F]">
-              <p className="text-[12.5px]">Alert posted to Google Chat</p>
+              <p className="text-[12.5px]">{t.alerting.detail.alertPostedToChat}</p>
               <p className="font-mono text-[11px] text-[#7D93AA]">
                 {detail.chatAlert.deliveredAt != null
                   ? clock(detail.chatAlert.deliveredAt)
-                  : "delivery pending"}
+                  : t.alerting.detail.deliveryPending}
               </p>
             </Moment>
           )}
@@ -281,7 +289,7 @@ function EpisodeBody(props: {
           one failed probe per beat, which measures the beat rather than the trouble. */}
       {!isHealthCheck && (
         <div className="flex flex-col gap-2">
-          <p className={CAPTION}>VOLUME SO FAR</p>
+          <p className={CAPTION}>{t.alerting.detail.volumeCaption}</p>
           <div className="flex h-2 overflow-hidden rounded bg-[#101F31]">
             {totalCount > 0 && (
               <>
@@ -302,11 +310,11 @@ function EpisodeBody(props: {
           </div>
           <div className="flex items-center gap-3 font-mono text-[11px]">
             <span className="whitespace-nowrap text-severity-error">
-              {errorCount} error{errorCount === 1 ? "" : "s"}
+              {t.alerting.detail.errorsCount(errorCount)}
             </span>
             {warnCount > 0 && (
               <span className="whitespace-nowrap text-severity-warn">
-                {warnCount} warning{warnCount === 1 ? "" : "s"}
+                {t.alerting.detail.warningsCount(warnCount)}
               </span>
             )}
             <span className="ml-auto text-[#7D93AA]">≈ {ratePerMinute(episode)} / min</span>
@@ -317,7 +325,9 @@ function EpisodeBody(props: {
       {/* Recurrence */}
       <div className="flex flex-col gap-2">
         <p className={CAPTION}>
-          THIS KIND OF TROUBLE · {earlier === 0 ? "FIRST TIME" : `${earlier} EARLIER`}
+          {earlier === 0
+            ? t.alerting.detail.kindFirstCaption
+            : t.alerting.detail.kindEarlierCaption(earlier)}
         </p>
         <div>
           {(history.data?.items ?? []).map(item => (
@@ -326,28 +336,26 @@ function EpisodeBody(props: {
               className="grid grid-cols-[1fr_62px_1fr] items-center border-t border-[#101F31] py-[5px] font-mono text-[11px] text-[#7D93AA]"
             >
               <span className="whitespace-nowrap">{historyStamp(item.openedAt, Date.now())}</span>
-              <span className={STATE_TEXT[item.state]}>{item.state.toLowerCase()}</span>
+              <span className={STATE_TEXT[item.state]}>{t.alerting.state.badge[item.state]}</span>
               <span className="truncate text-right">
                 {item.id === episode.id
-                  ? "← this one"
+                  ? t.alerting.detail.thisOne
                   : item.solvedBy !== null
-                    ? `by ${item.solvedBy}`
+                    ? t.alerting.detail.byName(item.solvedBy)
                     : item.acknowledgedBy !== null
-                      ? `by ${item.acknowledgedBy}`
-                      : "nobody"}
+                      ? t.alerting.detail.byName(item.acknowledgedBy)
+                      : t.alerting.detail.nobody}
               </span>
             </div>
           ))}
           {history.isPending && (
-            <p className="py-2 font-mono text-[11px] text-[#5F7590]">Loading…</p>
+            <p className="py-2 font-mono text-[11px] text-[#5F7590]">{t.common.loading}</p>
           )}
         </div>
         <p className="text-[11.5px] text-[#6E86A0]">
           {earlier === 0
-            ? "The first episode of its kind in this service."
-            : `Same service, same kind of trouble — it came back ${
-              earlier === 1 ? "once" : `${earlier} times`
-            } before.`}
+            ? t.alerting.detail.firstOfKind
+            : t.alerting.detail.cameBack(earlier)}
         </p>
       </div>
 
@@ -366,20 +374,20 @@ function EpisodeBody(props: {
       <div className="sticky -bottom-4 -mx-5 mt-auto flex items-center gap-2 border-t border-[#17293D] bg-[#0B1826] px-[18px] py-3">
         {isNewest === false && (
           <span className="text-[11.5px] text-[#8CA1B8]">
-            This episode is history — actions belong to the newest of its kind.{" "}
+            {t.alerting.detail.isHistory}{" "}
             <button
               type="button"
               className="cursor-pointer whitespace-nowrap text-primary hover:underline"
               onClick={() => props.onSelectEpisode(newestOfKind!)}
             >
-              Open it ›
+              {t.alerting.detail.openIt}
             </button>
           </span>
         )}
         {episode.state !== "Solved" && isNewest === true && (
           <>
             <Button size="sm" onClick={() => setSolveOpen(true)}>
-              Solve
+              {t.alerting.actions.solve}
             </Button>
             {episode.acknowledgedBy === null ? (
               <Button
@@ -388,7 +396,7 @@ function EpisodeBody(props: {
                 disabled={actions.acknowledge.isPending}
                 onClick={() => actions.acknowledge.mutate()}
               >
-                Acknowledge
+                {t.alerting.actions.acknowledge}
               </Button>
             ) : heldByMe ? (
               <Button
@@ -397,7 +405,7 @@ function EpisodeBody(props: {
                 disabled={actions.withdraw.isPending}
                 onClick={() => actions.withdraw.mutate()}
               >
-                Withdraw
+                {t.alerting.actions.withdraw}
               </Button>
             ) : (
               <Button
@@ -406,14 +414,14 @@ function EpisodeBody(props: {
                 disabled={actions.acknowledge.isPending}
                 onClick={() => actions.acknowledge.mutate()}
               >
-                Take over
+                {t.alerting.actions.takeOver}
               </Button>
             )}
           </>
         )}
         {!isHealthCheck && (
           <Button size="sm" variant="ghost" onClick={() => props.onOpenLogs(episode)}>
-            Open in logs
+            {t.alerting.actions.openInLogs}
           </Button>
         )}
         {actions.failure != null && (
@@ -443,6 +451,7 @@ function QuietWindowSection(props: {
   inherited: number;
   editable: boolean;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: async (minutes: number | null) => {
@@ -450,7 +459,7 @@ function QuietWindowSection(props: {
         params: { path: { id: props.episodeId } },
         body: { quietWindowMinutes: minutes },
       });
-      if (!response.ok) throw new Error("The quiet window was not saved.");
+      if (!response.ok) throw new Error(t.alerting.quietWindow.notSaved);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["alerts"] }),
   });
@@ -471,11 +480,11 @@ function QuietWindowSection(props: {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className={CAPTION}>QUIET WINDOW</p>
+      <p className={CAPTION}>{t.alerting.quietWindow.caption}</p>
       {props.editable && (
         <div className="flex items-center gap-2">
           <Input
-            aria-label="Quiet window for this kind of trouble, in minutes"
+            aria-label={t.alerting.quietWindow.fieldLabel}
             // Keyed on the saved value so a refetch — or another episode — reloads the field.
             key={`${props.episodeId}:${props.own ?? ""}`}
             className="h-8 w-[104px] font-mono text-[12px]"
@@ -494,7 +503,7 @@ function QuietWindowSection(props: {
             }}
           />
           <span className="font-mono text-[11px] text-[#7D93AA]">
-            min · empty inherits
+            {t.alerting.quietWindow.emptyInherits}
           </span>
         </div>
       )}
@@ -517,9 +526,7 @@ function JournalMoments(props: {
   journal: EpisodeDetail["journal"];
   myName: string | undefined;
 }) {
-  const name = (by: string | null) =>
-    by === null ? "a user no longer here" : by === props.myName ? "you" : by;
-  const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+  const words = useT().alerting.journal;
 
   // Whose acknowledgement is live at this point of the story — what turns the next
   // "acknowledged" into a take-over and names whose mark a withdrawal ended.
@@ -527,27 +534,35 @@ function JournalMoments(props: {
   let holder: string | null = null;
 
   return props.journal.map((entry, index) => {
+    // The viewer's own hand speaks in its own person; a deleted account keeps a stand-in name.
+    const isMe = entry.by !== null && entry.by === props.myName;
+    const name = entry.by ?? words.formerUser;
+
     let text: string;
     let dot: string;
     if (entry.kind === "Acknowledged") {
-      text = held ? `${cap(name(entry.by))} took it over` : `${cap(name(entry.by))} acknowledged it`;
+      text = held
+        ? isMe ? words.youTookOver : words.tookOver(name)
+        : isMe ? words.youAcknowledged : words.acknowledged(name);
       dot = "bg-primary";
       held = true;
       holder = entry.by;
     } else if (entry.kind === "Withdrawn") {
       const own = entry.by !== null && entry.by === holder;
       text = own
-        ? entry.by === props.myName
-          ? "You withdrew your acknowledgement"
-          : `${entry.by} withdrew their acknowledgement`
-        : `${cap(name(entry.by))} withdrew ${
-          holder === null ? "the" : holder === props.myName ? "your" : `${holder}'s`
-        } acknowledgement`;
+        ? isMe ? words.youWithdrewYours : words.withdrewTheirOwn(entry.by!)
+        : holder === null
+          ? isMe ? words.youWithdrewThe : words.withdrewThe(name)
+          : holder === props.myName
+            ? words.withdrewYours(name)
+            : isMe
+              ? words.youWithdrewOf(holder)
+              : words.withdrewOf(name, holder);
       dot = "bg-[#22394F]";
       held = false;
       holder = null;
     } else {
-      text = `Solved by ${name(entry.by)}`;
+      text = isMe ? words.solvedByYou : words.solvedBy(name);
       dot = "bg-state-solved";
       held = false;
       holder = null;
@@ -583,23 +598,22 @@ function StillMatching(props: {
   quietWindowMinutes: number | undefined;
   healthCheck: boolean;
 }) {
+  const t = useT();
   const now = useNow();
   const since = describeLiveMillis(now - Date.parse(props.lastMatchAt));
   return (
     <Moment dot="bg-severity-error-rail" pulse>
       <p className="text-[12.5px]">
         {props.healthCheck
-          ? `Still matching — last failed check ${since} ago`
-          : `Still matching — last log ${since} ago`}
+          ? t.alerting.detail.stillMatchingCheck(since)
+          : t.alerting.detail.stillMatchingLog(since)}
       </p>
       {props.acknowledged ? (
-        <p className="font-mono text-[11px] text-[#7D93AA]">
-          held open by the acknowledgement — solve or withdraw to let it quiet
-        </p>
+        <p className="font-mono text-[11px] text-[#7D93AA]">{t.alerting.detail.heldOpenNote}</p>
       ) : (
         props.quietWindowMinutes !== undefined && (
           <p className="font-mono text-[11px] text-[#7D93AA]">
-            closes on its own after {props.quietWindowMinutes} min of quiet
+            {t.alerting.detail.autoCloseNote(props.quietWindowMinutes)}
           </p>
         )
       )}
@@ -607,10 +621,15 @@ function StillMatching(props: {
   );
 }
 
-function sensitivityWords(sensitivity: EpisodeDetail["effectiveSensitivity"]): string {
+function sensitivityWords(
+  words: AlertingWords,
+  sensitivity: EpisodeDetail["effectiveSensitivity"],
+): string {
   return sensitivity === "ErrorsAndWarnings"
-    ? "errors + warnings"
-    : sensitivity === "Errors" ? "errors" : "off";
+    ? words.detail.sensitivityWords.errorsAndWarnings
+    : sensitivity === "Errors"
+      ? words.detail.sensitivityWords.errors
+      : words.detail.sensitivityWords.off;
 }
 
 function ratePerMinute(episode: Episode): string {

@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
+import { getFormatLocale } from "@/i18n/runtime";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
 
@@ -22,7 +24,8 @@ import { Sparkline } from "./Sparkline";
 export function ServiceTable(props: {
   tiles: ServiceTile[];
   showVolume: boolean;
-  windowPhrase: string;
+  /** The described window ("Last 24 h") — the catalog phrases it into the no-episode cell. */
+  windowDescribed: string;
   isSubscribed: (tile: ServiceTile) => boolean;
   isViaApplication: (tile: ServiceTile) => boolean;
   onToggleMail: (tile: ServiceTile) => void;
@@ -30,6 +33,7 @@ export function ServiceTable(props: {
   onTraces: (tile: ServiceTile) => void;
   onEpisodes: (tile: ServiceTile) => void;
 }) {
+  const t = useT();
   const heading = "px-1.5 text-left font-normal whitespace-nowrap";
 
   return (
@@ -40,16 +44,16 @@ export function ServiceTable(props: {
       <table className="w-full border-collapse">
         <thead>
           <tr className="h-8 border-b border-[#17293D] bg-[#0B1826] font-mono text-[10px] tracking-[0.12em] text-[#5F7590]">
-            <th className={`${heading} pl-4`}>SERVICE</th>
-            <th className={heading}>STATUS</th>
-            <th className={`${heading} text-right`}>ERRORS</th>
-            <th className={`${heading} text-right`}>WARN</th>
-            <th className={`${heading} text-right`}>LOGS</th>
-            {props.showVolume && <th className={heading}>VOLUME</th>}
-            <th className={`${heading} w-full`}>LATEST EPISODE</th>
+            <th className={`${heading} pl-4`}>{t.overview.table.header.service}</th>
+            <th className={heading}>{t.overview.table.header.status}</th>
+            <th className={`${heading} text-right`}>{t.overview.table.header.errors}</th>
+            <th className={`${heading} text-right`}>{t.overview.table.header.warn}</th>
+            <th className={`${heading} text-right`}>{t.overview.table.header.logs}</th>
+            {props.showVolume && <th className={heading}>{t.overview.table.header.volume}</th>}
+            <th className={`${heading} w-full`}>{t.overview.table.header.latestEpisode}</th>
             {/* The button trio's column — the buttons say where they go, a caption would repeat them. */}
             <th className={heading} />
-            <th className={`${heading} pr-4`}>MAIL</th>
+            <th className={`${heading} pr-4`}>{t.overview.table.header.mail}</th>
           </tr>
         </thead>
         <tbody>
@@ -96,22 +100,26 @@ export function ServiceTable(props: {
                         {latest.firstMatchDetail != null && ` · ${latest.firstMatchDetail}`}
                       </>
                     ) : latest?.closedAt != null ? (
-                      `all clear ${describeMillis(Date.now() - Date.parse(latest.closedAt))} ago`
+                      t.overview.table.allClearAgo(
+                        describeMillis(Date.now() - Date.parse(latest.closedAt)),
+                      )
                     ) : (
-                      <span className="text-[#8CA1B8]">no episode in {props.windowPhrase}</span>
+                      <span className="text-[#8CA1B8]">
+                        {t.overview.table.noEpisodeIn(props.windowDescribed)}
+                      </span>
                     )}
                   </div>
                 </td>
                 <td className="px-1.5 align-middle whitespace-nowrap">
                   <div className="flex items-center gap-0.5">
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onLogs(tile)}>
-                      To logs
+                      {t.overview.actions.toLogs}
                     </Button>
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onTraces(tile)}>
-                      To traces
+                      {t.overview.actions.toTraces}
                     </Button>
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => props.onEpisodes(tile)}>
-                      To episodes
+                      {t.overview.actions.toEpisodes}
                     </Button>
                   </div>
                 </td>
@@ -143,7 +151,7 @@ function Cell(props: { value: number | undefined; tone: "error" | "warn" | "neut
           : "text-[#B6C8DA]";
   return (
     <td className={`px-1.5 text-right align-middle font-mono text-[11.5px] whitespace-nowrap ${color}`}>
-      {props.value === undefined ? "—" : props.value.toLocaleString()}
+      {props.value === undefined ? "—" : props.value.toLocaleString(getFormatLocale())}
     </td>
   );
 }

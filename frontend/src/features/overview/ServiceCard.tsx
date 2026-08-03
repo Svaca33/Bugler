@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
+import { getFormatLocale } from "@/i18n/runtime";
 import { LiveDuration } from "@/lib/LiveDuration";
 import { episodeRailClass } from "@/lib/severity";
 
@@ -24,6 +26,7 @@ export function ServiceCard(props: {
   onTraces: () => void;
   onEpisodes: () => void;
 }) {
+  const t = useT();
   const { tile } = props;
   const open = tile.episodes !== undefined && tile.episodes.open > 0;
   const quietedOnly = !open && tile.episodes !== undefined && tile.episodes.quieted > 0;
@@ -64,9 +67,9 @@ export function ServiceCard(props: {
       </div>
 
       <div className="mt-[13px] grid grid-cols-3 gap-2">
-        <Count caption="ERRORS" value={tile.volume?.error} tone="error" />
-        <Count caption="WARN" value={tile.volume?.warn} tone="warn" />
-        <Count caption="LOGS" value={logs} tone="neutral" />
+        <Count caption={t.overview.card.caption.errors} value={tile.volume?.error} tone="error" />
+        <Count caption={t.overview.card.caption.warn} value={tile.volume?.warn} tone="warn" />
+        <Count caption={t.overview.card.caption.logs} value={logs} tone="neutral" />
       </div>
 
       {props.showVolume && (
@@ -78,7 +81,7 @@ export function ServiceCard(props: {
             <span>
               {tile.volume?.buckets[0] === undefined ? "" : windowStamp(tile.volume.buckets[0].start)}
             </span>
-            <span>now</span>
+            <span>{t.overview.card.now}</span>
           </div>
         </>
       )}
@@ -90,16 +93,16 @@ export function ServiceCard(props: {
               className={`h-[15px] w-[3px] shrink-0 rounded-[2px] ${episodeRailClass(quoted.firstMatchSeverity)}`}
             />
             <span className="truncate font-mono text-[10.5px] text-[#A9BDD1]">
-              opened {clock(quoted.openedAt)} · <LiveDuration since={quoted.openedAt} />
+              {t.overview.card.opened(clock(quoted.openedAt))} · <LiveDuration since={quoted.openedAt} />
               {quoted.watch === "HealthCheck" ? (
                 // Nothing was logged, so there is nothing to count.
-                " · health check"
+                ` · ${t.overview.card.healthCheck}`
               ) : (
                 <>
                   {" · "}
-                  {Number(quoted.errorCount).toLocaleString()} err
+                  {t.overview.card.errCount(Number(quoted.errorCount))}
                   {Number(quoted.warnCount) > 0
-                    && ` · ${Number(quoted.warnCount).toLocaleString()} warn`}
+                    && ` · ${t.overview.card.warnCount(Number(quoted.warnCount))}`}
                 </>
               )}
             </span>
@@ -112,13 +115,13 @@ export function ServiceCard(props: {
 
       <div className="mt-3 flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={props.onLogs}>
-          To logs
+          {t.overview.actions.toLogs}
         </Button>
         <Button variant="ghost" size="sm" onClick={props.onTraces}>
-          To traces
+          {t.overview.actions.toTraces}
         </Button>
         <Button variant="ghost" size="sm" onClick={props.onEpisodes}>
-          To episodes
+          {t.overview.actions.toEpisodes}
         </Button>
       </div>
     </div>
@@ -139,7 +142,7 @@ function Count(props: { caption: string; value: number | undefined; tone: "error
     <div>
       <div className="font-mono text-[9.5px] tracking-[0.12em] text-[#5F7590]">{props.caption}</div>
       <div className={`font-mono text-base leading-[1.1] ${color}`}>
-        {props.value === undefined ? "—" : props.value.toLocaleString()}
+        {props.value === undefined ? "—" : props.value.toLocaleString(getFormatLocale())}
       </div>
     </div>
   );

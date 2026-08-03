@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/features/access/ChangePasswordDialog";
 import { useCurrentUser, useLogout } from "@/features/access/useAuth";
 import { useOpenEpisodeCount } from "@/features/alerting/useOpenEpisodeCount";
+import { useT } from "@/i18n";
 import { NavTab } from "./-nav-tab";
 
 export const Route = createFileRoute("/_app")({
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppShell() {
+  const t = useT();
   const router = useRouter();
   const user = useCurrentUser();
   const logout = useLogout();
@@ -60,11 +62,11 @@ function AppShell() {
         </div>
 
         <nav className="flex items-stretch gap-0.5">
-          <NavTab to="/dashboard" label="Dashboard" />
-          <NavTab to="/" label="Logs" />
-          <NavTab to="/traces" label="Traces" />
-          <NavTab to="/episodes" label="Episodes" badge={openEpisodes} />
-          {user.data.isAdmin && <NavTab to="/admin" label="Admin" />}
+          <NavTab to="/dashboard" label={t.nav.dashboard} />
+          <NavTab to="/" label={t.nav.logs} />
+          <NavTab to="/traces" label={t.nav.traces} />
+          <NavTab to="/episodes" label={t.nav.episodes} badge={openEpisodes} />
+          {user.data.isAdmin && <NavTab to="/admin" label={t.nav.admin} />}
         </nav>
 
         <div className="ml-auto flex items-center gap-3.5">
@@ -72,7 +74,7 @@ function AppShell() {
           <button
             type="button"
             className="max-w-[240px] truncate rounded-[5px] px-1.5 py-1 font-mono text-[11.5px] text-[#A9BDD1] hover:bg-[#12253A] hover:text-[#DCE8F3]"
-            title={`${user.data.email} — change password`}
+            title={t.nav.accountButtonTitle(user.data.email)}
             onClick={() => setChangingPassword(true)}
           >
             {user.data.email}
@@ -82,7 +84,7 @@ function AppShell() {
             size="sm"
             onClick={() => logout.mutate(undefined, { onSuccess: () => navigate({ to: "/login" }) })}
           >
-            Sign out
+            {t.nav.signOut}
           </Button>
         </div>
       </header>

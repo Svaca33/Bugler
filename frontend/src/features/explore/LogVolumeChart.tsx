@@ -17,6 +17,8 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { useCatalog, useReleases } from "@/api/queries";
+import { useT } from "@/i18n";
+import { getFormatLocale, getMessages } from "@/i18n/runtime";
 import { durationMs } from "@/lib/duration";
 import { bandsAdmittedBy, SEVERITY_BANDS } from "@/lib/severity";
 import { serviceLabels } from "@/lib/sourceFilter";
@@ -70,6 +72,7 @@ export function LogVolumeChart(props: {
   onNarrow: (time: TimeFilterValue) => void;
 }) {
   const { filters, follow, pulse, onNarrow } = props;
+  const t = useT();
   // Both ends are Bucket starts, so committing them is already snapped to Bucket edges.
   const [drag, setDrag] = useState<{ from: string; to: string } | null>(null);
 
@@ -93,7 +96,7 @@ export function LogVolumeChart(props: {
           },
         },
       });
-      if (error !== undefined) throw new Error("Failed to summarize log volume");
+      if (error !== undefined) throw new Error(getMessages().explore.loadFailed.volume);
       return data;
     },
     // Holding the last window while the next one loads is what keeps the list from jumping.
@@ -143,9 +146,7 @@ export function LogVolumeChart(props: {
   if (volume.isError) {
     return (
       <Frame>
-        <p className="text-muted-foreground self-center text-xs">
-          The window is too wide to summarize. Narrow the Time Filter — the list below is unaffected.
-        </p>
+        <p className="text-muted-foreground self-center text-xs">{t.explore.volume.tooWide}</p>
       </Frame>
     );
   }
@@ -198,7 +199,11 @@ export function LogVolumeChart(props: {
 
   return (
     <Frame
-      label={`${formatBoundary(from)} → ${formatBoundary(to)} · ${describeWidth(resolved.widthMs)} buckets`}
+      label={t.explore.volume.windowLabel(
+        formatBoundary(from),
+        formatBoundary(to),
+        describeWidth(resolved.widthMs),
+      )}
       legend={bands}
     >
       {/* Above the list's sticky header (z-10): a tall tooltip hangs below the chart, and without
@@ -320,10 +325,11 @@ export function LogVolumeChart(props: {
  * retention takes long enough to need something that moves.
  */
 function Spinner() {
+  const t = useT();
   return (
     <span
       role="status"
-      aria-label="Summarizing volume"
+      aria-label={t.explore.volume.summarizing}
       className="border-muted-foreground/25 border-t-muted-foreground size-5 animate-spin rounded-full border-2"
     />
   );
@@ -355,5 +361,5 @@ function Frame(props: { label?: string; legend?: typeof SEVERITY_BANDS; children
 
 function formatBoundary(instant: string): string {
   const date = new Date(instant);
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  return `${date.toLocaleDateString(getFormatLocale())} ${date.toLocaleTimeString(getFormatLocale())}`;
 }

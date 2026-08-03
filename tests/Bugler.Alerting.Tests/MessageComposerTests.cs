@@ -31,7 +31,8 @@ public class MessageComposerTests
     public void The_alert_names_the_service_and_shows_the_first_log()
     {
         var episode = Episode();
-        var alert = MessageComposer.ComposeAlert(episode, Identity, "https://bugler.example.com");
+        var alert = MessageComposer.ComposeAlert(
+            episode, Identity, "https://bugler.example.com", Language.English);
 
         Assert.Equal("[Bugler] Trouble in Eshop acme/prod/web", alert.Subject);
         Assert.Equal("Eshop acme/prod/web", alert.Place);
@@ -47,7 +48,8 @@ public class MessageComposerTests
     public void The_html_body_carries_the_same_facts_and_the_episode_link()
     {
         var episode = Episode();
-        var alert = MessageComposer.ComposeAlert(episode, Identity, "https://bugler.example.com");
+        var alert = MessageComposer.ComposeAlert(
+            episode, Identity, "https://bugler.example.com", Language.English);
 
         Assert.Contains("Eshop acme/prod/web", alert.HtmlBody);
         Assert.Contains("First log (ERROR, 2026-07-29 09:59:58 UTC):", alert.HtmlBody);
@@ -61,7 +63,8 @@ public class MessageComposerTests
     {
         var episode = Episode("Rejected <script>alert('x')</script> & friends");
 
-        var alert = MessageComposer.ComposeAlert(episode, Identity, "https://bugler.example.com");
+        var alert = MessageComposer.ComposeAlert(
+            episode, Identity, "https://bugler.example.com", Language.English);
 
         Assert.DoesNotContain("<script>", alert.HtmlBody);
         Assert.Contains("&lt;script&gt;", alert.HtmlBody);
@@ -85,7 +88,8 @@ public class MessageComposerTests
             LastMatchAt = new DateTimeOffset(2026, 7, 29, 11, 0, 0, TimeSpan.Zero),
         };
 
-        var alert = MessageComposer.ComposeAlert(episode, Identity, "https://bugler.example.com");
+        var alert = MessageComposer.ComposeAlert(
+            episode, Identity, "https://bugler.example.com", Language.English);
 
         Assert.Equal("[Bugler] No answer from Eshop acme/prod/web", alert.Subject);
         Assert.Contains("stopped answering its health check.", alert.TextBody);
@@ -100,11 +104,29 @@ public class MessageComposerTests
     [Fact]
     public void Without_a_public_base_url_the_message_carries_no_links()
     {
-        var alert = MessageComposer.ComposeAlert(Episode(), Identity, "");
+        var alert = MessageComposer.ComposeAlert(Episode(), Identity, "", Language.English);
 
         Assert.Null(alert.EpisodeUrl);
         Assert.DoesNotContain("http", alert.TextBody);
         Assert.DoesNotContain("href", alert.HtmlBody);
         Assert.Contains("Payment gateway timed out", alert.TextBody);
+    }
+
+    [Fact]
+    public void A_czech_recipient_reads_the_alert_in_czech_with_machine_stamps_untouched()
+    {
+        var episode = Episode();
+        var alert = MessageComposer.ComposeAlert(
+            episode, Identity, "https://bugler.example.com", Language.Czech);
+
+        Assert.Equal("[Bugler] Potíže v Eshop acme/prod/web", alert.Subject);
+        Assert.Contains("začal logovat potíže.", alert.TextBody);
+        Assert.Contains($"Epizoda: {alert.EpisodeUrl}", alert.TextBody);
+        Assert.Equal("Otevřít epizodu", alert.OpenEpisodeLabel);
+        // The button label passes through HtmlEncode, which turns accents into entities.
+        Assert.Contains(System.Net.WebUtility.HtmlEncode("Otevřít epizodu"), alert.HtmlBody);
+        Assert.Contains("lang=\"cs\"", alert.HtmlBody);
+        // The Severity Band and the UTC stamp are the domain's vocabulary, not prose.
+        Assert.Contains("První log (ERROR, 2026-07-29 09:59:58 UTC):", alert.TextBody);
     }
 }

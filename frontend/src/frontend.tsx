@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
+import { LanguageProvider, getMessages } from "./i18n";
 
 import "./index.css";
 
@@ -23,7 +24,9 @@ const router = createRouter({
   // with nothing on screen. It is one call long and usually invisible; this is what shows if the
   // server is slow enough for the wait to be noticed.
   defaultPendingComponent: () => (
-    <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>
+    <div className="grid min-h-screen place-items-center text-muted-foreground">
+      {getMessages().common.loading}
+    </div>
   ),
 });
 
@@ -37,7 +40,11 @@ const elem = document.getElementById("root")!;
 const app = (
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      {/* Above the router: the language is chosen once, and every screen — the sign-in page
+          included — speaks it. */}
+      <LanguageProvider>
+        <RouterProvider router={router} />
+      </LanguageProvider>
     </QueryClientProvider>
   </StrictMode>
 );

@@ -4,6 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { api } from "@/api/client";
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
+import { getMessages } from "@/i18n/runtime";
 import { formatTime } from "@/lib/format";
 
 import { AttributeFilterBar } from "./AttributeFilterBar";
@@ -24,6 +26,7 @@ const GRID = "grid grid-cols-[1fr_196px_200px_96px_66px_74px] items-center gap-4
 
 export function TracesPage(props: { filters: TraceFilters; onChange: (filters: TraceFilters) => void }) {
   const { filters, onChange } = props;
+  const t = useT();
   const catalog = useCatalog();
   const queryClient = useQueryClient();
 
@@ -52,7 +55,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
           },
         },
       });
-      if (error !== undefined) throw new Error("Failed to load traces");
+      if (error !== undefined) throw new Error(getMessages().explore.loadFailed.traces);
       return data;
     },
   });
@@ -67,10 +70,10 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
         canClear={Object.values(filters).some(value => value !== undefined)}
         onClear={() => onChange({})}
       >
-        <FilterGroup label="SOURCE">
+        <FilterGroup label={t.explore.rail.sourceGroup}>
           <FilterSelect
             className="w-full"
-            placeholder="All applications"
+            placeholder={t.explore.rail.allApplications}
             value={filters.applicationId}
             options={applications.map(a => ({ value: a.id, label: a.name }))}
             onChange={applicationId =>
@@ -85,28 +88,28 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
           />
           <FilterSelect
             className="w-full"
-            placeholder="All namespaces"
+            placeholder={t.explore.rail.allNamespaces}
             value={filters.namespace}
             options={facetOptions(applications, filters, "namespace").map(v => ({ value: v, label: v }))}
             onChange={namespace => onChange({ ...filters, namespace })}
           />
           <FilterSelect
             className="w-full"
-            placeholder="All environments"
+            placeholder={t.explore.rail.allEnvironments}
             value={filters.environment}
             options={facetOptions(applications, filters, "environment").map(v => ({ value: v, label: v }))}
             onChange={environment => onChange({ ...filters, environment })}
           />
           <FilterSelect
             className="w-full"
-            placeholder="All services"
+            placeholder={t.explore.rail.allServices}
             value={filters.service}
             options={facetOptions(applications, filters, "service").map(v => ({ value: v, label: v }))}
             onChange={service => onChange({ ...filters, service })}
           />
         </FilterGroup>
 
-        <FilterGroup label="TIME">
+        <FilterGroup label={t.explore.rail.timeGroup}>
           <TimeFilterControl
             layout="column"
             value={filters}
@@ -114,18 +117,18 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
           />
         </FilterGroup>
 
-        <FilterGroup label="STATUS">
+        <FilterGroup label={t.explore.rail.statusGroup}>
           <Button
             variant={filters.errorsOnly ? "default" : "outline"}
             size="sm"
             className="w-full"
             onClick={() => onChange({ ...filters, errorsOnly: filters.errorsOnly ? undefined : true })}
           >
-            Errors only
+            {t.explore.rail.errorsOnly}
           </Button>
         </FilterGroup>
 
-        <FilterGroup label="ATTRIBUTES">
+        <FilterGroup label={t.explore.rail.attributesGroup}>
           <AttributeFilterBar
             layout="column"
             signal="traces"
@@ -138,9 +141,9 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3.5 px-5 py-3">
-          <h1 className="text-sm font-semibold tracking-[-0.1px]">Traces</h1>
+          <h1 className="text-sm font-semibold tracking-[-0.1px]">{t.explore.traces.title}</h1>
           <div className="ml-auto flex items-center gap-3">
-            <span className="font-mono text-[11.5px] text-[#6E86A0]">{items.length} traces</span>
+            <span className="font-mono text-[11.5px] text-[#6E86A0]">{t.explore.traces.count(items.length)}</span>
             <RefreshButton busy={traces.isFetching} onRefresh={refresh} />
           </div>
         </div>
@@ -149,12 +152,12 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
           <div
             className={`${GRID} sticky top-0 z-10 h-[30px] border-y border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
           >
-            <span>ROOT SPAN</span>
-            <span>SERVICE</span>
-            <span>STARTED</span>
-            <span className="text-right">DURATION</span>
-            <span className="text-right">SPANS</span>
-            <span>STATUS</span>
+            <span>{t.explore.traces.headers.rootSpan}</span>
+            <span>{t.explore.traces.headers.service}</span>
+            <span>{t.explore.traces.headers.started}</span>
+            <span className="text-right">{t.explore.traces.headers.duration}</span>
+            <span className="text-right">{t.explore.traces.headers.spans}</span>
+            <span>{t.explore.traces.headers.status}</span>
           </div>
           <div data-testid="trace-rows">
             {items.map(trace => {
@@ -218,7 +221,7 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                 <p className="text-[#8CA1B8]">{emptyStateMessage("traces", filters)}</p>
                 {widerPresets(filters).length > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[#6E86A0] text-xs">Widen to</span>
+                    <span className="text-[#6E86A0] text-xs">{t.explore.timeFilter.widenTo}</span>
                     {widerPresets(filters).map(preset => (
                       <Button
                         key={preset.value}

@@ -1,4 +1,5 @@
 import type { Episode } from "@/api/client";
+import { useT } from "@/i18n";
 
 const STYLES: Record<Episode["state"], string> = {
   Open: "text-severity-error",
@@ -10,6 +11,7 @@ const STYLES: Record<Episode["state"], string> = {
 
 /** The Episode's place in its lifecycle, in the list's own compact voice. */
 export function StateBadge({ state }: { state: Episode["state"] }) {
+  const t = useT();
   return (
     <span
       className={`flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] ${STYLES[state]}`}
@@ -17,7 +19,7 @@ export function StateBadge({ state }: { state: Episode["state"] }) {
       {state === "Open" && (
         <span className="size-1.5 animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-severity-error-rail" />
       )}
-      {state.toLowerCase()}
+      {t.alerting.state.badge[state]}
     </span>
   );
 }

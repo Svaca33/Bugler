@@ -187,6 +187,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetLanguageRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/password/forgot": {
         parameters: {
             query?: never;
@@ -463,6 +500,73 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/server/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ServerLanguageDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveServerLanguageRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ServerLanguageDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2237,6 +2341,7 @@ export interface components {
         AuthStatusDto: {
             needsSetup: boolean;
             passwordResetAvailable: boolean;
+            language: string;
         };
         CatalogApplicationDto: {
             /** Format: uuid */
@@ -2281,6 +2386,7 @@ export interface components {
             displayName: null | string;
             isAdmin: boolean;
             grantedApplicationIds: string[];
+            language: null | string;
         };
         EpisodeCountsResponse: {
             /** Format: int32 */
@@ -2537,11 +2643,17 @@ export interface components {
             password: null | string;
             from: string;
         };
+        SaveServerLanguageRequest: {
+            language: string;
+        };
         SearchLogsResponse: {
             items: components["schemas"]["LogRecordDto"][];
         };
         /** @enum {unknown} */
         Sensitivity: "Off" | "Errors" | "ErrorsAndWarnings" | null;
+        ServerLanguageDto: {
+            language: string;
+        };
         ServiceAlertingOverrideDto: {
             /** Format: uuid */
             serviceId: string;
@@ -2620,6 +2732,9 @@ export interface components {
         };
         SetChatWebhookRequest: {
             url: null | string;
+        };
+        SetLanguageRequest: {
+            language: null | string;
         };
         SetRetentionRequest: {
             /** Format: int32 */

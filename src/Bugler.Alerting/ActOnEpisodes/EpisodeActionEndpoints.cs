@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Bugler.Access.Contracts;
 using Bugler.Alerting.Episodes;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,10 +22,11 @@ internal static class EpisodeActionEndpoints
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken) =>
-        Act(id, principal, dbContext, readVisibility, cancellationToken,
+        Act(id, principal, dbContext, readVisibility, requestLanguage, cancellationToken,
             static (episode, userId, now) => episode.Acknowledge(userId, now),
-            "A Solved Episode is never Acknowledged.",
+            static messages => messages.SolvedEpisodeNeverAcknowledged,
             JournalEntryKind.Acknowledged);
 
     public static Task<IResult> Unacknowledge(
@@ -32,10 +34,11 @@ internal static class EpisodeActionEndpoints
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken) =>
-        Act(id, principal, dbContext, readVisibility, cancellationToken,
+        Act(id, principal, dbContext, readVisibility, requestLanguage, cancellationToken,
             static (episode, _, _) => episode.Unacknowledge(), // Withdrawing nothing is nothing.
-            "Withdrawing never refuses.",
+            static messages => messages.WithdrawingNeverRefuses,
             JournalEntryKind.Withdrawn);
 
     public static Task<IResult> Solve(
@@ -43,10 +46,11 @@ internal static class EpisodeActionEndpoints
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken) =>
-        Act(id, principal, dbContext, readVisibility, cancellationToken,
+        Act(id, principal, dbContext, readVisibility, requestLanguage, cancellationToken,
             static (episode, userId, now) => episode.Solve(userId, now),
-            "The Episode is already Solved; the verdict is rendered once.",
+            static messages => messages.EpisodeAlreadySolved,
             JournalEntryKind.Solved,
             // Solve consumes every acknowledgement its kind of trouble has ever held (ADR 0005).
             // Each Episode it strips gets a Withdrawn entry by the solver's hand (ADR 0006) —
@@ -82,9 +86,10 @@ internal static class EpisodeActionEndpoints
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken,
         Func<Episode, Guid, DateTimeOffset, HandOutcome> act,
-        string refusal,
+        Func<AlertingMessages, string> refusal,
         JournalEntryKind kind,
         Func<AlertingDbContext, Episode, Guid, DateTimeOffset, CancellationToken, Task>? after = null)
     {
@@ -115,14 +120,16 @@ internal static class EpisodeActionEndpoints
             && n.Id.CompareTo(episode.Id) > 0, cancellationToken);
         if (newerExists)
         {
-            return Results.Conflict("The action belongs to the newest Episode of its kind.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.Conflict(messages.ActionBelongsToNewestEpisode);
         }
 
         var now = DateTimeOffset.UtcNow;
         switch (act(episode, userId, now))
         {
             case HandOutcome.Refused:
-                return Results.Conflict(refusal);
+                return Results.Conflict(
+                    refusal(AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken))));
             case HandOutcome.Nothing:
                 return Results.NoContent();
         }

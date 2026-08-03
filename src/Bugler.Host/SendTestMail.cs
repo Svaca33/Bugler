@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Bugler.Mail;
+using Bugler.SharedKernel;
 
 namespace Bugler.Host;
 
@@ -17,26 +18,21 @@ public sealed record TestMailResult(string SentTo);
 /// </summary>
 internal static class SendTestMail
 {
-    private const string Body =
-        """
-        This is a test message from Bugler.
-
-        Somebody signed in as an administrator asked for it, to confirm this server can send mail
-        at all. If it reached you, alerts and password-reset links will reach their recipients too.
-        """;
-
     public static async Task<IResult> Handle(
         ClaimsPrincipal principal,
         IMailSender sender,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
+        var messages = HostMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         // Their own address, never one they type: a form that mails anywhere is a relay for
         // whoever gets hold of an admin session.
         var address = principal.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrWhiteSpace(address))
         {
             return Results.Problem(
-                title: "This session carries no address to send to.",
+                title: messages.SessionCarriesNoAddress,
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
@@ -44,7 +40,8 @@ internal static class SendTestMail
         {
             // Sent rather than queued: waiting for the outcome is the entire point.
             await sender.SendAsync(
-                new MailMessage(address, "Bugler test message", Body), cancellationToken);
+                new MailMessage(address, messages.TestMailSubject, messages.TestMailBody),
+                cancellationToken);
             return Results.Ok(new TestMailResult(address));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -52,7 +49,7 @@ internal static class SendTestMail
             // Whatever the mail server said, said back. An operator setting this up needs the
             // refusal itself — "sending failed" would send them to the container log anyway.
             return Results.Problem(
-                title: "The message could not be sent.",
+                title: messages.TestMailNotSent,
                 detail: exception.Message,
                 statusCode: StatusCodes.Status502BadGateway);
         }

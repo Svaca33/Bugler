@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useT } from "@/i18n";
 import { formatBytes } from "@/lib/format";
 
 import {
@@ -34,6 +35,7 @@ import {
  * is quoted in.
  */
 export function StorageAdminPage() {
+  const t = useT();
   const report = useStorageReport();
   const catalog = useCatalog();
   const [unit, setUnit] = useState<RateUnit>("day");
@@ -55,21 +57,18 @@ export function StorageAdminPage() {
     <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
       <div className="flex items-end gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-[17px] font-semibold tracking-[-0.3px]">Storage</h2>
-          <p className="text-[12.5px] text-[#8CA1B8]">
-            What each Service's telemetry costs, and how fast it is growing. Bytes marked ≈ are
-            estimates; the rate is measured over the last day.
-          </p>
+          <h2 className="text-[17px] font-semibold tracking-[-0.3px]">{t.storage.title}</h2>
+          <p className="text-[12.5px] text-[#8CA1B8]">{t.storage.subtitle}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Select value={unit} onValueChange={value => setUnit(value as RateUnit)}>
-            <SelectTrigger size="sm" className="w-[196px]" aria-label="Ingest rate unit">
+            <SelectTrigger size="sm" className="w-[196px]" aria-label={t.storage.rateUnitAria}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {RATE_UNITS.map(step => (
                 <SelectItem key={step.unit} value={step.unit}>
-                  {step.label}
+                  {t.storage.rateUnit[step.unit]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -81,35 +80,33 @@ export function StorageAdminPage() {
             disabled={report.isFetching}
             onClick={() => void report.refetch()}
           >
-            {report.isFetching ? "Measuring…" : "Refresh"}
+            {report.isFetching ? t.storage.measuring : t.storage.refresh}
           </Button>
         </div>
       </div>
 
       {report.data !== undefined && (
         <p className="font-mono text-[12px] text-[#B6C8DA]">
-          Logs {formatBytes(report.data.logTableBytes)} · Traces{" "}
-          {formatBytes(report.data.traceTableBytes)} · together{" "}
-          {formatBytes(report.data.logTableBytes + report.data.traceTableBytes)} on disk
-          <span className="text-[#5F7590]"> — tables, indexes and TOAST included</span>
+          {t.storage.onDisk(
+            formatBytes(report.data.logTableBytes),
+            formatBytes(report.data.traceTableBytes),
+            formatBytes(report.data.logTableBytes + report.data.traceTableBytes),
+          )}
+          <span className="text-[#5F7590]"> {t.storage.onDiskIncluded}</span>
         </p>
       )}
 
       {report.isPending ? (
-        <p className="text-[12.5px] text-[#8CA1B8]">
-          Measuring the tables — this can take a moment on a loaded instance.
-        </p>
+        <p className="text-[12.5px] text-[#8CA1B8]">{t.storage.measuringTables}</p>
       ) : report.isError ? (
         <div className="flex items-center gap-3">
-          <p className="text-[12.5px] text-[#E5544A]">
-            The storage report did not answer. The instance may be busy.
-          </p>
+          <p className="text-[12.5px] text-[#E5544A]">{t.storage.reportFailed}</p>
           <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => void report.refetch()}>
-            Try again
+            {t.storage.tryAgain}
           </Button>
         </div>
       ) : report.data.services.length === 0 ? (
-        <p className="text-[12.5px] text-[#8CA1B8]">Nothing is registered yet.</p>
+        <p className="text-[12.5px] text-[#8CA1B8]">{t.storage.nothingRegistered}</p>
       ) : (
         <StorageTable
           rows={byServiceId(report.data.services)}
@@ -133,16 +130,21 @@ function StorageTable(props: {
   unit: RateUnit;
   windowMs: number;
 }) {
+  const t = useT();
   const { names, unit, windowMs } = props;
-  const unitLabel = rateStep(unit);
+  const step = rateStep(unit);
 
   const columns = useMemo<ColumnDef<StorageRow>[]>(() => {
     const label = (row: StorageRow) => names.get(row.serviceId) ?? row.serviceId;
+    // "per week (projected)" → "PER WEEK*" — the projected suffix collapses into the asterisk.
+    const ingestUnit = t.storage
+      .rateUnit[unit].replace(t.storage.projectedSuffix, "*")
+      .toUpperCase();
     return [
       {
         id: "service",
         accessorFn: label,
-        header: "SERVICE",
+        header: t.storage.columns.service,
         sortDescFirst: false,
         sortingFn: (a, b) => label(a.original).localeCompare(label(b.original)),
         meta: { headerClassName: "w-full pl-4", cellClassName: "w-full pl-4 text-xs" },
@@ -156,7 +158,7 @@ function StorageTable(props: {
       {
         id: "logs",
         accessorFn: row => row.logs.footprintBytes,
-        header: "LOGS",
+        header: t.storage.columns.logs,
         sortDescFirst: true,
         meta: { headerClassName: "text-right", cellClassName: "text-right" },
         cell: context => <ByteValue bytes={context.row.original.logs.footprintBytes} />,
@@ -164,7 +166,7 @@ function StorageTable(props: {
       {
         id: "traces",
         accessorFn: row => row.traces.footprintBytes,
-        header: "TRACES",
+        header: t.storage.columns.traces,
         sortDescFirst: true,
         meta: { headerClassName: "text-right", cellClassName: "text-right" },
         cell: context => <ByteValue bytes={context.row.original.traces.footprintBytes} />,
@@ -172,7 +174,7 @@ function StorageTable(props: {
       {
         id: "total",
         accessorFn: totalFootprint,
-        header: "TOTAL",
+        header: t.storage.columns.total,
         sortDescFirst: true,
         meta: { headerClassName: "text-right", cellClassName: "text-right" },
         cell: context => <ByteValue bytes={totalFootprint(context.row.original)} emphasis />,
@@ -180,7 +182,7 @@ function StorageTable(props: {
       {
         id: "kept",
         accessorFn: row => row.logs.retentionDays,
-        header: "KEPT",
+        header: t.storage.columns.kept,
         sortDescFirst: true,
         // The pair the cell shows, read left to right: log retention first, traces break ties.
         sortingFn: (a, b) =>
@@ -188,13 +190,13 @@ function StorageTable(props: {
           a.original.traces.retentionDays - b.original.traces.retentionDays,
         meta: {
           headerClassName: "text-right",
-          headerTitle: "Log retention / trace retention",
+          headerTitle: t.storage.retentionPairTitle,
           cellClassName: "text-right text-[#B6C8DA]",
         },
         cell: context => {
           const row = context.row.original;
           return (
-            <span title="Log retention / trace retention">
+            <span title={t.storage.retentionPairTitle}>
               {row.logs.retentionDays} d / {row.traces.retentionDays} d
             </span>
           );
@@ -203,7 +205,7 @@ function StorageTable(props: {
       {
         id: "ingest",
         accessorFn: row => row.logs.windowBytes + row.traces.windowBytes,
-        header: `INGEST ${unitLabel.label.toUpperCase().replace(" (PROJECTED)", "*")}`,
+        header: t.storage.columns.ingest(ingestUnit),
         sortDescFirst: true,
         meta: { headerClassName: "text-right", cellClassName: "text-right" },
         cell: context => {
@@ -213,7 +215,7 @@ function StorageTable(props: {
           return (
             <ByteValue
               bytes={logRate + traceRate}
-              title={`logs ≈ ${formatBytes(logRate)} · traces ≈ ${formatBytes(traceRate)}`}
+              title={t.storage.ingestSplit(formatBytes(logRate), formatBytes(traceRate))}
             />
           );
         },
@@ -221,12 +223,11 @@ function StorageTable(props: {
       {
         id: "settles",
         accessorFn: row => settledBytes(row, windowMs),
-        header: "SETTLES AT",
+        header: t.storage.columns.settlesAt,
         sortDescFirst: true,
         meta: {
           headerClassName: "pr-4 text-right",
-          headerTitle:
-            "Where the Footprint comes to rest if the last day's pace holds, each retention clock on its own",
+          headerTitle: t.storage.settlesTitle,
           cellClassName: "pr-4 text-right",
         },
         cell: context => {
@@ -235,13 +236,13 @@ function StorageTable(props: {
             <ByteValue
               bytes={settledBytes(row, windowMs)}
               emphasis
-              title={`at the last day's pace, holding logs ${row.logs.retentionDays} d and traces ${row.traces.retentionDays} d`}
+              title={t.storage.settledAtPace(row.logs.retentionDays, row.traces.retentionDays)}
             />
           );
         },
       },
     ];
-  }, [names, unit, unitLabel, windowMs]);
+  }, [names, unit, t, windowMs]);
 
   return (
     <div
@@ -255,9 +256,9 @@ function StorageTable(props: {
         persistKey="bugler.admin.storage-sort"
         rowTestId="storage-row"
       />
-      {unitLabel.projected && (
+      {step.projected && (
         <p className="border-t border-[#101F31] px-4 py-2 text-[11px] text-[#5F7590]">
-          * projected from the last day's measurement — nothing is measured beyond it.
+          {t.storage.projectedFootnote}
         </p>
       )}
     </div>

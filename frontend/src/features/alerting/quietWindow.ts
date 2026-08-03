@@ -1,3 +1,5 @@
+import { getMessages } from "@/i18n/runtime";
+
 /** The widest window a kind of trouble may keep — mirrors FingerprintQuietWindow.MaxMinutes. */
 export const MAX_QUIET_WINDOW_MINUTES = 7 * 24 * 60;
 
@@ -8,11 +10,11 @@ export interface QuietWindowState {
   inherited: number;
 }
 
-/** Minutes as the panel says them: whole hours and days read better than four digits. */
+/** Minutes as the panel says them: whole hours and days read better than four digits.
+ * "h" and "min" are unit abbreviations and stay as they are in every language. */
 export function quietWindowWords(minutes: number): string {
   if (minutes % (24 * 60) === 0) {
-    const days = minutes / (24 * 60);
-    return `${days} day${days === 1 ? "" : "s"}`;
+    return getMessages().alerting.quietWindow.days(minutes / (24 * 60));
   }
   if (minutes % 60 === 0) {
     const hours = minutes / 60;
@@ -22,14 +24,14 @@ export function quietWindowWords(minutes: number): string {
 }
 
 /**
- * The line under the field. It must never claim the window belongs to the Episode: what is set
- * belongs to this kind of trouble in this Service and governs the Episodes still to come.
+ * The line under the field. It must never claim the window belongs to the Episode: what is saved
+ * here outlives it and governs every later Episode of the same kind.
  */
 export function describeQuietWindow(state: QuietWindowState): string {
+  const words = getMessages().alerting.quietWindow;
   return state.own === null
-    ? `Inherited from the service: ${quietWindowWords(state.inherited)}.`
-    : `${quietWindowWords(state.own)} for this kind of trouble in this service — `
-      + `it would otherwise inherit ${quietWindowWords(state.inherited)}.`;
+    ? words.inheritedFromService(quietWindowWords(state.inherited))
+    : words.ownDescription(quietWindowWords(state.own), quietWindowWords(state.inherited));
 }
 
 /** Null when the typed value may be saved; the reason it may not otherwise. */
@@ -40,12 +42,12 @@ export function quietWindowError(typed: string): string | null {
   }
 
   if (!/^[0-9]+$/.test(trimmed)) {
-    return "Whole minutes only.";
+    return getMessages().alerting.quietWindow.wholeMinutesOnly;
   }
 
   const minutes = Number(trimmed);
   if (minutes < 1 || minutes > MAX_QUIET_WINDOW_MINUTES) {
-    return `Between 1 minute and ${MAX_QUIET_WINDOW_MINUTES} minutes (7 days).`;
+    return getMessages().alerting.quietWindow.bounds(MAX_QUIET_WINDOW_MINUTES);
   }
 
   return null;

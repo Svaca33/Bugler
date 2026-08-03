@@ -14,7 +14,11 @@ public interface IMailRecipients
         IReadOnlyCollection<Guid> userIds, ApplicationId applicationId, CancellationToken cancellationToken);
 }
 
-public sealed record MailRecipient(Guid UserId, string Email);
+/// <summary>
+/// Language is the one this User is spoken to in — their own choice where they made one, the
+/// server's otherwise. Resolved here so the caller composes and never chooses (ADR 0024).
+/// </summary>
+public sealed record MailRecipient(Guid UserId, string Email, Language Language);
 
 /// <summary>
 /// Deliverable = the User exists, is not deactivated, and is an Admin or holds a grant on the

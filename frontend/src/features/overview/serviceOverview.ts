@@ -1,3 +1,4 @@
+import { getMessages } from "@/i18n/runtime";
 import { durationMs } from "@/lib/duration";
 
 /**
@@ -246,7 +247,8 @@ export function buildOverview(input: OverviewInput): Overview {
 
   const grouped = new Map<string, ServiceTile[]>();
   for (const tile of shown) {
-    const key = input.groupBy.length === 0 ? "All services" : facetLabel(tile, input.groupBy);
+    const key =
+      input.groupBy.length === 0 ? getMessages().overview.allServices : facetLabel(tile, input.groupBy);
     const group = grouped.get(key);
     if (group === undefined) grouped.set(key, [tile]);
     else group.push(tile);

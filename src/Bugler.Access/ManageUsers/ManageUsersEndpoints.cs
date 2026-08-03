@@ -47,22 +47,26 @@ internal static class ManageUsersEndpoints
         CreateUserRequest request,
         AccessDbContext dbContext,
         IPasswordHasher<User> hasher,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
+        var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         var email = request.Email.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
         {
-            return Results.BadRequest("A valid e-mail address is required.");
+            return Results.BadRequest(messages.ValidEmailRequired);
         }
 
         if (!Passwords.IsAcceptable(request.Password))
         {
-            return Results.BadRequest(Passwords.Requirement);
+            return Results.BadRequest(
+                messages.PasswordRequirement(Passwords.MinimumLength, Passwords.MaximumLength));
         }
 
         if (await dbContext.Users.AnyAsync(u => u.Email == email, cancellationToken))
         {
-            return Results.Conflict("A user with this e-mail already exists.");
+            return Results.Conflict(messages.UserWithEmailExists);
         }
 
         var user = new User
@@ -83,11 +87,16 @@ internal static class ManageUsersEndpoints
     }
 
     public static async Task<IResult> Deactivate(
-        Guid id, ClaimsPrincipal principal, AccessDbContext dbContext, CancellationToken cancellationToken)
+        Guid id,
+        ClaimsPrincipal principal,
+        AccessDbContext dbContext,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken)
     {
         if (IsSelf(id, principal))
         {
-            return Results.Conflict("An admin cannot deactivate their own account.");
+            var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.Conflict(messages.CannotDeactivateOwnAccount);
         }
 
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
@@ -127,11 +136,13 @@ internal static class ManageUsersEndpoints
         AccessDbContext dbContext,
         AccessOutbox outbox,
         IOutboxSignal signal,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         if (IsSelf(id, principal))
         {
-            return Results.Conflict("An admin cannot delete their own account.");
+            var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.Conflict(messages.CannotDeleteOwnAccount);
         }
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -166,13 +177,15 @@ internal static class ManageUsersEndpoints
         Guid id,
         AccessDbContext dbContext,
         IOptions<AccessOptions> options,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
+        var messages = AccessMessages.For(await requestLanguage.GetAsync(cancellationToken));
+
         var publicBaseUrl = options.Value.PublicBaseUrl;
         if (publicBaseUrl.Length == 0)
         {
-            return Results.Conflict(
-                "Set Server:PublicBaseUrl so Bugler knows what its own links look like.");
+            return Results.Conflict(messages.SetPublicBaseUrlFirst);
         }
 
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
@@ -184,7 +197,7 @@ internal static class ManageUsersEndpoints
         if (user.DeactivatedAt is not null)
         {
             // A ticket would be honoured by nobody: redemption refuses a User who cannot sign in.
-            return Results.Conflict("Reactivate the account before handing out a reset link.");
+            return Results.Conflict(messages.ReactivateBeforeResetLink);
         }
 
         // No throttle here: nothing is being mailed, and the Admin asking is looking at the answer.

@@ -54,7 +54,7 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
                 {
                     buttons = new[]
                     {
-                        new { text = "Open episode", onClick = new { openLink = new { url = alert.EpisodeUrl } } },
+                        new { text = alert.OpenEpisodeLabel, onClick = new { openLink = new { url = alert.EpisodeUrl } } },
                     },
                 },
             });

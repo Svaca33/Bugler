@@ -1,3 +1,5 @@
+import { useT } from "@/i18n";
+
 import type { VolumeBucket } from "./serviceOverview";
 import { windowStamp } from "./stamps";
 
@@ -10,6 +12,7 @@ import { windowStamp } from "./stamps";
  * above them do. That is intended, and it is why the counts sit above the sparkline, not below.
  */
 export function Sparkline(props: { buckets: VolumeBucket[] | undefined; mini?: boolean }) {
+  const t = useT();
   const mini = props.mini === true;
   const buckets = props.buckets ?? placeholder(mini ? 18 : 24);
   const max = Math.max(...buckets.map(total), 1);
@@ -28,8 +31,9 @@ export function Sparkline(props: { buckets: VolumeBucket[] | undefined; mini?: b
           title={
             props.buckets === undefined
               ? undefined
-              : `${windowStamp(bucket.start)} · ${bucket.error.toLocaleString()} err · ` +
-                `${bucket.warn.toLocaleString()} warn · ${total(bucket).toLocaleString()} logs`
+              : t.overview.sparklineBar(
+                  windowStamp(bucket.start), bucket.error, bucket.warn, total(bucket),
+                )
           }
         />
       ))}

@@ -1,23 +1,26 @@
 /** ISO-8601 durations as the server reads them: fixed lengths, no calendar arithmetic. */
 
-export const RANGE_PRESETS: { value: string; label: string }[] = [
-  { value: "PT5M", label: "Last 5 min" },
-  { value: "PT15M", label: "Last 15 min" },
-  { value: "PT1H", label: "Last 1 h" },
-  { value: "P1D", label: "Last 24 h" },
-  { value: "P7D", label: "Last 7 d" },
-  { value: "P30D", label: "Last 30 d" },
-];
+import { getMessages } from "@/i18n/runtime";
+
+export const RANGE_PRESET_VALUES = ["PT5M", "PT15M", "PT1H", "P1D", "P7D", "P30D"] as const;
+
+/** Labels come from the catalog at call time, so a language switch reaches every open dropdown. */
+export function rangePresets(): { value: string; label: string }[] {
+  return RANGE_PRESET_VALUES.map(value => ({
+    value,
+    label: getMessages().common.rangePreset[value] ?? value,
+  }));
+}
 
 export type RangeUnit = "minutes" | "hours" | "days" | "weeks" | "months";
 
-export const RANGE_UNITS: { value: RangeUnit; label: string }[] = [
-  { value: "minutes", label: "minutes" },
-  { value: "hours", label: "hours" },
-  { value: "days", label: "days" },
-  { value: "weeks", label: "weeks" },
-  { value: "months", label: "months" },
-];
+export function rangeUnits(): { value: RangeUnit; label: string }[] {
+  const units = getMessages().common.rangeUnits;
+  return (["minutes", "hours", "days", "weeks", "months"] as const).map(value => ({
+    value,
+    label: units[value],
+  }));
+}
 
 const DURATION =
   /^P(?!$)(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?!$)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/;
@@ -62,8 +65,8 @@ export function durationMs(iso: string): number | undefined {
 
 /** Same phrasing as the presets, so "Last 45 min" reads like the ones you can click. */
 export function describeDuration(iso: string): string {
-  const preset = RANGE_PRESETS.find(option => option.value === iso);
-  if (preset !== undefined) return preset.label;
+  const preset = getMessages().common.rangePreset[iso];
+  if (preset !== undefined) return preset;
 
   const match = DURATION.exec(iso);
   if (match === null) return iso;
@@ -73,7 +76,7 @@ export function describeDuration(iso: string): string {
     const amount = match[index + 1];
     if (amount !== undefined) parts.push(`${Number(amount)} ${unit}`);
   }
-  return parts.length > 0 ? `Last ${parts.join(" ")}` : iso;
+  return parts.length > 0 ? getMessages().common.lastSpan(parts.join(" ")) : iso;
 }
 
 /**
@@ -92,7 +95,7 @@ export function describeLiveMillis(milliseconds: number): string {
 
 /** A span measured in milliseconds, in words: "1 h 15 min", "42 min", "under a minute". */
 export function describeMillis(milliseconds: number): string {
-  if (milliseconds < MINUTE) return "under a minute";
+  if (milliseconds < MINUTE) return getMessages().common.underAMinute;
   const days = Math.floor(milliseconds / DAY);
   const hours = Math.floor((milliseconds % DAY) / HOUR);
   const minutes = Math.floor((milliseconds % HOUR) / MINUTE);

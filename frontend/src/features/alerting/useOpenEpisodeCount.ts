@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { getMessages } from "@/i18n/runtime";
 
 /**
  * The whole-scope open count behind the nav badge — deliberately unfiltered: the badge answers
@@ -11,7 +12,7 @@ export function useOpenEpisodeCount(enabled: boolean): number | undefined {
     queryKey: ["alerts", "counts", "everything"],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/episodes/counts");
-      if (error !== undefined) throw new Error("Failed to count open episodes");
+      if (error !== undefined) throw new Error(getMessages().alerting.errors.countOpenEpisodes);
       return data;
     },
     refetchInterval: 30_000,

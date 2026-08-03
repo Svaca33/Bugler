@@ -13,30 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT, type Messages } from "@/i18n";
 
 import { effectiveRetentionDays, parseRetentionInput, shortensRetention } from "./retentionChange";
 
-/** What one of the two clocks is called wherever the field has to name it. */
-export interface RetentionClock {
-  /** The field's own label. */
-  label: string;
-  /** How the confirmation names the thing being shortened. */
-  name: string;
-  /** What the confirmation says will be deleted. */
-  subject: string;
-}
-
-export const LOG_RETENTION: RetentionClock = {
-  label: "Log retention (days)",
-  name: "log retention",
-  subject: "Logs",
-};
-
-export const TRACE_RETENTION: RetentionClock = {
-  label: "Trace retention (days)",
-  name: "trace retention",
-  subject: "Spans",
-};
+/**
+ * What one of the two clocks is called wherever the field has to name it — the catalog's own
+ * shape, so the active language supplies the label, the confirmation's name and its subject.
+ */
+export type RetentionClock = Messages["registry"]["retention"]["logs"];
 
 /**
  * One Service's Retention Policy — both clocks — wired to the API. The endpoint takes the policy
@@ -51,6 +36,7 @@ export function ServiceRetentionField(props: {
   defaultRetentionDays: number;
   defaultTraceRetentionDays: number;
 }) {
+  const t = useT();
   const logs = useRetentionSave(props.applicationId, props.serviceId);
   const traces = useRetentionSave(props.applicationId, props.serviceId);
 
@@ -58,7 +44,7 @@ export function ServiceRetentionField(props: {
     <>
       <RetentionField
         id={`${props.serviceId}-logs`}
-        clock={LOG_RETENTION}
+        clock={t.registry.retention.logs}
         value={props.retentionDays}
         defaultRetentionDays={props.defaultRetentionDays}
         pending={logs.isPending}
@@ -69,7 +55,7 @@ export function ServiceRetentionField(props: {
       />
       <RetentionField
         id={`${props.serviceId}-traces`}
-        clock={TRACE_RETENTION}
+        clock={t.registry.retention.traces}
         value={props.traceRetentionDays}
         defaultRetentionDays={props.defaultTraceRetentionDays}
         pending={traces.isPending}
@@ -84,6 +70,7 @@ export function ServiceRetentionField(props: {
 
 /** One field's own saving, so a failure on one clock is not reported under the other. */
 function useRetentionSave(applicationId: string, serviceId: string) {
+  const t = useT();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -95,7 +82,7 @@ function useRetentionSave(applicationId: string, serviceId: string) {
         params: { path: { id: serviceId } },
         body: policy,
       });
-      if (error !== undefined) throw new Error("Failed to save the retention.");
+      if (error !== undefined) throw new Error(t.registry.retention.saveFailed);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "services", applicationId] }),
   });
@@ -211,6 +198,7 @@ function ShorteningConfirmation(props: {
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const t = useT();
   const days = effectiveRetentionDays(props.proposed, props.defaultRetentionDays);
 
   return (
@@ -218,26 +206,22 @@ function ShorteningConfirmation(props: {
       <DialogContent>
         <div className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>
-              Shorten {props.clock.name} to {days} days?
-            </DialogTitle>
+            <DialogTitle>{t.registry.retention.shortenTitle(props.clock.name, days)}</DialogTitle>
             <DialogDescription>
-              {props.proposed === null &&
-                `This service will follow the server default of ${days} days. `}
-              {props.clock.subject} older than {days} days will be permanently deleted at the next
-              purge run. This cannot be undone.
+              {props.proposed === null && t.registry.retention.followsDefault(days)}
+              {t.registry.retention.purgeConsequence(props.clock.subject, days)}
             </DialogDescription>
           </DialogHeader>
 
           {props.failed && (
             <p className="text-[11.5px] text-destructive">
-              Saving failed — the retention is unchanged.
+              {t.registry.retention.saveFailedUnchanged}
             </p>
           )}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={props.onCancel}>
-              Cancel
+              {t.registry.cancel}
             </Button>
             <Button
               type="button"
@@ -245,7 +229,7 @@ function ShorteningConfirmation(props: {
               disabled={props.pending}
               onClick={props.onConfirm}
             >
-              Shorten retention
+              {t.registry.retention.shortenButton}
             </Button>
           </DialogFooter>
         </div>

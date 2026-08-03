@@ -43,6 +43,7 @@ internal static class SubscriptionEndpoints
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
         ICatalogReader catalogReader,
+        IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
     {
         if (GetUserId(principal) is not { } userId)
@@ -61,19 +62,22 @@ internal static class SubscriptionEndpoints
 
         if (visible is not null && applicationIds.Any(id => !visible.Contains(id)))
         {
-            return Results.BadRequest("An application outside your visibility cannot be subscribed to.");
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.ApplicationOutsideVisibility);
         }
 
         foreach (var serviceId in serviceIds)
         {
             if (!applicationOf.TryGetValue(serviceId, out var applicationId))
             {
-                return Results.BadRequest("An unregistered service cannot be subscribed to.");
+                var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+                return Results.BadRequest(messages.UnregisteredService);
             }
 
             if (visible is not null && !visible.Contains(applicationId))
             {
-                return Results.BadRequest("A service outside your visibility cannot be subscribed to.");
+                var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+                return Results.BadRequest(messages.ServiceOutsideVisibility);
             }
         }
 

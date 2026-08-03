@@ -1,3 +1,5 @@
+import { useT } from "@/i18n";
+
 import type { ServiceTile } from "./serviceOverview";
 
 /** One chip vocabulary for the whole board — group headings, cards and table rows agree. */
@@ -14,6 +16,7 @@ export const BADGE_CLEAR = "border-state-solved/25 bg-state-solved/10 text-state
  * means interactive, not "good news". The badge tones carry the state alone: no dots.
  */
 export function StatusBadges(props: { tile: ServiceTile }) {
+  const t = useT();
   const episodes = props.tile.episodes;
   if (episodes === undefined) {
     return <span className="font-mono text-[10.5px] text-[#4A6480]">—</span>;
@@ -23,10 +26,12 @@ export function StatusBadges(props: { tile: ServiceTile }) {
     return (
       <>
         <span className={`${BADGE} ${BADGE_TROUBLE}`}>
-          {episodes.open === 1 ? "open episode" : `${episodes.open} open episodes`}
+          {t.overview.badge.openEpisodes(episodes.open)}
         </span>
         {episodes.quieted > 0 && (
-          <span className={`${BADGE} ${BADGE_QUIETED}`}>{episodes.quieted} quieted</span>
+          <span className={`${BADGE} ${BADGE_QUIETED}`}>
+            {t.overview.badge.quieted(episodes.quieted)}
+          </span>
         )}
       </>
     );
@@ -35,21 +40,26 @@ export function StatusBadges(props: { tile: ServiceTile }) {
   if (episodes.quieted > 0) {
     return (
       <span className={`${BADGE} ${BADGE_QUIETED}`}>
-        {episodes.quieted === 1 ? "quieted episode" : `${episodes.quieted} quieted episodes`}
+        {t.overview.badge.quietedEpisodes(episodes.quieted)}
       </span>
     );
   }
 
-  return <span className={`${BADGE} ${BADGE_CLEAR}`}>all clear</span>;
+  return <span className={`${BADGE} ${BADGE_CLEAR}`}>{t.overview.badge.allClear}</span>;
 }
 
 /** The group heading's worst-state chip: any open → in trouble, else quieted, else all clear. */
 export function GroupBadge(props: { inTrouble: number; quieted: number }) {
+  const t = useT();
   if (props.inTrouble > 0) {
-    return <span className={`${BADGE} ${BADGE_TROUBLE}`}>{props.inTrouble} in trouble</span>;
+    return (
+      <span className={`${BADGE} ${BADGE_TROUBLE}`}>{t.overview.badge.inTrouble(props.inTrouble)}</span>
+    );
   }
   if (props.quieted > 0) {
-    return <span className={`${BADGE} ${BADGE_QUIETED}`}>{props.quieted} quieted</span>;
+    return (
+      <span className={`${BADGE} ${BADGE_QUIETED}`}>{t.overview.badge.quieted(props.quieted)}</span>
+    );
   }
-  return <span className={`${BADGE} ${BADGE_CLEAR}`}>all clear</span>;
+  return <span className={`${BADGE} ${BADGE_CLEAR}`}>{t.overview.badge.allClear}</span>;
 }

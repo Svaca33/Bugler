@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/api/queries";
 import type { Episode } from "@/api/client";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { describeMillis } from "@/lib/duration";
 import { serviceLabel } from "@/lib/serviceLabel";
 import { episodeRailClass } from "@/lib/severity";
@@ -10,7 +11,7 @@ import { episodeRailClass } from "@/lib/severity";
 import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
-import { clock, clockShort, ordinal } from "./format";
+import { clock, clockShort } from "./format";
 import { HealthCheckBadge } from "./HealthCheckBadge";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { SolveDialog } from "./SolveDialog";
@@ -29,6 +30,7 @@ export function OpenNowBand(props: {
   refreshedAt: number | undefined;
   onSelect: (id: string) => void;
 }) {
+  const t = useT();
   const now = useNow();
   const currentUser = useCurrentUser();
 
@@ -42,15 +44,14 @@ export function OpenNowBand(props: {
     <div className="flex flex-col gap-[9px] border-b border-[#17293D] bg-[#0C1A29] px-5 pt-3.5 pb-4">
       <div className="flex items-center gap-2.5">
         <span className="size-[7px] animate-[bpulse_1.6s_ease-in-out_infinite] rounded-full bg-severity-error-rail" />
-        <h2 className="text-[13px] font-semibold tracking-[-0.1px]">Open now</h2>
+        <h2 className="text-[13px] font-semibold tracking-[-0.1px]">{t.alerting.openNow.title}</h2>
         <span className="whitespace-nowrap font-mono text-[11px] text-[#7D93AA]">
-          {props.episodes.length} episode{props.episodes.length === 1 ? "" : "s"} · {unheld} with
-          nobody on it · oldest {describeLiveMillis(oldest)}
+          {t.alerting.openNow.summary(props.episodes.length, unheld, describeLiveMillis(oldest))}
         </span>
         {props.refreshedAt !== undefined && (
           <span className="ml-auto flex items-center gap-1.5 whitespace-nowrap font-mono text-[10.5px] text-[#6E86A0]">
             <span className="size-1.5 animate-[bpulse_2.4s_ease-in-out_infinite] rounded-full bg-[#4E9E6A]" />
-            live · refreshed {describeLiveMillis(now - props.refreshedAt)} ago
+            {t.alerting.openNow.refreshedAgo(describeLiveMillis(now - props.refreshedAt))}
           </span>
         )}
       </div>
@@ -82,6 +83,7 @@ function OpenCard(props: {
   onSelect: (id: string) => void;
 }) {
   const { episode } = props;
+  const t = useT();
   const now = useNow();
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
@@ -116,7 +118,9 @@ function OpenCard(props: {
                 : "border-[#3C2A32] text-[#F0685A]"
             }`}
           >
-            {priorCount > 0 ? `${ordinal(priorCount + 1)} time` : "first time"}
+            {priorCount > 0
+              ? t.alerting.recurrence.nthTime(priorCount + 1)
+              : t.alerting.recurrence.firstTime}
           </span>
         </div>
 
@@ -131,9 +135,13 @@ function OpenCard(props: {
           {/* Nothing was logged under the health check watch, so there is nothing to count. */}
           {episode.watch !== "HealthCheck" && (
             <>
-              <span className="text-severity-error">{episode.errorCount} err</span>
+              <span className="text-severity-error">
+                {t.alerting.list.errCount(episode.errorCount)}
+              </span>
               {Number(episode.warnCount) > 0 && (
-                <span className="text-severity-warn">{episode.warnCount} warn</span>
+                <span className="text-severity-warn">
+                  {t.alerting.list.warnCount(episode.warnCount)}
+                </span>
               )}
             </>
           )}
@@ -145,12 +153,15 @@ function OpenCard(props: {
         {episode.acknowledgedBy !== null ? (
           <span className="rounded-[5px] bg-[#16283C] px-[7px] py-0.5 font-mono text-[10.5px] whitespace-nowrap text-[#A9BDD1]">
             {heldByMe
-              ? `you hold this · ${clockShort(episode.acknowledgedAt!)}`
-              : `held by ${episode.acknowledgedBy} · ${describeMillis(now - Date.parse(episode.acknowledgedAt!))}`}
+              ? t.alerting.openNow.youHold(clockShort(episode.acknowledgedAt!))
+              : t.alerting.openNow.heldBy(
+                episode.acknowledgedBy,
+                describeMillis(now - Date.parse(episode.acknowledgedAt!)),
+              )}
           </span>
         ) : (
           <span className="rounded-[5px] border border-dashed border-[#3C2A32] px-[7px] py-0.5 font-mono text-[10.5px] whitespace-nowrap text-[#F0685A]">
-            nobody on this yet
+            {t.alerting.openNow.nobodyYet}
           </span>
         )}
 
@@ -162,7 +173,7 @@ function OpenCard(props: {
               disabled={actions.acknowledge.isPending}
               onClick={() => actions.acknowledge.mutate()}
             >
-              Acknowledge
+              {t.alerting.actions.acknowledge}
             </Button>
           ) : heldByMe ? (
             <Button
@@ -171,7 +182,7 @@ function OpenCard(props: {
               disabled={actions.withdraw.isPending}
               onClick={() => actions.withdraw.mutate()}
             >
-              Withdraw
+              {t.alerting.actions.withdraw}
             </Button>
           ) : (
             <Button
@@ -180,11 +191,11 @@ function OpenCard(props: {
               disabled={actions.acknowledge.isPending}
               onClick={() => actions.acknowledge.mutate()}
             >
-              Take over
+              {t.alerting.actions.takeOver}
             </Button>
           )}
           <Button size="sm" onClick={() => setSolveOpen(true)}>
-            Solve
+            {t.alerting.actions.solve}
           </Button>
         </div>
 

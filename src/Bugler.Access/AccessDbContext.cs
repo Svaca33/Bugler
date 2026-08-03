@@ -2,12 +2,17 @@ using Bugler.Access.Outbox;
 using Bugler.Access.Users;
 using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Bugler.Access;
 
 public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
     : DbContext(options)
 {
+    // A converter instance rather than a lambda: it applies to the nullable property as-is.
+    private static readonly ValueConverter<Language, string> LanguageConverter =
+        new(language => language.Code, code => new Language(code));
+
     public DbSet<User> Users => Set<User>();
     public DbSet<ApplicationGrant> ApplicationGrants => Set<ApplicationGrant>();
     public DbSet<ResetTicket> ResetTickets => Set<ResetTicket>();
@@ -22,6 +27,9 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
             user.Property(u => u.Email).HasMaxLength(320);
             user.HasIndex(u => u.Email).IsUnique();
             user.Property(u => u.DisplayName).HasMaxLength(200);
+            user.Property(u => u.Language)
+                .HasConversion(LanguageConverter)
+                .HasMaxLength(20);
         });
 
         modelBuilder.Entity<ApplicationGrant>(grant =>

@@ -49,6 +49,7 @@ Module boundaries are enforced by `tests/Bugler.ArchitectureTests` (backend) and
 ## Frontend
 
 - React 19 + TanStack Router/Query, shadcn-style kit in `frontend/src/components/ui` (Button, Card, Input, Label, Select, Textarea) — compose these, don't invent new primitives.
+- **No hardcoded user-facing strings** (ADR 0024): UI text goes through the typed catalog in `frontend/src/i18n/` (`useT()` in components, `getMessages()` in plain modules; dates/numbers via `getFormatLocale()`), server sentences through each module's `…Messages` catalog (`IRequestLanguage` for refusals, recipient/server language for mail and chat). Adding a string means adding it to **every** language (en + cs) — the compilers enforce completeness; translate with AI right in the PR. Machine-facing text (logs, `/health`, OTLP answers, severity band names) stays English.
 - Design tokens: Tailwind v4 theme in [frontend/styles/globals.css](frontend/styles/globals.css) (brass theme, IBM Plex, light + `.dark`). Spacing is gap-based; values/ids/timestamps render mono (`font-mono`, `code`/`time`/`[data-mono]`).
 - API client is generated from OpenAPI (`frontend/src/api/schema.d.ts`, openapi-fetch).
 
