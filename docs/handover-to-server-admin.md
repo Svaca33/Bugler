@@ -149,6 +149,9 @@ docker compose -f docker-compose.prod.yml up -d
 
 Bugler migrates its own schemas at startup, which takes a few seconds on an empty database.
 
+Inside the container Bugler runs as an unprivileged user rather than as root, and the compose file
+drops every Linux capability — it asks for none, since all three of its ports are above 1024.
+
 ## Checking it worked
 
 ```bash

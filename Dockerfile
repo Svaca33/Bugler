@@ -28,4 +28,15 @@ COPY --from=backend /out ./
 COPY --from=frontend /app/dist ./wwwroot
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080 4317 4318
+# Everything above this line ran as root; the application does not. The runtime image ships `app`
+# (uid 1654) for exactly this, and the two copies deliberately come before it: what they wrote
+# stays owned by root, so the code this process runs is the one thing it cannot rewrite. Named by
+# number rather than by name, because the number is what Kubernetes `runAsNonRoot` can check.
+#
+# It asks for no capability — all three ports are above 1024 — which is what lets the compose
+# files take every one of them away. What still writes is ASP.NET's Data Protection key ring,
+# now landing in /home/app instead of /root and still lost whenever the container is rebuilt.
+# A read-only root filesystem waits on issue #23 settling where that ring belongs: forced now,
+# it would answer that question by accident.
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Bugler.Host.dll"]

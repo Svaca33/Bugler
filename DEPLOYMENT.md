@@ -134,6 +134,13 @@ docker compose -f docker-compose.prod.yml up -d
 Only three files need to reach the server: `docker-compose.prod.yml`, the `.env` built from
 `.env.example`, and this document. Everything else arrives in the image.
 
+Upgrading **to 0.17** is the first upgrade where pulling the image is not the whole of it: it
+changes `docker-compose.prod.yml` itself, so send the new one. Bugler now runs as an unprivileged
+user inside its container rather than as root — that half rides along in the image and needs
+nothing done — while the `cap_drop` and `security_opt` lines are the compose file's, and a server
+still running its old copy quietly keeps every capability the container was ever handed. Nothing
+breaks either way, and there is nothing to chown: the container mounts no volume.
+
 Upgrading **to 0.15** signs everyone out once, and only once: on a server reached over HTTPS the
 Session cookie changes name to `__Host-bugler.session` (ADR 0019), and cookies under the old name
 are simply not sent any more. Signing in again is the whole of it. That same upgrade also makes

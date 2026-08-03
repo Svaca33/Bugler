@@ -32,6 +32,18 @@ services:
     # thing it tries. Without this the process exits and stays exited; with it the next attempt
     # succeeds moments later.
     restart: unless-stopped
+    # The image already runs as `app` rather than as root, which empties the capabilities the
+    # process holds. It does not empty the set it is permitted to reach for — a setuid binary
+    # could still climb back into them. cap_drop takes them out of that set; no-new-privileges
+    # forbids the climb itself. Bugler wants none of them: its three ports are all above 1024.
+    #
+    # postgres and mailpit above are left as they are. They are development scaffolding, and
+    # postgres in particular chowns its data directory as root before dropping to its own user —
+    # take that capability away and a fresh clone never gets its first start.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       ConnectionStrings__bugler: "Host=postgres;Port=5432;Database=bugler;Username=bugler;Password=bugler"
       # Mail goes to the local mailpit; point this at a real server to have it leave the machine.

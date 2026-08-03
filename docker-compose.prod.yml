@@ -18,6 +18,13 @@ services:
     # and a restart, and two servers on the same tag are running the same thing.
     image: ${BUGLER_IMAGE:?set BUGLER_IMAGE in .env to the version you were told to run, e.g. svaca33/bugler:0.1.69}
     restart: unless-stopped
+    # The image runs as `app`, not as root, which empties the capabilities the process holds — but
+    # not the set it may reach for, which a setuid binary could still climb back into. cap_drop
+    # takes them out of that set; no-new-privileges forbids the climb. Bugler wants none of them.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     environment:
       # Maximum Pool Size is deliberate: the cluster's max_connections is shared with every other
       # database on it, and Npgsql would otherwise help itself to a hundred.
