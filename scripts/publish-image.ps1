@@ -4,6 +4,11 @@
     Builds the Bugler image and tags it with the version from Directory.Build.props.
 
 .DESCRIPTION
+    Not the normal way to release. A release is a pushed git tag, which .github/workflows/release.yml
+    turns into an image on GHCR and a GitHub Release, built on a clean runner and authenticated with
+    that run's own token. This script is for building the image locally — to look at it, to try it,
+    or to publish by hand on the day CI cannot.
+
     The tag is never typed by hand. It is <VersionPrefix> from Directory.Build.props followed by
     the number of commits made since that major.minor began, and that same count is passed into
     the container build, so the assemblies inside the image carry exactly the version the tag
@@ -19,18 +24,18 @@
     script stops after tagging and prints the command to run.
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-image.ps1 -Repository svaca33/bugler
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-image.ps1 -Repository ghcr.io/svaca33/bugler
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-image.ps1 -Repository svaca33/bugler -Push
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/publish-image.ps1 -Repository ghcr.io/svaca33/bugler -Push
 #>
 [CmdletBinding()]
 param(
-    # The Docker Hub repository to tag for, e.g. 'account/bugler'.
+    # The registry repository to tag for, e.g. 'ghcr.io/account/bugler'.
     [Parameter(Mandatory = $true)]
     [string] $Repository,
 
-    # Push after building. Requires `docker login` to have been done already.
+    # Push after building. Requires `docker login ghcr.io` to have been done already.
     [switch] $Push,
 
     # Build anyway from a working tree that has uncommitted changes.
@@ -98,8 +103,9 @@ finally {
 if (-not $Push) {
     Write-Step "Built and tagged $tag"
     Write-Host ''
-    Write-Host '    Not pushed. To publish it:' -ForegroundColor Yellow
-    Write-Host "        docker login -u <account>   # a read-only token cannot push; use one that may write"
+    Write-Host '    Not pushed. Normally a release is a pushed git tag and CI does this; by hand:' -ForegroundColor Yellow
+    Write-Host "        gh auth refresh -h github.com -s write:packages   # once; gh has no such scope by default"
+    Write-Host "        gh auth token | docker login ghcr.io -u <account> --password-stdin"
     Write-Host "        docker push $tag"
     Write-Host ''
     Write-Host "    Then pin it on the server: BUGLER_IMAGE=$tag in its .env" -ForegroundColor Yellow
@@ -109,7 +115,7 @@ if (-not $Push) {
 Write-Step "Pushing $tag"
 & docker push $tag
 if ($LASTEXITCODE -ne 0) {
-    Stop-WithFailure 'docker push failed. Signed in? `docker login -u <account>` with a token that may write.'
+    Stop-WithFailure 'docker push failed. Signed in? `gh auth token | docker login ghcr.io -u <account> --password-stdin`, with write:packages on that token.'
 }
 
 Write-Step "Published $tag - pin it on the server with BUGLER_IMAGE=$tag"

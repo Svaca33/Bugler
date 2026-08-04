@@ -1,0 +1,86 @@
+name: Release
+
+# A release is one act: push a tag. Everything below follows from it, so the tag on the registry,
+# the assemblies inside the image and the GitHub Release cannot disagree with each other.
+on:
+  push:
+    tags: ["v*"]
+
+# GITHUB_TOKEN, scoped to what this needs and nothing else. No registry credential is stored
+# anywhere -- not in the repository, not on anybody's machine.
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/svaca33/bugler
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The patch number is a commit count, so the whole history has to be here for the check
+          # below to be able to disagree with the tag.
+          fetch-depth: 0
+
+      - name: Read the version, and make the tag prove it
+        id: version
+        run: |
+          set -euo pipefail
+          tagged="${GITHUB_REF_NAME#v}"
+
+          prefix=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
+          base=$(sed -n 's:.*<VersionPatchBase>\(.*\)</VersionPatchBase>.*:\1:p' Directory.Build.props)
+          height=$(( $(git rev-list --count HEAD) - base ))
+          derived="${prefix}.${height}"
+
+          if [ "$tagged" != "$derived" ]; then
+            echo "::error::Tag v${tagged} does not match what this commit is: ${derived}." \
+                 "The version is derived, never typed -- tag the commit the number belongs to."
+            exit 1
+          fi
+
+          echo "version=${tagged}" >> "$GITHUB_OUTPUT"
+          echo "height=${height}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build
+        run: |
+          docker build \
+            --build-arg "BUILD_HEIGHT=${{ steps.version.outputs.height }}" \
+            -t "${IMAGE}:${{ steps.version.outputs.version }}" \
+            .
+
+      # Only the version, deliberately never `latest`: a server pins the version it was told to run,
+      # rolling back is then one line and a restart, and two servers on one tag are running the same
+      # thing. `latest` would quietly undo all three.
+      - name: Push
+        run: docker push "${IMAGE}:${{ steps.version.outputs.version }}"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          notes=$(mktemp)
+          {
+            echo "### Running this version"
+            echo
+            echo '```'
+            echo "BUGLER_IMAGE=${IMAGE}:${VERSION}"
+            echo '```'
+            echo
+            echo "in the \`.env\` beside \`docker-compose.prod.yml\`, then \`docker compose up -d\`."
+            echo "See [DEPLOYMENT.md](https://github.com/Svaca33/Bugler/blob/v${VERSION}/DEPLOYMENT.md)."
+          } > "$notes"
+
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes-file "$notes" \
+            --generate-notes

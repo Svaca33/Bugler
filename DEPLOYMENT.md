@@ -16,25 +16,16 @@ two in step when what the server needs changes.
 
 ## Where the image comes from
 
-Bugler is published to **`svaca33/bugler`**, a private Docker Hub repository, so the machine has to
-sign in once before it can pull:
+Bugler is published to **`ghcr.io/svaca33/bugler`**, publicly, so **nothing has to sign in to pull
+it** — no token on the server, no credential in `~/.docker/config.json`, nothing to rotate. Every
+published version is listed under [Releases](https://github.com/Svaca33/Bugler/releases).
 
 ```bash
-docker login -u svaca33
+docker pull ghcr.io/svaca33/bugler:0.20.0
 ```
 
-Use an access token, never the account password: Docker Hub issues them separately and either side
-can revoke one without disturbing anything else. That matters here, because `docker login` leaves
-the credential in `~/.docker/config.json` base64-encoded rather than encrypted — read-only is what
-makes leaving it there acceptable.
-
-The scope wanted is **Read only**, which reaches private repositories. **Public Repo Read-only** is
-a different scope and the wrong one: it reads public content only, so a pull of this image fails
-with a not-found that looks exactly like a typo in the tag.
-
-Note where this leaves the deployment: it depends on a personal Docker Hub account. Moving the image
-to a registry the company owns, or making it public if Bugler is ever open-sourced, removes both the
-token and that dependency.
+There is no `latest`, on purpose. A server pins the version it was told to run: rolling back is then
+a one-line edit and a restart, and two servers on one tag are running the same thing.
 
 ### Publishing a version
 
@@ -56,23 +47,30 @@ it counts its own edit as the first commit of the new line; anything else waitin
 would land in the new line while belonging to the old one.
 
 That count cannot be worked out inside the container — `.dockerignore` keeps `.git` out of the build
-context, and should — so the script counts it outside and passes it in. Which is also what makes the
-tag on the registry and the assemblies inside the image provably the same number, rather than two
-things somebody kept in step by hand.
+context, and should — so it is counted outside and passed in. Which is what makes the tag on the
+registry and the assemblies inside the image provably the same number, rather than two things
+somebody kept in step by hand.
+
+**Releasing is pushing a tag.** Commit the work, then:
 
 ```bash
-powershell -File scripts/publish-image.ps1 -Repository svaca33/bugler
+git tag -a v0.20.0 -m "0.20.0"
+git push origin v0.20.0
 ```
 
-It refuses a working tree with uncommitted changes: the count would name a commit whose content is
-not what is being built, and a tag that lies about which commit it holds is worse than no tag at
-all.
+[`.github/workflows/release.yml`](.github/workflows/release.yml) does the rest: it builds the image,
+pushes it to GHCR and opens the GitHub Release. It authenticates with the `GITHUB_TOKEN` of that
+run, so no registry credential is stored anywhere — not in this repository and not on your machine —
+and the image is built on a clean runner rather than on whatever a laptop happens to contain.
 
-It builds and tags, then stops and prints the push — that needs credentials and puts the image
-somewhere outside the machine, so it stays a deliberate second step. `-Push` does it once
-`docker login` has been done with a token that may write. Never push over a tag that has already
-shipped: the server pins its tag, and going back to it only means anything while it still holds
-what it held.
+The workflow refuses a tag that disagrees with the commit it points at: it derives the version from
+`Directory.Build.props` and the commit count, and fails if `v…` says something else. The version is
+derived, never typed, so the way to release a different number is to tag the commit that number
+belongs to. Never move a tag that has already shipped — the server pins it, and going back to it
+only means anything while it still holds what it held.
+
+[`scripts/publish-image.ps1`](scripts/publish-image.ps1) still exists for a local build, and can
+push with `-Push` if a release ever has to be made by hand. It is not the normal path.
 
 Note what this rules out: the published version cannot be written down anywhere in this repository,
 because writing it down is a commit, which makes it the previous version. It belongs in the `.env`

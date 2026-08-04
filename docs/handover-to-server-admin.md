@@ -6,8 +6,8 @@ already has — **PostgreSQL** and a **mail relay**.
 
 This document is the whole of what it asks for. Everything else is done by whoever owns Bugler.
 
-You will receive three things separately: `docker-compose.prod.yml`, a `.env` to complete, and a
-Docker Hub access token.
+You will receive two things separately: `docker-compose.prod.yml` and a `.env` to complete. No
+registry credential — the image is public.
 
 ---
 
@@ -130,17 +130,11 @@ firewall decide who reaches it.
 
 ## Running it
 
-The image is published to a private Docker Hub repository, so the machine signs in once:
+The image is published publicly to `ghcr.io/svaca33/bugler`, so the machine signs in to nothing and
+holds no registry credential. `BUGLER_IMAGE` in `.env` names the exact version to run; there is no
+`latest`, so an upgrade is that one line and a restart, and so is a rollback.
 
-```bash
-docker login -u svaca33
-```
-
-Use the access token you were sent, not a password. Its scope is **Read only**, which is what
-reaches a private repository — note that Docker Hub also offers a scope called *Public Repo
-Read-only*, which does not, and whose failure looks like a mistyped image name.
-
-Then, in the directory holding `docker-compose.prod.yml` and `.env`:
+In the directory holding `docker-compose.prod.yml` and `.env`:
 
 ```bash
 docker compose -f docker-compose.prod.yml pull
