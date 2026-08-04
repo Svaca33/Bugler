@@ -114,13 +114,25 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// The loser of the race, in either of the two places it can be named: PostgreSQL may raise
-    /// 40001 on the statement or on the commit, and a statement's version arrives wrapped by EF.
+    /// The loser of the race, however deeply it happens to be buried. PostgreSQL may raise 40001 on
+    /// the statement or on the commit, and how many layers EF wraps the statement's version in is
+    /// not ours to predict: a commit arrives bare, a failed insert arrives as a DbUpdateException,
+    /// and EF wraps that again in an InvalidOperationException when it judges the failure transient.
+    /// Counting the layers is what made this return 500 to the loser instead of the refusal it had
+    /// already been given a name for, so the chain is walked to its end rather than to a fixed depth.
     /// </summary>
-    private static bool IsSerializationFailure(Exception failure) =>
-        failure is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure }
-        || failure.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.SerializationFailure };
+    private static bool IsSerializationFailure(Exception failure)
+    {
+        for (Exception? error = failure; error is not null; error = error.InnerException)
+        {
+            if (error is PostgresException { SqlState: PostgresErrorCodes.SerializationFailure })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// What the sign-in page needs before it can render: whether this server is still unclaimed,
