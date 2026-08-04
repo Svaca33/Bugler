@@ -40,6 +40,9 @@ appsettings.*.Local.json
 Thumbs.db
 .DS_Store
 
+# Working notes that plan the repository itself rather than describe it
+OPEN-SOURCE-CHECKLIST.md
+
 # Claude
 .claude/*
 !.claude/settings.json
