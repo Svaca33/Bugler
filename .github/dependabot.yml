@@ -4,9 +4,9 @@ version: 2
 # stops reading them, which is worse than not having them: security updates arrive separately and
 # immediately through Dependabot alerts, and these are only the ordinary ones.
 #
-# The frontend is deliberately absent. Both `frontend` and `e2e` lock with `bun.lock`, and pointing
-# the npm ecosystem at them would update `package.json` without the lockfile beside it -- which CI,
-# running `bun install --frozen-lockfile`, would refuse. See the note in OPEN-SOURCE-CHECKLIST.
+# `bun` is the ecosystem for both frontend directories, not `npm`: Dependabot's own package manager
+# lookup names it, and its bun implementation knows `bun.lock`. npm would have edited `package.json`
+# and left the lockfile behind, which CI installs with `--frozen-lockfile` and would refuse.
 updates:
   - package-ecosystem: nuget
     directory: "/"
@@ -31,4 +31,21 @@ updates:
       interval: monthly
     groups:
       base-images:
+        patterns: ["*"]
+
+  - package-ecosystem: bun
+    directory: "/frontend"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      frontend:
+        patterns: ["*"]
+
+  - package-ecosystem: bun
+    directory: "/e2e"
+    schedule:
+      interval: monthly
+    groups:
+      e2e:
         patterns: ["*"]
