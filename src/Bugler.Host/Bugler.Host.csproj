@@ -18,7 +18,7 @@
       GHSA-v5pm-xwqc-g5wc. A direct reference is a floor rather than a pin, so a later ASP.NET Core
       that asks for more than this still wins, and this line can go the day it does.
     -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
