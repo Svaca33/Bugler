@@ -47,6 +47,15 @@ public sealed class IngestionDbContext(DbContextOptions<IngestionDbContext> opti
             span.Property(s => s.Links).HasColumnType("jsonb");
             span.HasIndex(s => new { s.ServiceId, s.StartTime }).IsDescending(false, true);
             span.HasIndex(s => s.TraceId);
+            // Serves the Exploration traces list (ADR 0026): the list draws its page from Root Spans
+            // here and then aggregates only those traces through ix_spans_trace_id. The filter keeps
+            // this to one entry per trace, `start_time` leads so the LIMIT stops the scan, and the
+            // two payload columns answer the Source Filter without touching the heap.
+            span.HasIndex(s => s.StartTime)
+                .IsDescending(true)
+                .HasFilter("parent_span_id IS NULL")
+                .IncludeProperties(s => new { s.ServiceId, s.TraceId })
+                .HasDatabaseName("ix_spans_roots");
         });
 
         modelBuilder.Entity<StoredRelease>(release =>

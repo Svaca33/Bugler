@@ -3245,7 +3245,8 @@
       },
       "ListTracesResponse": {
         "required": [
-          "items"
+          "items",
+          "truncated"
         ],
         "type": "object",
         "properties": {
@@ -3254,6 +3255,9 @@
             "items": {
               "$ref": "#/components/schemas/TraceSummaryDto"
             }
+          },
+          "truncated": {
+            "type": "boolean"
           }
         }
       },

@@ -25,6 +25,29 @@ public sealed class ScopeResolver(IReadVisibility visibility, ICatalogReader cat
             return null;
         }
 
+        return await NameServiceIdsAsync(filter, visibleApplications, cancellationToken);
+    }
+
+    /// <returns>
+    /// The same set as <see cref="ResolveServiceIdsAsync"/>, but always named one by one: an
+    /// unrestricted caller gets every registered Service rather than null. A query that reaches its
+    /// rows through a `(service_id, …)` index needs a list to walk, and "no restriction" is not one.
+    /// Naming them all is equivalent to leaving the scope open because telemetry never outlives its
+    /// Service — deleting one erases what it sent (ADR 0007), so no rows sit outside this list.
+    /// </returns>
+    public async Task<Guid[]> ResolveEveryServiceIdAsync(
+        SourceFilter filter,
+        CancellationToken cancellationToken)
+    {
+        var visibleApplications = await visibility.GetVisibleApplicationsAsync(cancellationToken);
+        return await NameServiceIdsAsync(filter, visibleApplications, cancellationToken);
+    }
+
+    private async Task<Guid[]> NameServiceIdsAsync(
+        SourceFilter filter,
+        IReadOnlyCollection<ApplicationId>? visibleApplications,
+        CancellationToken cancellationToken)
+    {
         var services = await catalog.GetServicesAsync(cancellationToken);
         return services
             .Where(s => visibleApplications is null || visibleApplications.Contains(s.ApplicationId))

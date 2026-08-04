@@ -15,7 +15,20 @@ import { LanguageProvider, getMessages } from "./i18n";
 
 import "./index.css";
 
-const queryClient = new QueryClient();
+// Explore's queries read production-sized windows, so a failed one is usually a query the server
+// could not finish rather than a packet that went missing — and the library's default of three
+// retries turns that into four runs of the most expensive thing on the page, at the moment the
+// server is least able to afford it. Refetching on window focus does the same on every tab switch.
+// Both lists carry an explicit Refresh, and their error state offers a retry, so renewing stays
+// something asked for.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const router = createRouter({
   routeTree,

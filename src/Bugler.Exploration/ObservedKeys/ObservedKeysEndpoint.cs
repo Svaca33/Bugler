@@ -47,27 +47,39 @@ internal static class ObservedKeysEndpoint
         NpgsqlDataSource dataSource,
         CancellationToken cancellationToken)
     {
-        var serviceIds = await scope.ResolveServiceIdsAsync(filter, cancellationToken);
+        // Every Service is named rather than left open, because the sample is drawn per Service
+        // below and "no restriction" gives nothing to draw from.
+        var serviceIds = await scope.ResolveEveryServiceIdAsync(filter, cancellationToken);
 
-        if (serviceIds is { Length: 0 })
+        if (serviceIds.Length == 0)
         {
             return TypedResults.Ok(new ObservedKeysResponse([]));
         }
 
         await using var command = dataSource.CreateCommand();
-        var where = "";
-        if (serviceIds is not null)
-        {
-            where = " WHERE service_id = ANY(@services)";
-            command.Parameters.AddWithValue("services", serviceIds);
-        }
+        command.Parameters.AddWithValue("services", serviceIds);
 
         // Observed Keys are a sample, not a schema: scalar leaf paths from the most recent rows only.
+        //
+        // "The most recent rows" is asked one Service at a time and merged, rather than of the table
+        // as a whole. Both telemetry tables are indexed by `(service_id, <time> DESC)` and by nothing
+        // that leads with time alone over every row, so a global ordering has no index to stand on:
+        // the picker's query planned as a sequential scan of the whole table, tens of gigabytes to
+        // sample two thousand rows. Per Service the same index answers with a LIMIT that stops it,
+        // and merging the drawn sets keeps the sample exactly what it was — the newest rows the
+        // caller may see, whichever Service they came from.
         command.CommandText = $"""
             WITH RECURSIVE sample AS (
-                SELECT attributes, resource_attributes
-                FROM {table}{where}
-                ORDER BY {timeColumn} DESC, id DESC
+                SELECT recent.attributes, recent.resource_attributes
+                FROM unnest(@services) AS scoped(service_id)
+                CROSS JOIN LATERAL (
+                    SELECT s.attributes, s.resource_attributes, s.{timeColumn}, s.id
+                    FROM {table} s
+                    WHERE s.service_id = scoped.service_id
+                    ORDER BY s.{timeColumn} DESC, s.id DESC
+                    LIMIT {SampleSize}
+                ) recent
+                ORDER BY recent.{timeColumn} DESC, recent.id DESC
                 LIMIT {SampleSize}
             ),
             node AS (

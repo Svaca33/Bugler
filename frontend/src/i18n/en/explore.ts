@@ -13,6 +13,15 @@ export const explore: ExploreMessages = {
     observedKeys: "Failed to load observed keys",
   },
 
+  listError: {
+    title: "This list could not be loaded.",
+    retry: "Try again",
+  },
+
+  errorSearchTruncated:
+    "The search stopped before reaching the end of the window — there may be older failed traces "
+    + "than the ones below. Narrow the time range or the source to search a smaller window.",
+
   rail: {
     scopeGroup: "SCOPE",
     sourceGroup: "SOURCE",

@@ -13,6 +13,7 @@ import { toQueryParams, type AttributeFilter } from "./attributeFilters";
 import { FilterGroup, FilterRail } from "@/components/ui/filter-rail";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { facetOptions, serviceLabels, type SourceFilters } from "@/lib/sourceFilter";
+import { ListError } from "./ListError";
 import { RefreshButton } from "./RefreshButton";
 import { EMPTY_TIME, emptyStateMessage, widerPresets, type TimeFilterValue } from "./timeFilter";
 import { TimeFilterControl } from "./TimeFilterControl";
@@ -143,10 +144,19 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
         <div className="flex items-center gap-3.5 px-5 py-3">
           <h1 className="text-sm font-semibold tracking-[-0.1px]">{t.explore.traces.title}</h1>
           <div className="ml-auto flex items-center gap-3">
-            <span className="font-mono text-[11.5px] text-[#6E86A0]">{t.explore.traces.count(items.length)}</span>
+            {/* A count of zero drawn from a query that never answered would read as "no traces". */}
+            {!traces.isError && (
+              <span className="font-mono text-[11.5px] text-[#6E86A0]">{t.explore.traces.count(items.length)}</span>
+            )}
             <RefreshButton busy={traces.isFetching} onRefresh={refresh} />
           </div>
         </div>
+
+        {traces.data?.truncated === true && (
+          <p className="border-y border-[#3A2E17] bg-[rgba(233,164,60,0.08)] px-5 py-2 text-[12.5px] text-[#F6C170]">
+            {t.explore.errorSearchTruncated}
+          </p>
+        )}
 
         <div className="min-h-0 flex-1 overflow-auto">
           <div
@@ -216,7 +226,10 @@ export function TracesPage(props: { filters: TraceFilters; onChange: (filters: T
                 </div>
               );
             })}
-            {items.length === 0 && !traces.isPending && (
+            {traces.isError && (
+              <ListError message={traces.error.message} onRetry={() => void traces.refetch()} />
+            )}
+            {items.length === 0 && !traces.isPending && !traces.isError && (
               <div className="flex flex-col items-center gap-3 py-16">
                 <p className="text-[#8CA1B8]">{emptyStateMessage("traces", filters)}</p>
                 {widerPresets(filters).length > 0 && (

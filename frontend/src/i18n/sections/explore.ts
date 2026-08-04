@@ -19,6 +19,23 @@ export interface ExploreMessages {
     observedKeys: string;
   };
 
+  /**
+   * What a list says when its query failed. This is not the empty state: "nothing matched" and
+   * "we could not ask" are different answers, and in an observability tool the first one read in
+   * place of the second is a lie about production.
+   */
+  listError: {
+    /** Sits above the reason, which is the thrown `loadFailed` message. */
+    title: string;
+    retry: string;
+  };
+
+  /**
+   * Shown when an error search gave up before reading the whole window (ADR 0026) — the list is a
+   * beginning, not the answer.
+   */
+  errorSearchTruncated: string;
+
   /** The filter rail on both list pages: group labels and the source selects. */
   rail: {
     scopeGroup: string;

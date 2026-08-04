@@ -2523,6 +2523,7 @@ export interface components {
         };
         ListTracesResponse: {
             items: components["schemas"]["TraceSummaryDto"][];
+            truncated: boolean;
         };
         LogCountResponse: {
             /** Format: int32 */

@@ -20,6 +20,7 @@ import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { FilterGroup, FilterRail } from "@/components/ui/filter-rail";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { tenantOf } from "./format";
+import { ListError } from "./ListError";
 import { LogDetailPanel } from "./LogDetailPanel";
 import { LogVolumeChart } from "./LogVolumeChart";
 import { RefreshButton } from "./RefreshButton";
@@ -193,8 +194,11 @@ export function LogsPage(props: {
   // millions to put an exact digit on the end of a number read as "a lot" either way. A followed
   // list is counted nowhere at all: it is a window on what is arriving rather than an account of
   // it, and what it declines to say it declines to say in numbers too (Exploration ADR 0004).
-  const counted =
-    total.data === undefined
+  // A list that failed is counted nowhere either: "0 loaded" drawn from a query that never
+  // answered is the same lie as an empty state in its place.
+  const counted = logs.isError
+    ? undefined
+    : total.data === undefined
       ? t.explore.logs.loaded(items.length)
       : t.explore.logs.counted(items.length, Number(total.data.total), total.data.capped);
 
@@ -326,7 +330,9 @@ export function LogsPage(props: {
             )}
             {/* Follow is not a filter — it is how this list is being read, so it lives on the list. */}
             <div className="ml-auto flex items-center gap-3">
-              {!follow && <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>}
+              {!follow && counted !== undefined && (
+                <span className="font-mono text-[11.5px] text-[#6E86A0]">{counted}</span>
+              )}
               {/* Follow already renews the list on its own tick, so Refresh steps aside with the
                   paging and the count: two renewers over one list could only disagree. */}
               {!follow && (
@@ -417,7 +423,10 @@ export function LogsPage(props: {
                   </div>
                 );
               })}
-              {items.length === 0 && !logs.isPending && (
+              {logs.isError && (
+                <ListError message={logs.error.message} onRetry={() => void logs.refetch()} />
+              )}
+              {items.length === 0 && !logs.isPending && !logs.isError && (
                 <div className="flex flex-col items-center gap-3 py-16">
                   <p className="text-[#8CA1B8]">{emptyStateMessage("logRecords", filters)}</p>
                   {widerPresets(filters).length > 0 && (
@@ -457,7 +466,9 @@ export function LogsPage(props: {
                     ? t.explore.logs.loadOlder
                     : t.explore.logs.noOlderRecords}
               </Button>
-              <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
+              {counted !== undefined && (
+                <span className="font-mono text-[11px] text-[#6E86A0]">{counted}</span>
+              )}
             </div>
           )}
         </ResizablePanel>

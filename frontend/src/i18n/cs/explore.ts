@@ -14,6 +14,15 @@ export const explore: ExploreMessages = {
     observedKeys: "Nepodařilo se načíst pozorované klíče",
   },
 
+  listError: {
+    title: "Tento seznam se nepodařilo načíst.",
+    retry: "Zkusit znovu",
+  },
+
+  errorSearchTruncated:
+    "Hledání skončilo dřív, než došlo na konec okna — starších chybných tras může být víc, než je "
+    + "níže vidět. Zužte časový rozsah nebo zdroj, ať se prohledává menší okno.",
+
   rail: {
     scopeGroup: "ZAMĚŘENÍ",
     sourceGroup: "ZDROJ",

@@ -321,6 +321,43 @@ public sealed class ExplorationApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Observed_keys_merge_across_services_and_narrow_with_the_source_filter()
+    {
+        // The sample is drawn one Service at a time and merged, so a second sender is what exercises
+        // the merge — and the Source Filter still has to cut the answer back down to one of them.
+        var (_, workerKey) = await _harness.SeedServiceAsync(
+            _harness.ApplicationId, "acme", "prod", "worker");
+
+        var logs = new ExportLogsServiceRequest();
+        var resourceLogs = new ResourceLogs();
+        var scopeLogs = new ScopeLogs();
+        var drained = new LogRecord
+        {
+            TimeUnixNano = ToNano(DateTime.UtcNow),
+            SeverityNumber = SeverityNumber.Info,
+            Body = new AnyValue { StringValue = "Queue drained" },
+        };
+        drained.Attributes.Add(new KeyValue
+        {
+            Key = "queue.name",
+            Value = new AnyValue { StringValue = "invoices" },
+        });
+        scopeLogs.LogRecords.Add(drained);
+        resourceLogs.ScopeLogs.Add(scopeLogs);
+        logs.ResourceLogs.Add(resourceLogs);
+        await PostProtobufAsync("/v1/logs", logs.ToByteArray(), workerKey);
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 4);
+
+        var everything = await GetAsync<ObservedKeysResponse>("/api/logs/keys");
+        Assert.Contains(everything.Items, k => k.Path.SequenceEqual(["queue.name"]));
+        Assert.Contains(everything.Items, k => k.Path.SequenceEqual(["tenant.id"]));
+
+        var workerOnly = await GetAsync<ObservedKeysResponse>("/api/logs/keys?service=worker");
+        Assert.Contains(workerOnly.Items, k => k.Path.SequenceEqual(["queue.name"]));
+        Assert.DoesNotContain(workerOnly.Items, k => k.Path.SequenceEqual(["tenant.id"]));
+    }
+
+    [Fact]
     public async Task Traces_are_listed_and_expanded_into_a_waterfall()
     {
         var traces = await GetAsync<ListTracesResponse>("/api/traces");
@@ -340,6 +377,49 @@ public sealed class ExplorationApiTests : IAsyncLifetime
         Assert.Equal("charge-card", waterfall.Spans[1].Name);
         Assert.Equal(waterfall.Spans[0].SpanId, waterfall.Spans[1].ParentSpanId);
         Assert.Equal("web", waterfall.Spans[0].ResourceAttributes.GetProperty("service.name").GetString());
+        Assert.False(traces.Truncated);
+    }
+
+    [Fact]
+    public async Task A_trace_without_a_root_span_is_not_listed_but_stays_reachable()
+    {
+        // The list draws its page from Root Spans (ADR 0026), so a trace whose parentless span never
+        // arrived cannot be found through it. That is the acknowledged price of not reading the whole
+        // window to answer one page — the trace itself is untouched and its waterfall still opens.
+        var orphanId = new byte[16];
+        orphanId[15] = 0x20;
+        var orphanHex = Convert.ToHexStringLower(orphanId);
+        var now = DateTime.UtcNow;
+
+        var request = new ExportTraceServiceRequest();
+        var resourceSpans = new ResourceSpans
+        {
+            Resource = new Resource
+            {
+                Attributes = { new KeyValue { Key = "service.name", Value = new AnyValue { StringValue = "web" } } },
+            },
+        };
+        var scopeSpans = new ScopeSpans();
+        scopeSpans.Spans.Add(new Span
+        {
+            TraceId = ByteString.CopyFrom(orphanId),
+            SpanId = ByteString.CopyFrom([.. Enumerable.Repeat((byte)3, 8)]),
+            ParentSpanId = ByteString.CopyFrom([.. Enumerable.Repeat((byte)9, 8)]),
+            Name = "orphaned-work",
+            Kind = Span.Types.SpanKind.Internal,
+            StartTimeUnixNano = ToNano(now.AddMilliseconds(-20)),
+            EndTimeUnixNano = ToNano(now.AddMilliseconds(-10)),
+        });
+        resourceSpans.ScopeSpans.Add(scopeSpans);
+        request.ResourceSpans.Add(resourceSpans);
+        await PostProtobufAsync("/v1/traces", request.ToByteArray());
+        await _harness.WaitForRowsAsync("SELECT name FROM telemetry.spans", expectedCount: 3);
+
+        var traces = await GetAsync<ListTracesResponse>("/api/traces");
+        Assert.Equal(TraceIdHex, Assert.Single(traces.Items).TraceId);
+
+        var waterfall = await GetAsync<TraceDetailResponse>($"/api/traces/{orphanHex}");
+        Assert.Equal("orphaned-work", Assert.Single(waterfall.Spans).Name);
     }
 
     [Fact]
