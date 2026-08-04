@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A pull request from a fork gets a read-only token and no secrets. `pull_request_target`
+# would hand it the repository's own context, and is deliberately not used here.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: .NET
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # setup-dotnet's own cache wants a lock file, and this repository has none;
+      # the package folder is cached directly instead, keyed by what decides its contents.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - run: dotnet restore Bugler.slnx
+
+      - run: dotnet build Bugler.slnx --no-restore -c Release
+
+      # Unit, architecture and integration tests in one pass. The integration ones raise a real
+      # PostgreSQL through Testcontainers, which the hosted runner can do because Docker is there.
+      - run: dotnet test Bugler.slnx --no-build -c Release --logger "console;verbosity=normal"
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun test
+
+      - run: bun run typecheck
+
+      # dependency-cruiser: the frontend half of the context boundaries.
+      - run: bun run arch
