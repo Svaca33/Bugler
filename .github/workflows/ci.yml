@@ -60,5 +60,9 @@ jobs:
 
       - run: bun run typecheck
 
+      # Type checking is not building: tsc runs with --noEmit here and the bundle is Bun's, so a
+      # green typecheck says nothing about whether the thing that ships can be produced.
+      - run: bun run build
+
       # dependency-cruiser: the frontend half of the context boundaries.
       - run: bun run arch

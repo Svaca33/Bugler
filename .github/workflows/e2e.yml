@@ -1,0 +1,69 @@
+name: E2E
+
+# Kept out of CI on purpose. This raises a database, a mail server, the backend and the frontend
+# dev server, then drives a browser through them -- minutes rather than seconds, and with more ways
+# to be flaky than the rest of the suite put together. On `main` it says whether the whole thing
+# still works end to end; on every pull request it would mostly say how patient you are.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: oven-sh/setup-bun@v2
+
+      # What Bugler talks to, the same two services a laptop raises. `--wait` holds until postgres
+      # reports healthy, so the backend does not start against a database still opening its socket.
+      - name: Raise PostgreSQL and mailpit
+        run: docker compose up -d --wait postgres mailpit
+
+      - run: bun install --frozen-lockfile
+        working-directory: frontend
+
+      - run: bun install --frozen-lockfile
+        working-directory: e2e
+
+      - run: bunx playwright install --with-deps chromium
+        working-directory: e2e
+
+      # Playwright starts the backend itself and gives it 180 seconds. Building it here rather than
+      # letting `dotnet run` do it inside that window is the difference between a comfortable start
+      # and a timeout that looks like a broken test.
+      - run: dotnet build src/Bugler.Host
+
+      # The suite drives the frontend dev server, not the production shell that actually ships.
+      # Issue #30 is about changing that; this workflow does not settle it, it runs what exists.
+      - run: bun run test
+        working-directory: e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
+
+      # A failing browser test says little without them; the trace is recorded on first retry.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: e2e/test-results/
+          retention-days: 7
