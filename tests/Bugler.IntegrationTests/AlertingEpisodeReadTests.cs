@@ -252,7 +252,7 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
                  first_match_at, first_match_severity, first_match_detail, error_count,
                  warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', 1, '{body}',
+                ('{NextId()}', '{serviceId}', '{applicationId}', 1, '{body}',
                  now() - interval '{daysAgo} days', 1, now(), 17, '{body}', 1, 0, now(),
                  {(quieted || muted ? "now()" : "NULL")}, {(quieted ? "1" : muted ? "2" : "NULL")})
             """);
@@ -265,10 +265,21 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
                 (id, episode_id, kind, channel, user_id, attempts, created_at, next_attempt_at,
                  delivered_at, lapsed_at, last_error)
             VALUES
-                ('{Guid.CreateVersion7()}', '{episodeId}', 1, {channel},
+                ('{NextId()}', '{episodeId}', 1, {channel},
                  {(userId is null ? "NULL" : $"'{userId}'")}, 1, now(), now(),
                  {(deliveredMinutesAgo is null
                      ? "NULL"
                      : $"now() - interval '{deliveredMinutesAgo} minutes'")}, NULL, NULL)
             """);
+
+    /// <summary>
+    /// Seeded ids, spaced a second apart. A version-7 id carries a millisecond and random bits
+    /// under it, so two rows written inside the same millisecond order at random — which is a fair
+    /// answer from the endpoint and a coin toss for a test asserting which of them is the newest.
+    /// One counter serves both tables: what matters is that no two seeded ids share a millisecond.
+    /// </summary>
+    private Guid NextId() => Guid.CreateVersion7(_idBase.AddSeconds(_seeded++));
+
+    private readonly DateTimeOffset _idBase = DateTimeOffset.UtcNow;
+    private int _seeded;
 }

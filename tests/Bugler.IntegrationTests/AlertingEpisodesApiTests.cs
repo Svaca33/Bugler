@@ -292,8 +292,20 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
                  first_match_at, first_match_severity, first_match_detail, error_count,
                  warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{Guid.CreateVersion7()}', '{serviceId}', '{applicationId}', 1, '{body}', now(), 1,
+                ('{NextId()}', '{serviceId}', '{applicationId}', 1, '{body}', now(), 1,
                  now(), 17, '{body}', 1, 0, now(),
                  {(quieted ? "now()" : "NULL")}, {(quieted ? "1" : "NULL")})
             """);
+
+    /// <summary>
+    /// Seeded ids, spaced a second apart. A version-7 id carries a millisecond and random bits
+    /// under it, so two rows written inside the same millisecond order at random — which is a fair
+    /// answer from the endpoint and a coin toss for a test asserting which of them is the newest.
+    /// Four inserts are far enough apart on a laptop and not on a hosted runner, which is where
+    /// this first flipped.
+    /// </summary>
+    private Guid NextId() => Guid.CreateVersion7(_idBase.AddSeconds(_seeded++));
+
+    private readonly DateTimeOffset _idBase = DateTimeOffset.UtcNow;
+    private int _seeded;
 }
