@@ -1,25 +1,85 @@
 # Bugler
 
-Self-hosted telemetry server: collects **logs and traces** via the OpenTelemetry protocol (OTLP), lets a team explore and correlate them in a web UI, and mails or messages whoever subscribed when a service starts logging trouble. Built for the situation where a company runs **multiple applications, each deployed separately for multiple clients**, and team members may only see the telemetry of the applications they are granted.
+[![CI](https://github.com/Svaca33/Bugler/actions/workflows/ci.yml/badge.svg)](https://github.com/Svaca33/Bugler/actions/workflows/ci.yml)
+[![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
 
-Metrics support is planned for a later phase.
+Self-hosted telemetry server: **logs and traces in over OTLP, an explore UI out**, and a mail or a
+Google Chat message to whoever subscribed when a service starts logging trouble. One container, one
+PostgreSQL, no agent to install.
 
-## Shape
+Built for the situation where a company runs **several applications, each deployed separately for
+several clients**, and a team member may only see the telemetry of the applications they were
+granted.
 
-- Single-process **modular monolith** (.NET 10, ASP.NET Core): OTLP ingest (gRPC :4317, HTTP :4318), REST API, and the frontend served from one container.
-- **PostgreSQL** as the only backing store (telemetry + catalog + users).
-- **React + TypeScript** frontend (Bun toolchain, shadcn/ui, TanStack Router/Query).
-- Distributed via **Docker + docker-compose**.
+![The log list, with the volume chart above it and a release marked on it](docs/images/logs.png)
 
-## Domain
+## What it does
 
-The domain hierarchy is **Application → Service → Tenant**:
+- **Takes OTLP as it comes** — logs and traces, gRPC on `:4317` and HTTP on `:4318`, from any
+  OpenTelemetry SDK or collector. A Service authenticates with its own API key, and that key is
+  what decides whose telemetry this is — never what the payload claims about itself
+  ([ADR 0006](docs/adr/0006-service-is-the-sender-identity.md)).
+- **Explore without a query language.** Narrow by application, namespace, environment, service,
+  severity, message or any attribute; the volume chart above the list answers "since when" before
+  you have finished reading the first page, and marks the deployments that happened in the window.
+  *Follow* keeps the newest at the top.
+- **Traces that stay attached to their logs.** A waterfall per trace, every span with its
+  attributes and events, and one click from a span to the log records written inside it — or from
+  a log to the trace it belongs to.
+- **An unattended watch.** Bugler polls what it stored, groups the same kind of trouble into an
+  **Episode** rather than mailing every line, closes it after a quiet window, and mails or posts to
+  Google Chat. Episodes can be acknowledged and solved, so a team can see who has it.
+- **Access granted per application.** Local accounts, no identity provider required; the first
+  account created becomes the administrator. A member sees exactly the applications they were
+  granted, and nothing tells them the rest exist.
+- **Retention, per service, in days** — separately for logs and for traces, with a storage ledger
+  that says what each service costs today and what it will settle at.
+- **Runs as one container.** No sidecar, no message broker, no object storage: a .NET 10 modular
+  monolith serving the UI, the REST API and both OTLP surfaces, over a single PostgreSQL.
 
-- An *Application* is a product; user access is granted per application.
-- A *Service* is one registered sender — one role of one deployment, identified by its namespace, environment and name (`demo/prod · backend`). It owns its API keys and retention, and its identity is what the key proves, never what the telemetry claims about itself ([ADR 0006](docs/adr/0006-service-is-the-sender-identity.md)).
-- A *Tenant* is a customer inside a multi-tenant Service, visible only as a filter attribute in telemetry.
+Metrics have no receiver yet; they are planned for a later phase.
 
-The codebase is split into five bounded contexts — **Ingestion**, **Exploration**, **Alerting**, **Registry**, **Access** — described in [CONTEXT-MAP.md](CONTEXT-MAP.md), each with its own glossary (`src/Bugler.<Context>/CONTEXT.md`). Architectural decisions are recorded as ADRs in [docs/adr](docs/adr).
+### One log, and everything around it
+
+![A log record selected, with its attributes, resource and a way into its trace](docs/images/log-detail.png)
+
+A selected record shows what the sender attached to it — its own attributes, the resource that
+declared it, the scope that wrote it — and, when it was written inside a span, the way into the
+trace it belongs to.
+
+### Traces, and back again
+
+![The trace list: root span, duration, span count and status](docs/images/traces.png)
+
+One line per trace, with the slow ones marked in passing.
+
+![A trace waterfall with a failing span selected](docs/images/trace-detail.png)
+
+The waterfall, the failing span, its attributes and the exception event exactly as it arrived — and
+`View correlated logs`, which is the same journey as the previous screen in the other direction.
+
+### Trouble, grouped and answerable
+
+![The Episodes page, with one open episode and its detail](docs/images/episodes.png)
+
+An Episode is one kind of trouble in one Service — not one log line. It records what opened it, at
+which release, how loud it has been since, and who acknowledged it.
+
+### Administration
+
+![Admin: applications, services, retention and API keys](docs/images/admin-topology.png)
+
+Applications and their Services, retention for each, alerting sensitivity and quiet windows, health
+checks, and the API keys — issued once and shown once.
+
+![Admin: the storage ledger, per service](docs/images/admin-storage.png)
+
+What each Service's telemetry costs today, how fast it is growing, and what it will settle at once
+its retention starts throwing the oldest away. Estimates are marked as estimates.
+
+![Admin: users and their per-application grants](docs/images/admin-people.png)
+
+Who may read what, as a matrix. Administrators are never scoped; everybody else is.
 
 ## Running it
 
@@ -42,6 +102,27 @@ OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."
 
 See [Sending telemetry](#sending-telemetry) for the details, and for the two mistakes that
 make an exporter drop everything without saying a word.
+
+Nothing to send yet? [`tools/Bugler.SampleSource`](tools/Bugler.SampleSource) simulates a small
+e-shop — traces with correlated logs, a steady trickle of failures and a rarer one — which is what
+fills the screens above.
+
+## Shape
+
+- Single-process **modular monolith** (.NET 10, ASP.NET Core): OTLP ingest (gRPC :4317, HTTP :4318), REST API, and the frontend served from one container.
+- **PostgreSQL** as the only backing store (telemetry + catalog + users).
+- **React + TypeScript** frontend (Bun toolchain, shadcn/ui, TanStack Router/Query).
+- Distributed via **Docker + docker-compose**.
+
+## Domain
+
+The domain hierarchy is **Application → Service → Tenant**:
+
+- An *Application* is a product; user access is granted per application.
+- A *Service* is one registered sender — one role of one deployment, identified by its namespace, environment and name (`demo/prod · backend`). It owns its API keys and retention, and its identity is what the key proves, never what the telemetry claims about itself ([ADR 0006](docs/adr/0006-service-is-the-sender-identity.md)).
+- A *Tenant* is a customer inside a multi-tenant Service, visible only as a filter attribute in telemetry.
+
+The codebase is split into five bounded contexts — **Ingestion**, **Exploration**, **Alerting**, **Registry**, **Access** — described in [CONTEXT-MAP.md](CONTEXT-MAP.md), each with its own glossary (`src/Bugler.<Context>/CONTEXT.md`). Architectural decisions are recorded as ADRs in [docs/adr](docs/adr).
 
 ## Mail
 
