@@ -304,13 +304,18 @@ Architecture tests enforce the context boundaries described in [CONTEXT-MAP.md](
 
 ## Status
 
-Version line `0.19` — the whole path is implemented and runs: OTLP ingest of logs and traces,
-the explore UI, applications, services, API keys and retention, local accounts with per-application
-grants, and the alerting watch with its mail and Google Chat notifications.
+The whole path is implemented and runs: OTLP ingest of logs and traces, the explore UI,
+applications, services, API keys and retention, local accounts with per-application grants, and the
+alerting watch with its mail and Google Chat notifications.
 
-Metrics have no receiver yet, and the release line says what it says: this has not been run
-long enough anywhere for `1.0` to be an honest number. Until it is, a minor version may move
-configuration or the database schema underneath you; read the release notes before upgrading.
+Metrics have no receiver yet, and the version says what it says: Bugler is still on `0.x`, because
+it has not been run in enough places for `1.0` to be an honest number. Until it is, a minor version
+may move configuration or the database schema underneath you; read the release notes before
+upgrading.
+
+The current version is whichever is newest under
+[Releases](https://github.com/Svaca33/Bugler/releases) — deliberately not repeated here, since a
+number written into the repository is made stale by the very commit that writes it.
 
 ## Contributing and support
 
