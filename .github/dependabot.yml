@@ -4,6 +4,10 @@ version: 2
 # stops reading them, which is worse than not having them: security updates arrive separately and
 # immediately through Dependabot alerts, and these are only the ordinary ones.
 #
+# Every group takes minor and patch only, so a major arrives as a pull request of its own. Grouping
+# is meant to spare attention on the routine, and a major decided en bloc with three trivia is the
+# opposite of that -- TypeScript 7 rode into this repository that way once already.
+#
 # `bun` is the ecosystem for both frontend directories, not `npm`: Dependabot's own package manager
 # lookup names it, and its bun implementation knows `bun.lock`. npm would have edited `package.json`
 # and left the lockfile behind, which CI installs with `--frozen-lockfile` and would refuse.
@@ -16,6 +20,16 @@ updates:
     groups:
       dotnet:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+    # Microsoft.OpenApi has to stay on 2.x, and not because nobody got round to it.
+    # Microsoft.AspNetCore.OpenApi 10.0.10 is built against 2.x and its source generator emits
+    # `mediaType.Example = …`, which 3.x made read-only -- so 3.x does not fail our code, it fails
+    # to compile theirs. The 2.x line carries the fix for GHSA-v5pm-xwqc-g5wc from 2.7.5, which is
+    # the floor Bugler.Host pins, so staying here costs no security.
+    # Remove this the day Microsoft.AspNetCore.OpenApi asks for 3.x itself.
+    ignore:
+      - dependency-name: "Microsoft.OpenApi"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -24,6 +38,7 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: docker
     directory: "/"
@@ -32,6 +47,7 @@ updates:
     groups:
       base-images:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: bun
     directory: "/frontend"
@@ -41,6 +57,7 @@ updates:
     groups:
       frontend:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: bun
     directory: "/e2e"
@@ -49,3 +66,4 @@ updates:
     groups:
       e2e:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
