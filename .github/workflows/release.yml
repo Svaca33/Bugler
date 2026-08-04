@@ -62,12 +62,21 @@ jobs:
       - name: Push
         run: docker push "${IMAGE}:${{ steps.version.outputs.version }}"
 
+      # What shipped is read from the commits, not from merged pull requests. `--generate-notes`
+      # lists only what arrived through a PR, and this repository commits to main directly as
+      # often as not -- so every such change was silently absent from the release that carried it,
+      # while the Full Changelog link beside it spanned them all. Commits are the changelog here;
+      # a squashed PR appears as its own commit, so nothing is counted twice.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          # The release before this one, which is where its story starts. Empty for the first ever.
+          previous=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+
           notes=$(mktemp)
           {
             echo "### Running this version"
@@ -77,10 +86,19 @@ jobs:
             echo '```'
             echo
             echo "in the \`.env\` beside \`docker-compose.prod.yml\`, then \`docker compose up -d\`."
-            echo "See [DEPLOYMENT.md](https://github.com/Svaca33/Bugler/blob/v${VERSION}/DEPLOYMENT.md)."
+            echo "See [DEPLOYMENT.md](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/DEPLOYMENT.md)."
+            echo
+            echo "## What's Changed"
+            echo
+            if [ -n "$previous" ]; then
+              git log --no-merges --reverse --format='* %s (%h)' "${previous}..${TAG}"
+              echo
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${previous}...${TAG}"
+            else
+              git log --no-merges --reverse --format='* %s (%h)' "${TAG}"
+            fi
           } > "$notes"
 
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
-            --notes-file "$notes" \
-            --generate-notes
+          gh release create "${TAG}" \
+            --title "${TAG}" \
+            --notes-file "$notes"
