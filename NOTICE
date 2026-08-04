@@ -1,0 +1,18 @@
+Bugler
+Copyright 2026 Ondřej Svačina
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+This product includes software developed by the OpenTelemetry Authors
+(https://opentelemetry.io/). The Protocol Buffer definitions under
+src/Bugler.Ingestion/Protos are copied unmodified from opentelemetry-proto,
+Copyright 2019-2020 OpenTelemetry Authors, licensed under the Apache License,
+Version 2.0. Each file carries its own copyright header.
+
+The distributed frontend embeds the IBM Plex Sans and IBM Plex Mono typefaces,
+Copyright 2017 IBM Corp., licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org). They are served from the application rather than
+from a third-party host, and are obtained through the @fontsource packages.
+
+"Bugler" and the Bugler logo are not licensed under the Apache License. See the
+Licence section of README.md.

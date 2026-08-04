@@ -223,9 +223,24 @@ Architecture tests enforce the context boundaries described in [CONTEXT-MAP.md](
 
 ## Status
 
-Version line `0.5` — the whole path is implemented and runs: OTLP ingest of logs and traces,
+Version line `0.19` — the whole path is implemented and runs: OTLP ingest of logs and traces,
 the explore UI, applications, services, API keys and retention, local accounts with per-application
 grants, and the alerting watch with its mail and Google Chat notifications.
 
 Metrics have no receiver yet, and the release line says what it says: this has not been run
-long enough anywhere for `1.0` to be an honest number.
+long enough anywhere for `1.0` to be an honest number. Until it is, a minor version may move
+configuration or the database schema underneath you; read the release notes before upgrading.
+
+## Licence
+
+Bugler is licensed under the [Apache License 2.0](LICENSE). You may run it, modify it and
+distribute it, including commercially, provided you keep the copyright notices and state what you
+changed. It comes with no warranty of any kind. Third-party material Bugler carries — the
+OpenTelemetry protocol definitions and the IBM Plex typefaces — is listed in [NOTICE](NOTICE).
+
+### The name
+
+The licence covers the code, not the name. **"Bugler" and the Bugler logo are not licensed** under
+Apache 2.0 and remain the author's. A fork is welcome to exist, and must call itself something
+else — so that nobody installing "Bugler" has to wonder whose it is, and so that its bugs land in
+its own tracker.
