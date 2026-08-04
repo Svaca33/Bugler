@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Svaca33/Bugler/security/advisories/new
+    about: Report it privately here, never as a public issue.
+  - name: How Bugler is put together
+    url: https://github.com/Svaca33/Bugler/blob/main/CONTEXT-MAP.md
+    about: The bounded contexts, and the decisions behind them (ADRs).

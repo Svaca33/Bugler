@@ -1,0 +1,28 @@
+name: Question
+description: Something about running or configuring Bugler that the documentation did not answer
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A question is not a nuisance: it usually means the documentation failed, and that is worth
+        fixing. Have a look at the [README](https://github.com/Svaca33/Bugler/blob/main/README.md)
+        and [DEPLOYMENT.md](https://github.com/Svaca33/Bugler/blob/main/DEPLOYMENT.md)
+        first — and if the answer was there but you did
+        not find it, say so, because that is a finding of its own.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What you are trying to do
+      description: The goal, not only the step you are stuck on.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "0.19.4"
+    validations:
+      required: false

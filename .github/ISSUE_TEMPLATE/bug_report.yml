@@ -1,0 +1,64 @@
+name: Bug report
+description: Something Bugler does that it should not, or fails to do
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The fields below are the ones that decide whether a bug can be
+        reproduced or only sympathised with.
+
+        **If this is a security vulnerability, close this form** and report it privately instead:
+        Security tab → Report a vulnerability. See
+        [SECURITY.md](https://github.com/Svaca33/Bugler/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag you run, or the commit you built. Shown at the bottom of the UI.
+      placeholder: "0.19.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How it is deployed
+      options:
+        - Published image behind a reverse proxy
+        - docker compose up on a laptop
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what Bugler did instead of what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: >
+        The shortest sequence that shows it. If it involves telemetry, say what the sender
+        exported — `tools/Bugler.SampleSource` is a fine way to describe it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Container log around the moment
+      description: >
+        `docker logs bugler`. Paste the lines around the failure, not the whole file.
+        **Check them for anything private before pasting** — telemetry attributes, addresses,
+        API keys.
+      render: text
+    validations:
+      required: false

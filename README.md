@@ -231,6 +231,20 @@ Metrics have no receiver yet, and the release line says what it says: this has n
 long enough anywhere for `1.0` to be an honest number. Until it is, a minor version may move
 configuration or the database schema underneath you; read the release notes before upgrading.
 
+## Contributing and support
+
+Bugler is written and maintained by one person in their own time. Issues are read, and none of the
+usual promises follow from that: there is no response time, no service level, and no guarantee that
+a request will be built. Saying so plainly seems better than letting anyone find out by waiting.
+
+Bug reports and questions are welcome as [issues](https://github.com/Svaca33/Bugler/issues). A pull
+request that fixes a typo, the documentation, or a contained bug can arrive without asking; anything
+that changes behaviour wants an issue first, so that the shape can be agreed before you spend an
+afternoon on it. [CONTRIBUTING.md](CONTRIBUTING.md) has the detail, including what the build
+enforces about context boundaries and translated strings.
+
+Found a vulnerability? Not in an issue, please — [SECURITY.md](SECURITY.md) says where.
+
 ## Licence
 
 Bugler is licensed under the [Apache License 2.0](LICENSE). You may run it, modify it and

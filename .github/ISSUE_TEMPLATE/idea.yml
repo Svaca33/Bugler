@@ -1,0 +1,48 @@
+name: Idea or change of behaviour
+description: Propose something Bugler should do differently — the first step before such a pull request
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the conversation that has to happen **before** a pull request that changes
+        behaviour — see
+        [CONTRIBUTING.md](https://github.com/Svaca33/Bugler/blob/main/CONTRIBUTING.md).
+        Opening it costs you a few
+        minutes and can save you an afternoon of work that gets declined.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What you were trying to do, and where Bugler got in the way. Describe the situation rather
+        than the solution — the solution is what this issue is for deciding.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sketch
+    attributes:
+      label: What you have in mind
+      description: How you would solve it, if you already know. Rough is fine.
+    validations:
+      required: false
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do today instead
+      description: >
+        Whether there is a way around it, and what it costs you. This is usually what decides how
+        urgent something is.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: offer
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: I would be willing to open a pull request for this, once we agree on the shape
+          required: false
