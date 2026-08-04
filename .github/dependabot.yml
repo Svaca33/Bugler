@@ -1,0 +1,34 @@
+version: 2
+
+# Monthly and grouped on purpose. A solo project drowns in weekly per-package pull requests and
+# stops reading them, which is worse than not having them: security updates arrive separately and
+# immediately through Dependabot alerts, and these are only the ordinary ones.
+#
+# The frontend is deliberately absent. Both `frontend` and `e2e` lock with `bun.lock`, and pointing
+# the npm ecosystem at them would update `package.json` without the lockfile beside it -- which CI,
+# running `bun install --frozen-lockfile`, would refuse. See the note in OPEN-SOURCE-CHECKLIST.
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      dotnet:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      base-images:
+        patterns: ["*"]
