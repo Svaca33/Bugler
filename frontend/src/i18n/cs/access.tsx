@@ -60,7 +60,9 @@ export const access: AccessMessages = {
 
   account: {
     title: "Účet",
-    description: "Jazyk, kterým na vás Bugler mluví, a vaše heslo.",
+    description:
+      "Jazyk, kterým na vás Bugler mluví, vaše heslo a strojové delegace, které jste vydali, aby " +
+      "nástroje mohly číst telemetrii vaším jménem.",
   },
 
   changePassword: {
@@ -75,8 +77,6 @@ export const access: AccessMessages = {
     repeatPasswordLabel: "Zopakujte nové heslo",
     submit: "Změnit heslo",
     submitting: "Probíhá změna…",
-    cancel: "Zrušit",
-    done: "Hotovo",
   },
 
   errors: {

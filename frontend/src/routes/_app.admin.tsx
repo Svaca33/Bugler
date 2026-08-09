@@ -2,6 +2,8 @@ import { Navigate, createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { UsersAdminPage } from "@/features/access/UsersAdminPage";
 import { useCurrentUser } from "@/features/access/useAuth";
+import { HeldMachineDelegationsCard } from "@/features/mcp/HeldMachineDelegationsCard";
+import { McpSettingsCard } from "@/features/mcp/McpSettingsCard";
 import { CatalogAdminPage } from "@/features/registry/CatalogAdminPage";
 import { ServerAdminPage } from "@/features/server/ServerAdminPage";
 import { StorageAdminPage } from "@/features/storage/StorageAdminPage";
@@ -69,7 +71,17 @@ function AdminRoute() {
         {section === "topology" && <CatalogAdminPage />}
         {section === "storage" && <StorageAdminPage />}
         {section === "people" && <UsersAdminPage />}
-        {section === "server" && <ServerAdminPage />}
+        {/*
+          The machine door is the Host's, the delegations are Access's, and the rest of this page is
+          the deployment's — a page may combine contexts even though the features may not reach
+          into one another, and this is where that combining is done.
+        */}
+        {section === "server" && (
+          <ServerAdminPage>
+            <McpSettingsCard />
+            <HeldMachineDelegationsCard />
+          </ServerAdminPage>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,9 @@ using Bugler.Access;
 using Bugler.Access.Contracts;
 using Bugler.Ai;
 using Bugler.Alerting;
+using Bugler.Alerting.Mcp;
 using Bugler.Exploration;
+using Bugler.Exploration.Mcp;
 using Bugler.Host;
 using Bugler.Host.IntegrationEvents;
 using Bugler.Ingestion;
@@ -15,7 +17,7 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Which Kestrel listener serves which surface (App / OtlpGrpc / OtlpHttp).
+// Which Kestrel listener serves which surface (App / OtlpGrpc / OtlpHttp / Mcp).
 var surfaceByPort = ListenerSurfaces.FromConfiguration(builder.Configuration);
 
 builder.Services.AddNpgsqlDataSource(
@@ -55,6 +57,15 @@ builder.Services.AddAlerting(builder.Configuration);
 builder.Services.AddExploration();
 builder.Services.AddOpenApi();
 
+// The machine door (ADR 0030). Stateless: it is read-only, nothing is ever pushed from server to
+// client, and no session state is worth holding between calls. Each context contributes the tools
+// it answers with, exactly as each contributes its endpoints.
+builder.Services.AddSingleton<McpSettingsSource>();
+builder.Services.AddMcpServer()
+    .WithHttpTransport(options => options.Stateless = true)
+    .WithTools<ExplorationTools>()
+    .WithTools<AlertingTools>();
+
 var app = builder.Build();
 
 await RegistryModule.MigrateAsync(app.Services);
@@ -79,6 +90,11 @@ app.UseWhen(OnAppSurface, spa =>
 });
 
 app.UseListenerSurfaces(surfaceByPort);
+
+// Beside the surface check and for the same kind of reason: an endpoint that declares itself the
+// machine door's answers only while the Admin has opened it (ADR 0030). Asked per request, so
+// closing the switch reaches the very next one.
+app.UseMcpDoor();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -135,6 +151,19 @@ aiAdmin.MapDelete("/settings", AiSettingsEndpoints.Reset)
 
 // The server's language sits beside the SMTP settings: both are facts of the deployment, owned
 // by the Host and edited on the same admin screen.
+// Whether this server opens a machine door, and where it answers (ADR 0030). The address is not a
+// secret and a person issuing a Machine Delegation needs it, so reading where the door is stays open to
+// anyone signed in while deciding about it does not.
+var mcpAdmin = appSurface.MapGroup("/api/admin/mcp").RequireAuthorization(Capabilities.ConfigureMcp);
+mcpAdmin.MapGet("/settings", McpSettingsEndpoints.Get).Produces<McpSettingsDto>();
+mcpAdmin.MapPut("/settings", McpSettingsEndpoints.Save)
+    .Produces<McpSettingsDto>()
+    .ProducesProblem(StatusCodes.Status400BadRequest);
+mcpAdmin.MapDelete("/settings", McpSettingsEndpoints.Reset).Produces<McpSettingsDto>();
+appSurface.MapGet("/api/mcp/connection", McpSettingsEndpoints.Connection)
+    .RequireAuthorization()
+    .Produces<McpConnectionDto>();
+
 var serverAdmin = appSurface.MapGroup("/api/admin/server").RequireAuthorization("Admin");
 serverAdmin.MapGet("/language", ServerLanguageEndpoints.Get)
     .Produces<ServerLanguageDto>();
@@ -154,6 +183,12 @@ appSurface.MapExploration();
 appSurface.MapAccess();
 appSurface.MapAlerting();
 appSurface.MapRegistry();
+
+// Mounted at /mcp rather than at the root, so /health keeps answering on this listener too —
+// whoever puts this behind a proxy will want to probe it (ADR 0030).
+app.MapGroup("").ServedOn(Surface.Mcp)
+    .MapMcp("/mcp")
+    .RequireAuthorization(AccessModule.HoldsMachineDelegationPolicy);
 
 app.MapGroup("").ServedOn(Surface.OtlpGrpc).MapOtlpGrpcIngestion();
 app.MapGroup("").ServedOn(Surface.OtlpHttp).MapOtlpHttpIngestion();

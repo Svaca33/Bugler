@@ -73,8 +73,6 @@ export interface AccessMessages {
     repeatPasswordLabel: string;
     submit: string;
     submitting: string;
-    cancel: string;
-    done: string;
   };
 
   /** Client-side fallbacks only — a reason the server spells out is shown verbatim instead. */

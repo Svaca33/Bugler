@@ -1,5 +1,6 @@
 using Bugler.Access.Authentication;
 using Bugler.Access.Contracts;
+using Bugler.Access.ManageMachineDelegations;
 using Bugler.Access.ManageUsers;
 using Bugler.Access.Outbox;
 using Bugler.Access.ReadVisibility;
@@ -9,6 +10,7 @@ using Bugler.Access.ResolveUserNames;
 using Bugler.Access.RevokeDeletedApplicationGrants;
 using Bugler.Access.Users;
 using Bugler.SharedKernel;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +26,12 @@ namespace Bugler.Access;
 /// <summary>Composition entry point of the Access context (human identity and authorization).</summary>
 public static class AccessModule
 {
+    /// <summary>
+    /// The authorization the machine door stands behind: a live Machine Delegation, and nothing else will
+    /// do. Named here because Access owns what proving an identity means; the Host mounts it.
+    /// </summary>
+    public const string HoldsMachineDelegationPolicy = "HoldsMachineDelegation";
+
     public static IServiceCollection AddAccess(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<AccessOptions>(configuration.GetSection(AccessOptions.SectionName));
@@ -89,14 +97,28 @@ public static class AccessModule
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return Task.CompletedTask;
                 };
-            });
+            })
+            // A second way for the same person to prove who they are, never a second identity
+            // (ADR 0029). It is not the default scheme: only the policy below names it, so a
+            // Machine Delegation Secret presented to the app's REST API authenticates nothing.
+            .AddScheme<AuthenticationSchemeOptions, MachineDelegationAuthenticationHandler>(
+                MachineDelegationAuthenticationHandler.SchemeName, _ => { });
 
         services.AddAuthorizationBuilder()
             .AddPolicy("Admin", policy => policy.RequireRole(AuthEndpoints.AdminRole))
             // Capabilities name the deed, not the doer (ADR 0015). Both spellings coexist while
             // the older endpoints still ask for the role directly.
             .AddPolicy(Capabilities.ConfigureAlerting, policy => policy.RequireRole(AuthEndpoints.AdminRole))
-            .AddPolicy(Capabilities.InspectStorage, policy => policy.RequireRole(AuthEndpoints.AdminRole));
+            .AddPolicy(Capabilities.InspectStorage, policy => policy.RequireRole(AuthEndpoints.AdminRole))
+            .AddPolicy(Capabilities.InspectMachineDelegations, policy => policy.RequireRole(AuthEndpoints.AdminRole))
+            .AddPolicy(Capabilities.ConfigureMcp, policy => policy.RequireRole(AuthEndpoints.AdminRole))
+            // What the machine door asks for, and the only policy that names the Machine Delegation
+            // scheme: a Session cookie arriving there authenticates nothing either.
+            .AddPolicy(HoldsMachineDelegationPolicy, policy =>
+            {
+                policy.AuthenticationSchemes.Add(MachineDelegationAuthenticationHandler.SchemeName);
+                policy.RequireAuthenticatedUser();
+            });
 
         return services;
     }
@@ -115,6 +137,20 @@ public static class AccessModule
         endpoints.MapPost("/api/auth/logout", AuthEndpoints.Logout).RequireAuthorization();
         endpoints.MapGet("/api/auth/me", AuthEndpoints.Me).RequireAuthorization()
             .Produces<CurrentUserDto>();
+
+        // A person's own Machine Delegations. Issuing one needs no approval: it cannot reach past what its
+        // holder already reads (ADR 0029).
+        var delegations = endpoints.MapGroup("/api/machine-delegations").RequireAuthorization();
+        delegations.MapGet("", MachineDelegationEndpoints.ListOwn).Produces<IReadOnlyList<MachineDelegationDto>>();
+        delegations.MapPost("", MachineDelegationEndpoints.Issue)
+            .Produces<IssuedMachineDelegationDto>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+        delegations.MapDelete("/{id:guid}", MachineDelegationEndpoints.RevokeOwn);
+
+        var heldMachineDelegations = endpoints.MapGroup("/api/admin/machine-delegations")
+            .RequireAuthorization(Capabilities.InspectMachineDelegations);
+        heldMachineDelegations.MapGet("", MachineDelegationEndpoints.ListHeld).Produces<IReadOnlyList<HeldMachineDelegationDto>>();
+        heldMachineDelegations.MapDelete("/{id:guid}", MachineDelegationEndpoints.RevokeHeld);
 
         var admin = endpoints.MapGroup("/api/users").RequireAuthorization("Admin");
         admin.MapGet("", ManageUsersEndpoints.List);

@@ -12,4 +12,13 @@ public static class Capabilities
 
     /// <summary>Reading what the stored telemetry costs: each Service's Footprint and Ingest Rate.</summary>
     public const string InspectStorage = "InspectStorage";
+
+    /// <summary>
+    /// Seeing every Machine Delegation issued on this server and revoking any of them — what answering for
+    /// the machine door requires of whoever opened it (ADR 0029).
+    /// </summary>
+    public const string InspectMachineDelegations = "InspectMachineDelegations";
+
+    /// <summary>Deciding whether this server opens a machine door at all, and where it answers.</summary>
+    public const string ConfigureMcp = "ConfigureMcp";
 }

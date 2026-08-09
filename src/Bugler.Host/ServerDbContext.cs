@@ -13,6 +13,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options)
     public DbSet<StoredSmtpSettings> SmtpSettings => Set<StoredSmtpSettings>();
     public DbSet<StoredServerLanguage> ServerLanguage => Set<StoredServerLanguage>();
     public DbSet<StoredAiSettings> AiSettings => Set<StoredAiSettings>();
+    public DbSet<StoredMcpSettings> McpSettings => Set<StoredMcpSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +33,12 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options)
             settings.Property(s => s.BaseUrl).HasMaxLength(1000);
             settings.Property(s => s.ApiKey).HasMaxLength(1000);
             settings.Property(s => s.Model).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<StoredMcpSettings>(settings =>
+        {
+            settings.Property(s => s.Id).ValueGeneratedNever();
+            settings.Property(s => s.PublicUrl).HasMaxLength(1000);
         });
 
         modelBuilder.Entity<StoredSmtpSettings>(settings =>

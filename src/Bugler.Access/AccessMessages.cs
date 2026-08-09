@@ -29,6 +29,12 @@ internal abstract class AccessMessages
     public abstract string SetPublicBaseUrlFirst { get; }
     public abstract string ReactivateBeforeResetLink { get; }
 
+    // Machine Delegations. The refusals a person reads while issuing one; what the machine door itself
+    // says when a Machine Delegation is presented and refused is machine-facing and stays English.
+    public abstract string MachineDelegationNameRequired { get; }
+    public abstract string MachineDelegationLifetimeRange(int minimumDays, int maximumDays);
+    public abstract string MachineDelegationApplicationNotReadable { get; }
+
     // Password reset.
     public abstract string ServerCannotSendMail { get; }
     public abstract string ResetLinkOnItsWay { get; }

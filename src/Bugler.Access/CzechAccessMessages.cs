@@ -35,6 +35,15 @@ internal sealed class CzechAccessMessages : AccessMessages
     public override string ResetLinkNoLongerWorks =>
         "Tento odkaz už nefunguje. Požádejte o nový a použijte nejnovější mail.";
 
+    public override string MachineDelegationNameRequired =>
+        "Pojmenujte tuto delegaci, ať ji později odlišíte od ostatních.";
+
+    public override string MachineDelegationLifetimeRange(int minimumDays, int maximumDays) =>
+        $"Delegace platí nejméně {minimumDays} a nejdéle {maximumDays} dní.";
+
+    public override string MachineDelegationApplicationNotReadable =>
+        "Delegaci lze zúžit jen na aplikaci, kterou sami smíte číst.";
+
     public override string ResetMailSubject => "[Bugler] Nastavte si nové heslo";
 
     public override string ResetMailBody(string link) =>

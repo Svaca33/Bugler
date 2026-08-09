@@ -10,6 +10,13 @@ public enum Surface
     App,
     OtlpGrpc,
     OtlpHttp,
+
+    /// <summary>
+    /// The machine door (ADR 0030): a tool holding a Machine Delegation, speaking MCP over HTTP. Apart from
+    /// the app because a Machine Delegation is never a cookie and this traffic is never a browser's — which
+    /// is also what keeps it clear of the same-origin check the app surface mounts before routing.
+    /// </summary>
+    Mcp,
 }
 
 /// <summary>Endpoint metadata: the single surface an endpoint is served on.</summary>

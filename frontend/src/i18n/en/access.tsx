@@ -59,7 +59,9 @@ export const access: AccessMessages = {
 
   account: {
     title: "Account",
-    description: "The language Bugler speaks to you, and your password.",
+    description:
+      "The language Bugler speaks to you, your password, and the machine delegations you have " +
+      "issued to let tools read telemetry in your name.",
   },
 
   changePassword: {
@@ -74,8 +76,6 @@ export const access: AccessMessages = {
     repeatPasswordLabel: "Repeat new password",
     submit: "Change password",
     submitting: "Changing…",
-    cancel: "Cancel",
-    done: "Done",
   },
 
   errors: {

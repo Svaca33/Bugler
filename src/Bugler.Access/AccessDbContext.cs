@@ -13,9 +13,14 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
     private static readonly ValueConverter<Language, string> LanguageConverter =
         new(language => language.Code, code => new Language(code));
 
+    /// <summary>The same trick for a Machine Delegation's narrowing, which is an Application or nothing.</summary>
+    private static readonly ValueConverter<ApplicationId, Guid> ApplicationIdConverter =
+        new(id => id.Value, value => new ApplicationId(value));
+
     public DbSet<User> Users => Set<User>();
     public DbSet<ApplicationGrant> ApplicationGrants => Set<ApplicationGrant>();
     public DbSet<ResetTicket> ResetTickets => Set<ResetTicket>();
+    public DbSet<MachineDelegation> MachineDelegations => Set<MachineDelegation>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -48,6 +53,17 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
             ticket.HasIndex(t => t.Fingerprint).IsUnique();
             ticket.HasOne<User>().WithMany()
                 .HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MachineDelegation>(delegation =>
+        {
+            delegation.Property(d => d.Name).HasMaxLength(100);
+            delegation.Property(d => d.ApplicationId).HasConversion(ApplicationIdConverter);
+            // The only lookup on the authentication path: a presented Secret, hashed, once per
+            // request. Unique for the reason a Reset Ticket's fingerprint is.
+            delegation.HasIndex(d => d.Fingerprint).IsUnique();
+            delegation.HasOne<User>().WithMany()
+                .HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<OutboxMessage>(message =>

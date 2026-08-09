@@ -27,7 +27,7 @@ WORKDIR /app
 COPY --from=backend /out ./
 COPY --from=frontend /app/dist ./wwwroot
 ENV ASPNETCORE_ENVIRONMENT=Production
-EXPOSE 8080 4317 4318
+EXPOSE 8080 4317 4318 8081
 # Everything above this line ran as root; the application does not. The runtime image ships `app`
 # (uid 1654) for exactly this, and the two copies deliberately come before it: what they wrote
 # stays owned by root, so the code this process runs is the one thing it cannot rewrite. Named by

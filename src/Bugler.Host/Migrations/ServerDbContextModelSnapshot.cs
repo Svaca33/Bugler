@@ -67,6 +67,32 @@ namespace Bugler.Host.Migrations
                     b.ToTable("ai_settings", "server");
                 });
 
+            modelBuilder.Entity("Bugler.Host.StoredMcpSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Opened")
+                        .HasColumnType("boolean")
+                        .HasColumnName("opened");
+
+                    b.Property<string>("PublicUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("public_url");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mcp_settings");
+
+                    b.ToTable("mcp_settings", "server");
+                });
+
             modelBuilder.Entity("Bugler.Host.StoredServerLanguage", b =>
                 {
                     b.Property<int>("Id")

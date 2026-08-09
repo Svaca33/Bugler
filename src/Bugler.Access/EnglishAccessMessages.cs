@@ -35,6 +35,15 @@ internal sealed class EnglishAccessMessages : AccessMessages
     public override string ResetLinkNoLongerWorks =>
         "This link no longer works. Ask for a new one and use the newest mail.";
 
+    public override string MachineDelegationNameRequired =>
+        "Give this delegation a name, so you can tell it from the others later.";
+
+    public override string MachineDelegationLifetimeRange(int minimumDays, int maximumDays) =>
+        $"A delegation lasts between {minimumDays} and {maximumDays} days.";
+
+    public override string MachineDelegationApplicationNotReadable =>
+        "You can only narrow a delegation to an application you may read yourself.";
+
     public override string ResetMailSubject => "[Bugler] Set a new password";
 
     public override string ResetMailBody(string link) =>

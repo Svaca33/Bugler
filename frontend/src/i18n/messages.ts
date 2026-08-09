@@ -2,6 +2,7 @@ import type { AccessMessages } from "./sections/access";
 import type { AlertingMessages } from "./sections/alerting";
 import type { CommonMessages } from "./sections/common";
 import type { ExploreMessages } from "./sections/explore";
+import type { McpMessages } from "./sections/mcp";
 import type { NavMessages } from "./sections/nav";
 import type { OverviewMessages } from "./sections/overview";
 import type { RegistryMessages } from "./sections/registry";
@@ -26,4 +27,5 @@ export interface Messages {
   registry: RegistryMessages;
   server: ServerMessages;
   storage: StorageMessages;
+  mcp: McpMessages;
 }

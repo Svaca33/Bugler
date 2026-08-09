@@ -22,6 +22,25 @@
         }
       }
     },
+    "/api/mcp/connection": {
+      "get": {
+        "tags": [
+          "McpSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConnectionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/status": {
       "get": {
         "tags": [
@@ -435,6 +454,79 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AiSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/mcp/settings": {
+      "get": {
+        "tags": [
+          "McpSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "McpSettingsEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveMcpSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "McpSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpSettingsDto"
                 }
               }
             }
@@ -1405,6 +1497,133 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/machine-delegations": {
+      "get": {
+        "tags": [
+          "MachineDelegationEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MachineDelegationDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "MachineDelegationEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueMachineDelegationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedMachineDelegationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/machine-delegations/{id}": {
+      "delete": {
+        "tags": [
+          "MachineDelegationEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/machine-delegations": {
+      "get": {
+        "tags": [
+          "MachineDelegationEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HeldMachineDelegationDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/machine-delegations/{id}": {
+      "delete": {
+        "tags": [
+          "MachineDelegationEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -3324,6 +3543,57 @@
           }
         }
       },
+      "HeldMachineDelegationDto": {
+        "required": [
+          "id",
+          "name",
+          "userId",
+          "userEmail",
+          "applicationId",
+          "createdAt",
+          "expiresAt",
+          "lastUsedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userEmail": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "ChangePasswordRequest": {
         "required": [
           "currentPassword",
@@ -3381,6 +3651,21 @@
           }
         }
       },
+      "IssuedMachineDelegationDto": {
+        "required": [
+          "machineDelegation",
+          "secret"
+        ],
+        "type": "object",
+        "properties": {
+          "machineDelegation": {
+            "$ref": "#/components/schemas/MachineDelegationDto"
+          },
+          "secret": {
+            "type": "string"
+          }
+        }
+      },
       "IssuedResetTicketDto": {
         "required": [
           "link",
@@ -3394,6 +3679,35 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "IssueMachineDelegationRequest": {
+        "required": [
+          "name",
+          "applicationId",
+          "lifetimeDays"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lifetimeDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -3660,6 +3974,48 @@
           }
         }
       },
+      "MachineDelegationDto": {
+        "required": [
+          "id",
+          "name",
+          "applicationId",
+          "createdAt",
+          "expiresAt",
+          "lastUsedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "MailAlertDto": {
         "required": [
           "subscriberCount",
@@ -3725,6 +4081,46 @@
         }
       },
       "MailSettingsSource": {
+        "enum": [
+          "Configuration",
+          "Stored"
+        ]
+      },
+      "McpConnectionDto": {
+        "required": [
+          "opened",
+          "publicUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "opened": {
+            "type": "boolean"
+          },
+          "publicUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "McpSettingsDto": {
+        "required": [
+          "source",
+          "opened",
+          "publicUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/McpSettingsOrigin"
+          },
+          "opened": {
+            "type": "boolean"
+          },
+          "publicUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "McpSettingsOrigin": {
         "enum": [
           "Configuration",
           "Stored"
@@ -4028,6 +4424,24 @@
           },
           "from": {
             "type": "string"
+          }
+        }
+      },
+      "SaveMcpSettingsRequest": {
+        "required": [
+          "opened",
+          "publicUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "opened": {
+            "type": "boolean"
+          },
+          "publicUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4958,6 +5372,9 @@
       "name": "Bugler.Host"
     },
     {
+      "name": "McpSettingsEndpoints"
+    },
+    {
       "name": "AuthEndpoints"
     },
     {
@@ -5004,6 +5421,9 @@
     },
     {
       "name": "CatalogEndpoint"
+    },
+    {
+      "name": "MachineDelegationEndpoints"
     },
     {
       "name": "ManageUsersEndpoints"

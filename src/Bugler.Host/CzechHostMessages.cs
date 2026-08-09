@@ -24,6 +24,9 @@ internal sealed class CzechHostMessages : HostMessages
     public override string AiBaseUrlInvalid =>
         "Základní adresa musí být absolutní http nebo https URL.";
 
+    public override string McpPublicUrlInvalid =>
+        "Adresa, na které odpovídají strojové dveře, musí být absolutní http nebo https URL.";
+
     public override string AiPatienceOutOfRange =>
         "Trpělivost musí být mezi 0 a 3600 sekundami — nebo prázdná, aby se čekalo, jak dlouho bude třeba.";
 

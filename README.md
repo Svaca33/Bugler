@@ -278,6 +278,28 @@ without it the answer is `403`. It is what keeps a page on another origin from s
 such a page can make your browser send the cookie, but it cannot make it send a header
 ([ADR 0025](docs/adr/0025-a-mutation-names-itself.md)). Reads need nothing.
 
+## Letting your editor read the telemetry
+
+Bugler speaks **MCP** on a port of its own, `:8081`, so an agent — Claude Code, Cursor — can read
+your production logs while you debug instead of you pasting them in. It is read-only: eight tools
+over the episodes, log records, traces, releases and the catalog, and nothing that can write. No AI
+call is ever made *by* Bugler here; whatever model your editor uses is your business, and the
+telemetry that reaches it is what you could already read on screen.
+
+Two things have to be true before it answers. An administrator opens the door under
+**Administration → MCP** — it is shut on a fresh server — and you issue yourself a **machine delegation**
+under your own account. A machine delegation is your reading lent to a tool: never wider than what you may
+read, narrowable to a single application, revocable at any moment, and expiring on its own.
+
+```bash
+claude mcp add --transport http bugler https://bugler.example.com/mcp \
+  --header "Authorization: Bearer blgrd_..."
+```
+
+Publishing that port is a separate decision from publishing the UI: leave it unrouted at your proxy
+and the door simply cannot be reached from outside, however many machine delegations exist
+([ADR 0030](docs/adr/0030-the-machine-door-is-a-surface-of-its-own.md)).
+
 ## Development
 
 Prerequisites: .NET 10 SDK, Bun, Docker.
@@ -288,7 +310,7 @@ dotnet run --project src/Bugler.Host
 cd frontend && bun dev        # frontend dev server with HMR
 ```
 
-The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), and `:4318` (OTLP/HTTP). Database schema migrates automatically at startup. Each process authenticates its exports with its Service API key as a bearer token, e.g. `OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."`.
+The Host listens on `:8080` (API/UI), `:4317` (OTLP/gRPC), `:4318` (OTLP/HTTP), and `:8081` (MCP). Database schema migrates automatically at startup. Each process authenticates its exports with its Service API key as a bearer token, e.g. `OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer blgr_..."`.
 
 ### Tests
 

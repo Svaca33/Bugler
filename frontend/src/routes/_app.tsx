@@ -1,10 +1,16 @@
-import { Outlet, createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  redirect,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { currentUserQuery } from "@/api/queries";
 import markDark from "@/bugler-mark-dark.svg";
 import { Button } from "@/components/ui/button";
-import { ChangePasswordDialog } from "@/features/access/ChangePasswordDialog";
 import { useCurrentUser, useLogout } from "@/features/access/useAuth";
 import { useOpenEpisodeCount } from "@/features/alerting/useOpenEpisodeCount";
 import { useT } from "@/i18n";
@@ -33,7 +39,6 @@ function AppShell() {
   const user = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
-  const [changingPassword, setChangingPassword] = useState(false);
   const openEpisodes = useOpenEpisodeCount(user.data != null);
 
   // The gate runs on navigation, and a Session can end without one — expiring while the tab sits in
@@ -71,14 +76,13 @@ function AppShell() {
 
         <div className="ml-auto flex items-center gap-3.5">
           {/* Your own e-mail is where your account settings live — there is no other door. */}
-          <button
-            type="button"
+          <Link
+            to="/account"
             className="max-w-[240px] truncate rounded-[5px] px-1.5 py-1 font-mono text-[11.5px] text-[#A9BDD1] hover:bg-[#12253A] hover:text-[#DCE8F3]"
             title={t.nav.accountButtonTitle(user.data.email)}
-            onClick={() => setChangingPassword(true)}
           >
             {user.data.email}
-          </button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -92,8 +96,6 @@ function AppShell() {
       <main className="min-h-0 min-w-0 flex-1">
         <Outlet />
       </main>
-
-      <ChangePasswordDialog open={changingPassword} onOpenChange={setChangingPassword} />
     </div>
   );
 }

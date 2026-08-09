@@ -100,6 +100,61 @@ namespace Bugler.Access.Migrations
                     b.ToTable("application_grants", "access");
                 });
 
+            modelBuilder.Entity("Bugler.Access.Users.MachineDelegation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ApplicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("application_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<byte[]>("Fingerprint")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_machine_delegations");
+
+                    b.HasIndex("Fingerprint")
+                        .IsUnique()
+                        .HasDatabaseName("ix_machine_delegations_fingerprint");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_machine_delegations_user_id");
+
+                    b.ToTable("machine_delegations", "access");
+                });
+
             modelBuilder.Entity("Bugler.Access.Users.ResetTicket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -203,6 +258,16 @@ namespace Bugler.Access.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_application_grants_users_user_id");
+                });
+
+            modelBuilder.Entity("Bugler.Access.Users.MachineDelegation", b =>
+                {
+                    b.HasOne("Bugler.Access.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_machine_delegations_users_user_id");
                 });
 
             modelBuilder.Entity("Bugler.Access.Users.ResetTicket", b =>

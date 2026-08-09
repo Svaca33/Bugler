@@ -11,8 +11,6 @@ public sealed record ObservedKeysResponse(IReadOnlyList<ObservedKeyDto> Items);
 
 internal static class ObservedKeysEndpoint
 {
-    private const int SampleSize = 2000;
-
     public static Task<IResult> HandleLogs(
         Guid? applicationId,
         [FromQuery(Name = "namespace")] string? serviceNamespace,
@@ -45,6 +43,27 @@ internal static class ObservedKeysEndpoint
         SourceFilter filter,
         ScopeResolver scope,
         NpgsqlDataSource dataSource,
+        CancellationToken cancellationToken) =>
+        TypedResults.Ok(new ObservedKeysResponse(
+            await ObservedKeysReader.ReadAsync(
+                table, timeColumn, filter, scope, dataSource, cancellationToken)));
+}
+
+/// <summary>
+/// The sample itself, apart from the endpoint that shaped it into a response: the machine door asks
+/// the same question and must get the same answer, or an Attribute Filter built through one would
+/// name keys the other has never heard of.
+/// </summary>
+internal static class ObservedKeysReader
+{
+    private const int SampleSize = 2000;
+
+    public static async Task<IReadOnlyList<ObservedKeyDto>> ReadAsync(
+        string table,
+        string timeColumn,
+        SourceFilter filter,
+        ScopeResolver scope,
+        NpgsqlDataSource dataSource,
         CancellationToken cancellationToken)
     {
         // Every Service is named rather than left open, because the sample is drawn per Service
@@ -53,7 +72,7 @@ internal static class ObservedKeysEndpoint
 
         if (serviceIds.Length == 0)
         {
-            return TypedResults.Ok(new ObservedKeysResponse([]));
+            return [];
         }
 
         await using var command = dataSource.CreateCommand();
@@ -107,6 +126,6 @@ internal static class ObservedKeysEndpoint
             items.Add(new ObservedKeyDto(reader.GetString(0), reader.GetFieldValue<string[]>(1)));
         }
 
-        return TypedResults.Ok(new ObservedKeysResponse(items));
+        return items;
     }
 }

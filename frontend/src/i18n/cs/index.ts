@@ -3,6 +3,7 @@ import { access } from "./access";
 import { alerting } from "./alerting";
 import { common } from "./common";
 import { explore } from "./explore";
+import { mcp } from "./mcp";
 import { nav } from "./nav";
 import { overview } from "./overview";
 import { registry } from "./registry";
@@ -22,4 +23,5 @@ export const cs: Messages = {
   registry,
   server,
   storage,
+  mcp,
 };

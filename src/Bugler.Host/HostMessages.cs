@@ -29,6 +29,12 @@ internal abstract class HostMessages
     public abstract string AiModelRequired { get; }
     public abstract string AiBaseUrlRequired { get; }
     public abstract string AiBaseUrlInvalid { get; }
+
+    /// <summary>
+    /// The MCP settings speak to an Admin and so are said in their Language; what the machine door
+    /// itself answers is machine-facing and stays English (see McpDoor).
+    /// </summary>
+    public abstract string McpPublicUrlInvalid { get; }
     public abstract string AiPatienceOutOfRange { get; }
 
     // The test completion.
