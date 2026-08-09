@@ -132,6 +132,28 @@ docker compose -f docker-compose.prod.yml up -d
 Only three files need to reach the server: `docker-compose.prod.yml`, the `.env` built from
 `.env.example`, and this document. Everything else arrives in the image.
 
+### The AI readings, if you want them
+
+Bugler can have a language model write a short reading of what is likely going on as an Episode
+opens, and carry it into the alert ([README](README.md#the-reading-beside-the-evidence)). It is off
+until configured, and configuring it is normally done **on Administration → Server while Bugler
+runs** — the settings are stored in the database and win whole over anything in the environment
+until reset there, exactly as the SMTP settings do
+([ADR 0027](docs/adr/0027-ai-completions-leave-through-a-shared-transport.md)). Nothing here needs
+setting for that, and the API key never has to touch the server's filesystem.
+
+A deployment that configures everything from the environment instead can pass the same facts as
+`Ai__Provider`, `Ai__BaseUrl`, `Ai__ApiKey`, `Ai__Model` and `Ai__PatienceSeconds` — the compose file
+carries them commented out. Either way, note what the choice of provider means for a self-hosted
+server: **Anthropic** sends the opening evidence of an Episode out of the building to a third party,
+whereas an **OpenAI-compatible** base URL pointed at your own Ollama or vLLM keeps it on your own
+metal. And it is only ever the evidence of an Application whose **AI consent** an Admin has switched
+on ([ADR 0028](docs/adr/0028-telemetry-reaches-an-ai-provider-only-by-consent.md)); consent is off by
+default and is read at the moment the data would leave, so withdrawing it stops the next disclosure
+rather than the one after.
+
+### Upgrade notes
+
 Upgrading **to 0.17** is the first upgrade where pulling the image is not the whole of it: it
 changes `docker-compose.prod.yml` itself, so send the new one. Bugler now runs as an unprivileged
 user inside its container rather than as root — that half rides along in the image and needs
@@ -147,7 +169,7 @@ starting with password reset silently switched off.
 
 ## What is exposed where
 
-Bugler serves three surfaces on three ports, and [ListenerSurfaces.cs](src/Bugler.Host/ListenerSurfaces.cs)
+Bugler serves four surfaces on four ports, and [ListenerSurfaces.cs](src/Bugler.Host/ListenerSurfaces.cs)
 keeps them apart by the port a connection arrived on — a sender pointed at an OTLP port can never
 reach the UI or the REST API, whatever it puts in a Host header.
 
@@ -156,8 +178,9 @@ reach the UI or the REST API, whatever it puts in a Host header.
 | 8080 | UI + REST API + OpenAPI | the internal network only, through a reverse proxy that terminates TLS |
 | 4318 | OTLP/HTTP | senders — **never unwrapped, whatever fronts it** |
 | 4317 | OTLP/gRPC | senders, over a proxy that speaks HTTP/2, or the local network |
+| 8081 | MCP — the machine door | nobody at all, unless you mean to: **not published by `docker-compose.prod.yml`**, and shut inside Bugler until an Admin opens it |
 
-**None of the three carries TLS itself.** Kestrel serves all of them as plain HTTP
+**None of the four carries TLS itself.** Kestrel serves all of them as plain HTTP
 ([appsettings.json](src/Bugler.Host/appsettings.json)), so whatever terminates TLS sits in front —
 and that leaves two shapes of deployment.
 
@@ -187,6 +210,33 @@ The cost is that all three surfaces share one origin, so the isolation the table
 enforced by the proxy's routing rules rather than by the network. Inside the container the port
 check still holds — the proxy connects to three distinct ports — but a sender holding the export URL
 now also holds the UI's address.
+
+### The machine door, if you want it at all
+
+Port 8081 answers **MCP**, so an agent at somebody's editor can read this server's telemetry
+([README](README.md#letting-your-editor-read-the-telemetry)). Nothing about it is on by default, and
+it takes three independent yeses before a single record leaves that way: the port has to be
+published, an Admin has to open the door on **Administration → Server**, and a person has to hold a
+machine delegation they issued themselves. Leave the port out of the compose file and the other two
+cannot matter — which is the point of it being a Surface of its own
+([ADR 0030](docs/adr/0030-the-machine-door-is-a-surface-of-its-own.md)).
+
+Publishing it is the same job as publishing the UI, with the same rule about TLS: a machine
+delegation's secret travels in an `Authorization` header on every call. Under the one-hostname
+arrangement it is one more location:
+
+```nginx
+location /mcp {
+    proxy_pass http://127.0.0.1:8081;          # MCP — only if you mean to expose it
+    proxy_http_version 1.1;                    # the transport streams: HTTP/1.0 and
+    proxy_buffering off;                       # response buffering would hold the answers
+}
+```
+
+Then uncomment the `8081` line and `BUGLER_PUBLIC_MCP_URL` in
+[docker-compose.prod.yml](docker-compose.prod.yml) and [.env.example](.env.example). That address is
+printed into the connect command shown beside a new machine delegation and read nowhere else, so it
+decides nothing about security — it only decides whether the line a user copies is the right one.
 
 ### Ports published directly
 
@@ -263,6 +313,22 @@ name the port and the protocol's own scheme instead — and see that TLS actuall
   which means a relay that refuses Bugler looks exactly like a quiet week until the first real
   incident goes unannounced.
 - Confirm telemetry arrives, then confirm it is still there tomorrow — that is the purge behaving.
+- If you configured AI, press *Ask a test question* on the same screen. It asks the saved provider
+  outright and prints what it answered, which is the only way to tell a wrong key or an unreachable
+  local model from a provider that is merely slow — an alert whose reading never arrives simply
+  leaves without one and says nothing about why.
+- If you published the machine door, prove the surface on the host first:
+  `curl -fsS http://127.0.0.1:8081/health` answers on that listener too — the door sits at `/mcp`
+  rather than at the root precisely so that it can. Then, through the proxy, a `POST` to `/mcp` with
+  no credential must come back as an authentication refusal:
+
+  ```bash
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+    -H 'Content-Type: application/json' --data '{}' https://bugler.example.com/mcp
+  ```
+
+  `401` is the door answering. HTML or a `200` means the proxy sent it to 8080 instead, and a
+  connection error means it never left your proxy.
 
 ## Backing it up
 
@@ -271,10 +337,10 @@ What is precious is small; what is enormous is disposable.
 | Schema | Size | Losing it costs |
 | --- | --- | --- |
 | `telemetry` | tens of GB | nothing — it expires within the retention anyway |
-| `registry` | kilobytes | re-registering every Service **and re-issuing every API key** |
-| `access` | kilobytes | recreating the accounts and their grants |
-| `alerting` | kilobytes | silence where the alerts used to be, and nobody notices silence |
-| `server` | bytes | re-entering the SMTP settings saved from the admin screen |
+| `registry` | kilobytes | re-registering every Service, **re-issuing every API key**, and every Application's AI consent back to off |
+| `access` | kilobytes | recreating the accounts and their grants, and re-issuing every machine delegation |
+| `alerting` | kilobytes | silence where the alerts used to be, and nobody notices silence — plus the readings written so far, which were never worth keeping |
+| `server` | bytes | re-entering the SMTP and AI settings saved from the admin screen, and re-opening the machine door |
 
 API keys are stored only as SHA-256 hashes, so losing `registry` cannot be undone by reading a
 backup of it out of some other machine — the plaintext exists nowhere but in the configuration of

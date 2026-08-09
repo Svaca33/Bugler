@@ -35,7 +35,7 @@ services:
     # The image already runs as `app` rather than as root, which empties the capabilities the
     # process holds. It does not empty the set it is permitted to reach for — a setuid binary
     # could still climb back into them. cap_drop takes them out of that set; no-new-privileges
-    # forbids the climb itself. Bugler wants none of them: its three ports are all above 1024.
+    # forbids the climb itself. Bugler wants none of them: its four ports are all above 1024.
     #
     # postgres and mailpit above are left as they are. They are development scaffolding, and
     # postgres in particular chowns its data directory as root before dropping to its own user —
@@ -63,7 +63,7 @@ services:
       # Where the machine door is reachable from outside — host and port, no path: Bugler adds its
       # own. Printed into the connect command shown beside a new Machine Delegation's Secret and read
       # nowhere else, so it decides nothing about security (ADR 0030). The door itself stays shut
-      # until an Admin opens it in Administration → MCP.
+      # until an Admin opens it in Administration → Server.
       # Server__PublicMcpUrl: "https://bugler.example.com"
     ports:
       - "8080:8080" # UI + REST API

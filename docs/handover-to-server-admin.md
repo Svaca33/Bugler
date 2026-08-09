@@ -90,6 +90,10 @@ routing that keeps them apart.
 | 4318 | telemetry ingest (HTTP) |
 | 4317 | telemetry ingest (gRPC) |
 
+There is a fourth, 8081, which lets a developer's editor read telemetry through it. The compose file
+does not publish it and this document does not ask you to: unless whoever asked for Bugler asks for
+that port specifically, nothing about it concerns this machine.
+
 **All three are plain HTTP** — Bugler holds no certificate. TLS is the reverse proxy's job, and the
 simplest arrangement is the one where the proxy that already serves the UI carries the telemetry
 too, on one hostname:
@@ -144,7 +148,7 @@ docker compose -f docker-compose.prod.yml up -d
 Bugler migrates its own schemas at startup, which takes a few seconds on an empty database.
 
 Inside the container Bugler runs as an unprivileged user rather than as root, and the compose file
-drops every Linux capability — it asks for none, since all three of its ports are above 1024.
+drops every Linux capability — it asks for none, since every port it listens on is above 1024.
 
 ## Checking it worked
 

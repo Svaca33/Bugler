@@ -44,6 +44,23 @@ services:
       # Mail__Smtp__Username: "${BUGLER_SMTP_USERNAME}"
       # Mail__Smtp__Password: "${BUGLER_SMTP_PASSWORD}"
 
+      # Where the machine door is reachable from outside — host and port, no path: Bugler adds its
+      # own. It is printed into the connect command shown beside a new Machine Delegation and read
+      # nowhere else, so it decides nothing about security (ADR 0030). Uncomment it together with
+      # the 8081 port below; without the port nothing can reach the door however this is set.
+      # Server__PublicMcpUrl: "${BUGLER_PUBLIC_MCP_URL}"
+
+      # The AI provider Bugler may ask for a reading of an Episode's evidence (ADR 0027). Normally
+      # left alone: the same settings are editable on Administration → Server while Bugler runs, are
+      # stored in the database, and win whole over these until reset there — which keeps the API key
+      # off this machine's filesystem. Unset means AI is off everywhere, and no Application's
+      # telemetry leaves without its own AI consent either way (ADR 0028).
+      # Ai__Provider: "Anthropic"                  # or OpenAiCompatible for a local Ollama / vLLM
+      # Ai__BaseUrl: ""                            # required for OpenAiCompatible, incl. the version segment
+      # Ai__ApiKey: "${BUGLER_AI_API_KEY}"
+      # Ai__Model: "claude-haiku-4-5"
+      # Ai__PatienceSeconds: "60"                  # how long an alert waits for its reading; 0 = never wait
+
     ports:
       # UI and REST API. Bound to the loopback by default, so the only way in is the reverse proxy
       # terminating TLS on this same machine. Set BUGLER_APP_BIND to 0.0.0.0 when the proxy runs
@@ -57,6 +74,14 @@ services:
       # OTLP/gRPC, for senders on the local network. Reaching it from outside would mean HTTP/2
       # end to end through the proxy; OTLP/HTTP above is the simpler way in.
       - "4317:4317"
+
+      # MCP — the machine door, so an agent at somebody's editor can read this server's telemetry.
+      # Left unpublished on purpose: publishing it is a decision of its own, separate from
+      # publishing the UI (ADR 0030), and while this line is absent no Machine Delegation and no
+      # Admin's switch can be reached from outside the host. Uncomment it, and BUGLER_PUBLIC_MCP_URL
+      # above, only when you mean to — behind the same TLS as everything else, because a Machine
+      # Delegation's Secret travels in the Authorization header of every call. See DEPLOYMENT.md.
+      # - "${BUGLER_MCP_BIND:-127.0.0.1}:8081:8081"
 
     # The database does not live in this compose file, so it is not a service Bugler can depend on
     # — this is how the container finds it on the host.
