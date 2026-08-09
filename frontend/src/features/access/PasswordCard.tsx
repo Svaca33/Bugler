@@ -3,11 +3,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SettingsCard } from "@/components/ui/settings-layout";
 import { useT } from "@/i18n";
 
 import { useChangePassword } from "./useAuth";
-
-const CAPTION = "font-mono text-[11px] tracking-[0.08em] text-[#7D93AA]";
 
 /**
  * A Password Change, proven by the password being replaced. What it costs is said before it is
@@ -24,9 +23,7 @@ export function PasswordCard() {
   const mismatch = confirmation.length > 0 && newPassword !== confirmation;
 
   return (
-    <div className="flex max-w-[620px] flex-col gap-4 rounded-[11px] border border-[#1E344C] bg-card p-4">
-      <span className={CAPTION}>{t.access.changePassword.title}</span>
-
+    <SettingsCard caption={t.access.changePassword.title}>
       {changed ? (
         <div className="flex flex-col gap-1.5">
           <p className="text-[13px] text-[#6FBF8B]">{t.access.changePassword.changedTitle}</p>
@@ -112,6 +109,6 @@ export function PasswordCard() {
           </form>
         </>
       )}
-    </div>
+    </SettingsCard>
   );
 }

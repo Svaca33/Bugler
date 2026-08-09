@@ -6,6 +6,7 @@ import type { components } from "@/api/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SettingsCard } from "@/components/ui/settings-layout";
 import {
   Select,
   SelectContent,
@@ -17,8 +18,6 @@ import { useT } from "@/i18n";
 
 type AiSettings = components["schemas"]["AiSettingsDto"];
 type AiProvider = components["schemas"]["AiProvider"];
-
-const CAPTION = "font-mono text-[11px] tracking-[0.08em] text-[#7D93AA]";
 
 const SETTINGS_KEY = ["admin", "ai", "settings"] as const;
 
@@ -49,9 +48,7 @@ export function AiSettingsCard() {
   });
 
   return (
-    <div className="flex max-w-[620px] flex-col gap-4 rounded-[11px] border border-[#1E344C] bg-card p-4">
-      <span className={CAPTION}>{t.server.ai.caption}</span>
-
+    <SettingsCard caption={t.server.ai.caption}>
       {settings.isPending && <p className="text-[12.5px] text-[#8CA1B8]">{t.server.ai.loading}</p>}
       {settings.isError && (
         <p className="text-[12.5px] text-[#F0685A]">{t.server.ai.loadFailed}</p>
@@ -62,7 +59,7 @@ export function AiSettingsCard() {
         // fields and empties the key box; mid-edit refetches never fire (see above).
         <SettingsForm key={formSeed(settings.data)} initial={settings.data} />
       )}
-    </div>
+    </SettingsCard>
   );
 }
 

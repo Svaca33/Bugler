@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SettingsCard } from "@/components/ui/settings-layout";
 import { getFormatLocale, useT } from "@/i18n";
 
 import { IssuedMachineDelegationPanel } from "./IssuedMachineDelegationPanel";
@@ -21,8 +22,6 @@ import {
   useOwnMachineDelegations,
   useRevokeMachineDelegation,
 } from "./useMachineDelegations";
-
-const CAPTION = "font-mono text-[11px] tracking-[0.08em] text-[#7D93AA]";
 
 const LIFETIMES = [30, 90, 365];
 
@@ -60,8 +59,7 @@ export function MachineDelegationsCard() {
   const closed = connection.data?.opened === false;
 
   return (
-    <div className="flex max-w-[620px] flex-col gap-4 rounded-[11px] border border-[#1E344C] bg-card p-4">
-      <span className={CAPTION}>{t.mcp.page.title}</span>
+    <SettingsCard caption={t.mcp.page.title}>
       <p className="text-[12.5px] text-[#8CA1B8]">{t.mcp.page.subtitle}</p>
 
       {closed && (
@@ -200,6 +198,6 @@ export function MachineDelegationsCard() {
           </div>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   );
 }

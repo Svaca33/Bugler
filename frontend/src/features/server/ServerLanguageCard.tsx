@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { authStatusQuery } from "@/api/queries";
 import { Label } from "@/components/ui/label";
+import { SettingsCard } from "@/components/ui/settings-layout";
 import {
   Select,
   SelectContent,
@@ -13,8 +14,6 @@ import {
 } from "@/components/ui/select";
 import { LANGUAGES, LANGUAGE_AUTONYMS, toLanguage, useT } from "@/i18n";
 import { getMessages } from "@/i18n/runtime";
-
-const CAPTION = "font-mono text-[11px] tracking-[0.08em] text-[#7D93AA]";
 
 const LANGUAGE_KEY = ["admin", "server", "language"] as const;
 
@@ -59,8 +58,7 @@ export function ServerLanguageCard() {
   });
 
   return (
-    <div className="flex max-w-[620px] flex-col gap-4 rounded-[11px] border border-[#1E344C] bg-card p-4">
-      <span className={CAPTION}>{t.server.language.caption}</span>
+    <SettingsCard caption={t.server.language.caption}>
       <p className="text-[12.5px] leading-relaxed text-[#8CA1B8]">{t.server.language.intro}</p>
 
       {language.isError && (
@@ -93,6 +91,6 @@ export function ServerLanguageCard() {
           )}
         </div>
       )}
-    </div>
+    </SettingsCard>
   );
 }

@@ -6,6 +6,7 @@ import type { components } from "@/api/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SettingsCard } from "@/components/ui/settings-layout";
 import { useT } from "@/i18n";
 
 import { MCP_CONNECTION_KEY } from "./useMachineDelegations";
@@ -76,7 +77,8 @@ export function McpSettingsCard() {
   const current = draft ?? settings.data;
 
   return (
-    <div className="flex max-w-[620px] flex-col gap-4 rounded-[11px] border border-[#1E344C] bg-card p-4">
+    <SettingsCard>
+      {/* The caption keeps company here — where the setting came from belongs on the same line. */}
       <div className="flex items-center gap-3">
         <span className={CAPTION}>{t.mcp.settings.title}</span>
         {current !== undefined && (
@@ -144,6 +146,6 @@ export function McpSettingsCard() {
           </div>
         </form>
       )}
-    </div>
+    </SettingsCard>
   );
 }

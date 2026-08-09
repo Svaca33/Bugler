@@ -1,10 +1,9 @@
 import { useCatalog } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { SettingsCard } from "@/components/ui/settings-layout";
 import { getFormatLocale, useT } from "@/i18n";
 
 import { useHeldMachineDelegations, useRevokeHeldMachineDelegation } from "./useMachineDelegations";
-
-const CAPTION = "font-mono text-[11px] tracking-[0.08em] text-[#7D93AA]";
 
 /**
  * Every Machine Delegation live on this server, beside the switch that let them exist. Whoever holds that
@@ -29,8 +28,7 @@ export function HeldMachineDelegationsCard() {
       : (catalog.data?.applications.find(a => a.id === id)?.name ?? id);
 
   return (
-    <div className="flex max-w-[620px] flex-col gap-3 rounded-[11px] border border-[#1E344C] bg-card p-4">
-      <span className={CAPTION}>{t.mcp.held.title}</span>
+    <SettingsCard caption={t.mcp.held.title} className="gap-3">
       <p className="text-[12.5px] text-[#8CA1B8]">{t.mcp.held.description}</p>
 
       {held.data?.length === 0 && (
@@ -76,6 +74,6 @@ export function HeldMachineDelegationsCard() {
           </Button>
         </div>
       ))}
-    </div>
+    </SettingsCard>
   );
 }

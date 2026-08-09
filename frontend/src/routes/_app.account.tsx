@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { SettingsPage } from "@/components/ui/settings-layout";
 import { LanguageCard } from "@/features/access/LanguageCard";
 import { PasswordCard } from "@/features/access/PasswordCard";
 import { MachineDelegationsCard } from "@/features/mcp/MachineDelegationsCard";
@@ -18,15 +19,10 @@ export const Route = createFileRoute("/_app/account")({
 function AccountRoute() {
   const t = useT();
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
-      <div className="flex max-w-[620px] flex-col gap-1">
-        <h1 className="text-[19px] font-semibold tracking-[-0.4px]">{t.access.account.title}</h1>
-        <p className="text-[12.5px] text-[#8CA1B8]">{t.access.account.description}</p>
-      </div>
-
+    <SettingsPage title={t.access.account.title} description={t.access.account.description}>
       <LanguageCard />
       <PasswordCard />
       <MachineDelegationsCard />
-    </div>
+    </SettingsPage>
   );
 }

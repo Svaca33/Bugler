@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { SettingsPage } from "@/components/ui/settings-layout";
 import { useT } from "@/i18n";
 
 import { AiSettingsCard } from "./AiSettingsCard";
@@ -15,16 +16,15 @@ import { ServerLanguageCard } from "./ServerLanguageCard";
 export function ServerAdminPage(props: { children?: ReactNode }) {
   const t = useT();
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-[18px] overflow-auto px-6 py-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-[17px] font-semibold tracking-[-0.3px]">{t.server.page.title}</h2>
-        <p className="text-[12.5px] text-[#8CA1B8]">{t.server.page.subtitle}</p>
-      </div>
-
+    <SettingsPage
+      title={t.server.page.title}
+      description={t.server.page.subtitle}
+      headingLevel={2}
+    >
       <ServerLanguageCard />
       <MailSettingsCard />
       <AiSettingsCard />
       {props.children}
-    </div>
+    </SettingsPage>
   );
 }

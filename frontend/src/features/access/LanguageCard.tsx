@@ -1,3 +1,5 @@
+import { SettingsCard } from "@/components/ui/settings-layout";
+
 import { LanguageSelect } from "./LanguageSelect";
 
 /**
@@ -6,8 +8,8 @@ import { LanguageSelect } from "./LanguageSelect";
  */
 export function LanguageCard() {
   return (
-    <div className="flex max-w-[620px] flex-col gap-4 rounded-[11px] border border-[#1E344C] bg-card p-4">
+    <SettingsCard>
       <LanguageSelect />
-    </div>
+    </SettingsCard>
   );
 }
