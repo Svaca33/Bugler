@@ -32,7 +32,9 @@ export async function selectFilter(page: Page, placeholder: string, optionLabel:
 
 /** Registers an application with one service through the admin UI and returns its API key. */
 export async function registerApplication(page: Page, appName: string) {
-  await page.getByRole("link", { name: "Admin" }).click();
+  // Exact: the header carries the signed-in account's own address beside the tabs, and a
+  // substring match on "Admin" claims admin@bugler.local as well.
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
   await page.getByLabel("Add application").fill(appName);
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("button", { name: appName })).toBeVisible();

@@ -19,7 +19,7 @@ test("a forgotten password is reset through the link that arrives by mail", asyn
   const newPassword = "SecondPass456!";
 
   await signIn(page);
-  await page.getByRole("link", { name: "Admin" }).click();
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
   await page.getByRole("button", { name: "People" }).click();
   await page.getByLabel("E-mail", { exact: true }).fill(email);
   await page.getByLabel("Password (min 8 characters)").fill(firstPassword);
