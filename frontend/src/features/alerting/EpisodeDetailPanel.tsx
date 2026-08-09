@@ -6,7 +6,7 @@ import { useCurrentUser } from "@/api/queries";
 import { Button } from "@/components/ui/button";
 import { DetailPanel } from "@/components/ui/detail-panel";
 import { Input } from "@/components/ui/input";
-import { useT, type Messages } from "@/i18n";
+import { useLanguage, useT, type Messages } from "@/i18n";
 import { canConfigureAlerting } from "@/lib/capabilities";
 import { describeMillis } from "@/lib/duration";
 import { formatTime } from "@/lib/format";
@@ -194,6 +194,9 @@ function EpisodeBody(props: {
           )}
         </div>
       </div>
+
+      {/* The machine's reading of the evidence — beside it, never above it (CONTEXT.md: Reading). */}
+      {detail?.reading != null && <ReadingSection reading={detail.reading} />}
 
       {/* Lifecycle */}
       <div className="flex flex-col gap-2">
@@ -437,6 +440,37 @@ function EpisodeBody(props: {
         onSolve={() => actions.solve.mutate(undefined, { onSuccess: () => setSolveOpen(false) })}
       />
     </>
+  );
+}
+
+/**
+ * The machine's reading of the opening evidence: visibly machine-made (the model is named), in
+ * the viewer's own language, and carrying no authority — Solved stays a human verdict. Pending
+ * and failed states are said quietly; the evidence never depends on this card.
+ */
+function ReadingSection(props: { reading: NonNullable<EpisodeDetail["reading"]> }) {
+  const t = useT();
+  const language = useLanguage();
+  const { reading } = props;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={CAPTION}>{t.alerting.reading.caption}</p>
+      {reading.state === "Written" ? (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-[rgba(178,110,14,0.45)] bg-[rgba(178,110,14,0.08)] px-[11px] py-2.5">
+          <p className="text-[12.5px] leading-[1.55] text-[#DCE8F3]">
+            {language === "cs" ? reading.textCs : reading.textEn}
+          </p>
+          {reading.model != null && (
+            <p className="text-[11px] text-[#7D93AA]">{t.alerting.reading.writtenBy(reading.model)}</p>
+          )}
+        </div>
+      ) : (
+        <p className="text-[12px] text-[#7D93AA]">
+          {reading.state === "Pending" ? t.alerting.reading.pending : t.alerting.reading.failed}
+        </p>
+      )}
+    </div>
   );
 }
 

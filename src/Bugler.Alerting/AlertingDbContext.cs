@@ -1,6 +1,7 @@
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.Episodes;
+using Bugler.Alerting.Readings;
 using Bugler.Alerting.Settings;
 using Bugler.Alerting.Subscriptions;
 using Bugler.SharedKernel;
@@ -26,6 +27,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
     public DbSet<Episode> Episodes => Set<Episode>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
+    public DbSet<Reading> Readings => Set<Reading>();
     public DbSet<PollCursor> PollCursor => Set<PollCursor>();
     public DbSet<SeenLogId> SeenLogIds => Set<SeenLogId>();
 
@@ -127,6 +129,22 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             // Belt and braces: one Alert and one All Clear per Episode, channel and recipient.
             delivery.HasIndex(d => new { d.EpisodeId, d.Kind, d.Channel, d.UserId })
                 .IsUnique().AreNullsDistinct(false);
+        });
+
+        modelBuilder.Entity<Reading>(reading =>
+        {
+            // One per Episode, dying with it — the Reading outlives the evidence, never the Episode.
+            reading.HasKey(r => r.EpisodeId);
+            reading.Property(r => r.EpisodeId).ValueGeneratedNever();
+            reading.HasOne<Episode>().WithOne()
+                .HasForeignKey<Reading>(r => r.EpisodeId).OnDelete(DeleteBehavior.Cascade);
+            reading.Property(r => r.English).HasMaxLength(4000);
+            reading.Property(r => r.Czech).HasMaxLength(4000);
+            reading.Property(r => r.Model).HasMaxLength(200);
+            reading.Property(r => r.LastError).HasMaxLength(2000);
+            // The writer's only query: pending rows that have come due.
+            reading.HasIndex(r => r.NextAttemptAt)
+                .HasFilter("written_at IS NULL AND failed_at IS NULL");
         });
 
         modelBuilder.Entity<PollCursor>(cursor =>

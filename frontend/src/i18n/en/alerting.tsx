@@ -150,6 +150,13 @@ export const alerting: AlertingMessages = {
     solvedBy: name => `Solved by ${name}`,
   },
 
+  reading: {
+    caption: "AI READING",
+    writtenBy: model => `Written by ${model} — verify against the evidence`,
+    pending: "A reading of the evidence is being written…",
+    failed: "The machine gave up on this one; the evidence below stands on its own.",
+  },
+
   quietWindow: {
     caption: "QUIET WINDOW",
     badge: words => `quiet window ${words}`,

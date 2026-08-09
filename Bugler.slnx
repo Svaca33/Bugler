@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Bugler.Access/Bugler.Access.csproj" />
+    <Project Path="src/Bugler.Ai/Bugler.Ai.csproj" />
     <Project Path="src/Bugler.Alerting/Bugler.Alerting.csproj" />
     <Project Path="src/Bugler.Exploration/Bugler.Exploration.csproj" />
     <Project Path="src/Bugler.Host/Bugler.Host.csproj" />

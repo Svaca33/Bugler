@@ -1,5 +1,7 @@
+using Bugler.Ai;
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
+using Bugler.Alerting.Readings;
 using Bugler.Alerting.Settings;
 using Bugler.Mail;
 using Bugler.Registry.Contracts;
@@ -22,6 +24,7 @@ public sealed class EpisodeDetector(
     NpgsqlDataSource dataSource,
     IOptions<AlertingOptions> options,
     ISmtpSettingsSource smtpSettings,
+    IAiSettingsSource aiSettings,
     ILogger<EpisodeDetector> logger)
 {
     private const int PageSize = 5000;
@@ -147,6 +150,10 @@ public sealed class EpisodeDetector(
 
         var now = DateTimeOffset.UtcNow;
         var mailEnabled = (await smtpSettings.GetCurrentAsync(cancellationToken)).IsConfigured;
+        var aiEnabled = (await aiSettings.GetCurrentAsync(cancellationToken)).IsConfigured;
+        var aiConsent = scope.ServiceProvider.GetRequiredService<IAiConsentReader>();
+        // One ask per Application per page; the writer asks again at the moment of disclosure.
+        var consentByApplication = new Dictionary<ApplicationId, bool>();
 
         foreach (var detection in decisions.Services)
         {
@@ -173,6 +180,24 @@ public sealed class EpisodeDetector(
                     dbContext, episode, mailEnabled,
                     snapshot.ApplicationsWithWebhook.Contains(episode.ApplicationId),
                     now, cancellationToken);
+                var consented = false;
+                if (aiEnabled && !consentByApplication.TryGetValue(episode.ApplicationId, out consented))
+                {
+                    consented = await aiConsent.HasConsentAsync(episode.ApplicationId, cancellationToken);
+                    consentByApplication[episode.ApplicationId] = consented;
+                }
+
+                // Owed only where both gates stand open now (ADR 0028): no pending Reading means
+                // the Alert has nothing to hold the door for.
+                if (aiEnabled && consented)
+                {
+                    dbContext.Readings.Add(new Reading
+                    {
+                        EpisodeId = episode.Id,
+                        RequestedAt = now,
+                        NextAttemptAt = now,
+                    });
+                }
                 logger.LogInformation(
                     "Episode opened for service {ServiceId} by log {LogId} (severity {Severity}): {Fingerprint}",
                     detection.ServiceId, first.Id, first.Severity, detection.Fingerprint);

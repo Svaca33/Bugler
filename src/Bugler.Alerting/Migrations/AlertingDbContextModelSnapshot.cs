@@ -262,6 +262,62 @@ namespace Bugler.Alerting.Migrations
                     b.ToTable("journal_entries", "alerting");
                 });
 
+            modelBuilder.Entity("Bugler.Alerting.Readings.Reading", b =>
+                {
+                    b.Property<Guid>("EpisodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("episode_id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("Czech")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("czech");
+
+                    b.Property<string>("English")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("english");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("model");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<DateTimeOffset?>("WrittenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("written_at");
+
+                    b.HasKey("EpisodeId")
+                        .HasName("pk_readings");
+
+                    b.HasIndex("NextAttemptAt")
+                        .HasDatabaseName("ix_readings_next_attempt_at")
+                        .HasFilter("written_at IS NULL AND failed_at IS NULL");
+
+                    b.ToTable("readings", "alerting");
+                });
+
             modelBuilder.Entity("Bugler.Alerting.Settings.ApplicationAlertingSettings", b =>
                 {
                     b.Property<Guid>("ApplicationId")
@@ -434,6 +490,16 @@ namespace Bugler.Alerting.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_journal_entries_episodes_episode_id");
+                });
+
+            modelBuilder.Entity("Bugler.Alerting.Readings.Reading", b =>
+                {
+                    b.HasOne("Bugler.Alerting.Episodes.Episode", null)
+                        .WithOne()
+                        .HasForeignKey("Bugler.Alerting.Readings.Reading", "EpisodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_readings_episodes_episode_id");
                 });
 #pragma warning restore 612, 618
         }

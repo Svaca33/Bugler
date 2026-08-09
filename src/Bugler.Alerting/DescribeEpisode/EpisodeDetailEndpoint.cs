@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Bugler.Access.Contracts;
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
@@ -19,6 +20,26 @@ public sealed record ChatAlertDto(DateTimeOffset? DeliveredAt);
 public sealed record JournalEntryDto(JournalEntryKind Kind, DateTimeOffset At, string? By);
 
 /// <summary>
+/// The Episode's Reading (see CONTEXT.md: Reading) in every language Bugler speaks — the viewer's
+/// own is the client's pick. Pending carries no text yet; Failed never will, and says nothing
+/// beyond that the machine gave up: the evidence stands on its own.
+/// </summary>
+public sealed record ReadingDto(
+    ReadingStateDto State,
+    string? TextEn,
+    string? TextCs,
+    string? Model,
+    DateTimeOffset? WrittenAt);
+
+[JsonConverter(typeof(JsonStringEnumConverter<ReadingStateDto>))]
+public enum ReadingStateDto
+{
+    Pending,
+    Written,
+    Failed,
+}
+
+/// <summary>
 /// One Episode with what the timeline needs beyond the list row. The settings are the effective
 /// values as configured now — detection always reads the current value, so for an open Episode
 /// they are exactly what will close it.
@@ -33,7 +54,9 @@ public sealed record EpisodeDetailDto(
     /// <summary>What this kind would fall back to — so the panel can name the inheritance without guessing.</summary>
     int InheritedQuietWindowMinutes,
     /// <summary>Every human hand laid on this Episode, oldest first (see CONTEXT.md: Journal).</summary>
-    IReadOnlyList<JournalEntryDto> Journal);
+    IReadOnlyList<JournalEntryDto> Journal,
+    /// <summary>Null where none was ever owed — AI off or the Application unconsenting at the opening.</summary>
+    ReadingDto? Reading);
 
 internal static class EpisodeDetailEndpoint
 {
@@ -85,6 +108,8 @@ internal static class EpisodeDetailEndpoint
         var alerts = await dbContext.Deliveries.AsNoTracking()
             .Where(d => d.EpisodeId == id && d.Kind == DeliveryKind.Alert)
             .ToListAsync(cancellationToken);
+        var reading = await dbContext.Readings.AsNoTracking()
+            .FirstOrDefaultAsync(r => r.EpisodeId == id, cancellationToken);
         var mail = alerts.Where(d => d.Channel == DeliveryChannel.Mail).ToList();
         var chat = alerts.FirstOrDefault(d => d.Channel == DeliveryChannel.Chat);
 
@@ -132,6 +157,13 @@ internal static class EpisodeDetailEndpoint
             effective.QuietWindowMinutesOf(episode.ServiceId, episode.Fingerprint),
             effective.InheritedQuietWindowMinutesOf(episode.ServiceId),
             journal.Select(j => new JournalEntryDto(
-                j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId))).ToList()));
+                j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId))).ToList(),
+            reading is null
+                ? null
+                : new ReadingDto(
+                    reading.WrittenAt is not null ? ReadingStateDto.Written
+                    : reading.FailedAt is not null ? ReadingStateDto.Failed
+                    : ReadingStateDto.Pending,
+                    reading.English, reading.Czech, reading.Model, reading.WrittenAt)));
     }
 }

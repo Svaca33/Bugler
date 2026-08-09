@@ -50,4 +50,6 @@ internal sealed class CzechAlertingMessages : AlertingMessages
     public override string EpisodeLinkLabel => "Epizoda";
 
     public override string OpenEpisodeButton => "Otevřít epizodu";
+
+    public override string ReadingLabel => "Výklad AI";
 }

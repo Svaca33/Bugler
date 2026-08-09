@@ -1,5 +1,6 @@
 using Bugler.Registry.ApiKeyValidation;
 using Bugler.Registry.BrowseCatalog;
+using Bugler.Registry.ConsentToAi;
 using Bugler.Registry.Contracts;
 using Bugler.Registry.ManageApiKeys;
 using Bugler.Registry.ManageCatalog;
@@ -31,6 +32,7 @@ public static class RegistryModule
         services.AddScoped<IApiKeyValidator, ApiKeyValidator>();
         services.AddScoped<ICatalogReader, CatalogReader>();
         services.AddScoped<IRetentionReader, RetentionReader>();
+        services.AddScoped<IAiConsentReader, AiConsentReader>();
 
         // One instance serving both roles: what Registry records, the dispatcher reads back.
         services.AddScoped<RegistryOutbox>();
@@ -46,6 +48,7 @@ public static class RegistryModule
         admin.MapPost("/applications", AdminCatalogEndpoints.CreateApplication)
             .Produces<ApplicationDto>();
         admin.MapDelete("/applications/{id:guid}", AdminCatalogEndpoints.DeleteApplication);
+        admin.MapPut("/applications/{id:guid}/ai-consent", AdminCatalogEndpoints.SetAiConsent);
         admin.MapGet("/applications/{applicationId:guid}/services", AdminCatalogEndpoints.ListServices);
         admin.MapPost("/services", AdminCatalogEndpoints.CreateService).Produces<ServiceDto>();
         admin.MapDelete("/services/{id:guid}", AdminCatalogEndpoints.DeleteService);

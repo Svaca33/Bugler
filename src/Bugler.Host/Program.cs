@@ -1,5 +1,6 @@
 using Bugler.Access;
 using Bugler.Access.Contracts;
+using Bugler.Ai;
 using Bugler.Alerting;
 using Bugler.Exploration;
 using Bugler.Host;
@@ -29,6 +30,7 @@ builder.Services.AddSingleton<IOutboxSignal>(p => p.GetRequiredService<OutboxSig
 builder.Services.AddHostedService<OutboxDispatcher>();
 
 builder.Services.AddMail(builder.Configuration);
+builder.Services.AddAi(builder.Configuration);
 
 // The Host's own store of deployment settings, and the stored SMTP settings taking over the
 // transport's source: saved-in-the-UI wins over Mail:Smtp until reset (ADR 0014).
@@ -38,6 +40,7 @@ builder.Services.AddDbContext<ServerDbContext>((provider, options) => options
         npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "server"))
     .UseSnakeCaseNamingConvention());
 builder.Services.Replace(ServiceDescriptor.Singleton<ISmtpSettingsSource, StoredSmtpSettingsSource>());
+builder.Services.Replace(ServiceDescriptor.Singleton<IAiSettingsSource, StoredAiSettingsSource>());
 
 // The language the server speaks by default, and the language each answer leaves in: the
 // requester's own where Accept-Language names a supported one, the server's otherwise (ADR 0024).
@@ -113,6 +116,22 @@ mailAdmin.MapPut("/settings", MailSettingsEndpoints.Save)
     .ProducesProblem(StatusCodes.Status400BadRequest);
 mailAdmin.MapDelete("/settings", MailSettingsEndpoints.Reset)
     .Produces<MailSettingsDto>();
+
+// The AI settings sit beside the SMTP ones on the same terms (ADR 0027): the server's, not any
+// application's — which application's telemetry may be shown to the provider is Registry's
+// AI Consent, a different question (ADR 0028).
+var aiAdmin = appSurface.MapGroup("/api/admin/ai").RequireAuthorization("Admin");
+aiAdmin.MapPost("/test", AskTestCompletion.Handle)
+    .Produces<TestCompletionResult>()
+    .ProducesProblem(StatusCodes.Status400BadRequest)
+    .ProducesProblem(StatusCodes.Status502BadGateway);
+aiAdmin.MapGet("/settings", AiSettingsEndpoints.Get)
+    .Produces<AiSettingsDto>();
+aiAdmin.MapPut("/settings", AiSettingsEndpoints.Save)
+    .Produces<AiSettingsDto>()
+    .ProducesProblem(StatusCodes.Status400BadRequest);
+aiAdmin.MapDelete("/settings", AiSettingsEndpoints.Reset)
+    .Produces<AiSettingsDto>();
 
 // The server's language sits beside the SMTP settings: both are facts of the deployment, owned
 // by the Host and edited on the same admin screen.

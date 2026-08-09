@@ -14,6 +14,23 @@ internal sealed class CzechHostMessages : HostMessages
 
     public override string UnknownLanguage => "Tímto jazykem tento server mluvit neumí.";
 
+    public override string UnknownAiProvider => "Neznámý AI provider.";
+
+    public override string AiModelRequired => "Název modelu je povinný.";
+
+    public override string AiBaseUrlRequired =>
+        "OpenAI-kompatibilní endpoint potřebuje základní adresu.";
+
+    public override string AiBaseUrlInvalid =>
+        "Základní adresa musí být absolutní http nebo https URL.";
+
+    public override string AiPatienceOutOfRange =>
+        "Trpělivost musí být mezi 0 a 3600 sekundami — nebo prázdná, aby se čekalo, jak dlouho bude třeba.";
+
+    public override string AiNotConfigured => "AI na tomto serveru není nastavena.";
+
+    public override string TestCompletionFailed => "Provider na zkoušku neodpověděl.";
+
     public override string SessionCarriesNoAddress =>
         "Tato relace nenese žádnou adresu, na kterou by šlo psát.";
 

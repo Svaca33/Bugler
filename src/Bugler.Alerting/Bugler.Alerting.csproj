@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Bugler.SharedKernel\Bugler.SharedKernel.csproj" />
     <ProjectReference Include="..\Bugler.Mail\Bugler.Mail.csproj" />
+    <ProjectReference Include="..\Bugler.Ai\Bugler.Ai.csproj" />
     <ProjectReference Include="..\Bugler.Registry\Bugler.Registry.csproj" />
     <ProjectReference Include="..\Bugler.Access\Bugler.Access.csproj" />
   </ItemGroup>

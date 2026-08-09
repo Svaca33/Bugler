@@ -9,7 +9,7 @@ namespace Bugler.ArchitectureTests;
 
 /// <summary>
 /// Enforces the context map (CONTEXT-MAP.md): contexts touch each other only through
-/// Contracts namespaces, nothing depends on Host, and neither SharedKernel nor Mail — the two
+/// Contracts namespaces, nothing depends on Host, and none of SharedKernel, Mail and Ai — the
 /// nodes every context may lean on — depends on a context.
 /// </summary>
 public class ContextBoundaryTests
@@ -23,6 +23,7 @@ public class ContextBoundaryTests
             typeof(Alerting.AlertingModule).Assembly,
             typeof(SharedKernel.ApplicationId).Assembly,
             typeof(Mail.MailModule).Assembly,
+            typeof(Ai.AiModule).Assembly,
             typeof(Host.HostMarker).Assembly)
         .Build();
 
@@ -100,6 +101,22 @@ public class ContextBoundaryTests
             .AndShould().NotDependOnAny(AnythingIn("Host"))
             .Check(Architecture);
 
+    /// <summary>
+    /// Ai carries prompts for whoever composes them and answers for whoever reads them — the
+    /// moment it knows an Episode or an Application, it has become a context (ADR 0027).
+    /// </summary>
+    [Fact]
+    public void Ai_DependsOnNoContextAndNotOnHost() =>
+        TypesIn("Ai").Should()
+            .NotDependOnAny(AnythingIn("Ingestion"))
+            .AndShould().NotDependOnAny(AnythingIn("Exploration"))
+            .AndShould().NotDependOnAny(AnythingIn("Registry"))
+            .AndShould().NotDependOnAny(AnythingIn("Access"))
+            .AndShould().NotDependOnAny(AnythingIn("Alerting"))
+            .AndShould().NotDependOnAny(AnythingIn("Mail"))
+            .AndShould().NotDependOnAny(AnythingIn("Host"))
+            .Check(Architecture);
+
     [Fact]
     public void SharedKernel_DependsOnNoContextAndNotOnHost() =>
         TypesIn("SharedKernel").Should()
@@ -109,6 +126,7 @@ public class ContextBoundaryTests
             .AndShould().NotDependOnAny(AnythingIn("Access"))
             .AndShould().NotDependOnAny(AnythingIn("Alerting"))
             .AndShould().NotDependOnAny(AnythingIn("Mail"))
+            .AndShould().NotDependOnAny(AnythingIn("Ai"))
             .AndShould().NotDependOnAny(AnythingIn("Host"))
             .Check(Architecture);
 

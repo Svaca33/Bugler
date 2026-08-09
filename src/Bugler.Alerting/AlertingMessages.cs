@@ -47,4 +47,7 @@ internal abstract class AlertingMessages
     public abstract string NoBody { get; }
     public abstract string EpisodeLinkLabel { get; }
     public abstract string OpenEpisodeButton { get; }
+
+    /// <summary>The visible machine-made mark over the Reading (see CONTEXT.md: Reading).</summary>
+    public abstract string ReadingLabel { get; }
 }

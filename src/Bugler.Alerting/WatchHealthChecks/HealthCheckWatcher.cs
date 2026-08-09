@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using Bugler.Ai;
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.Episodes;
+using Bugler.Alerting.Readings;
 using Bugler.Alerting.Settings;
 using Bugler.Mail;
 using Bugler.Registry.Contracts;
@@ -25,6 +27,7 @@ namespace Bugler.Alerting.WatchHealthChecks;
 public sealed class HealthCheckWatcher(
     IServiceScopeFactory scopeFactory,
     ISmtpSettingsSource smtpSettings,
+    IAiSettingsSource aiSettings,
     ILogger<HealthCheckWatcher> logger)
 {
     /// <summary>Enough to keep one unresponsive Service from holding up the loop; low enough not to look like a flood.</summary>
@@ -65,7 +68,9 @@ public sealed class HealthCheckWatcher(
             async (service, token) =>
                 outcomes[service.ServiceId] = await probe.ProbeAsync(service.Url, token));
 
-        await ApplyAsync(dbContext, watched, outcomes, applicationSettings, cancellationToken);
+        await ApplyAsync(
+            dbContext, watched, outcomes, applicationSettings,
+            scope.ServiceProvider.GetRequiredService<IAiConsentReader>(), cancellationToken);
     }
 
     /// <summary>Applies one sweep's verdicts in one transaction, so an Episode never exists without its Alerts.</summary>
@@ -74,6 +79,7 @@ public sealed class HealthCheckWatcher(
         IReadOnlyList<WatchedService> watched,
         IReadOnlyDictionary<ServiceId, ProbeOutcome> outcomes,
         IReadOnlyList<ApplicationAlertingSettings> applicationSettings,
+        IAiConsentReader aiConsent,
         CancellationToken cancellationToken)
     {
         // At most one per Service: the reserved Fingerprint makes the one-open-per-kind index
@@ -86,6 +92,7 @@ public sealed class HealthCheckWatcher(
             .Select(s => s.ApplicationId)
             .ToHashSet();
         var mailEnabled = (await smtpSettings.GetCurrentAsync(cancellationToken)).IsConfigured;
+        var aiEnabled = (await aiSettings.GetCurrentAsync(cancellationToken)).IsConfigured;
 
         var now = DateTimeOffset.UtcNow;
         var changed = false;
@@ -121,6 +128,16 @@ public sealed class HealthCheckWatcher(
                     await AlertsOwed.EnqueueAsync(
                         dbContext, episode, mailEnabled,
                         chatApplications.Contains(service.ApplicationId), now, cancellationToken);
+                    // Owed only where both gates stand open now (ADR 0028); generation asks again.
+                    if (aiEnabled && await aiConsent.HasConsentAsync(episode.ApplicationId, cancellationToken))
+                    {
+                        dbContext.Readings.Add(new Reading
+                        {
+                            EpisodeId = episode.Id,
+                            RequestedAt = now,
+                            NextAttemptAt = now,
+                        });
+                    }
                     logger.LogWarning(
                         "Service {ServiceId} stopped answering its health check: {Detail}",
                         service.ServiceId, outcome.Detail);

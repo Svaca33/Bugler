@@ -66,6 +66,10 @@ namespace Bugler.Registry.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AiConsent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ai_consent");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");

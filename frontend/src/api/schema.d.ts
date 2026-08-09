@@ -505,6 +505,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TestCompletionResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AiSettingsDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveAiSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AiSettingsDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AiSettingsDto"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/server/language": {
         parameters: {
             query?: never;
@@ -1995,6 +2134,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/{id}/ai-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetAiConsentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications/{applicationId}/services": {
         parameters: {
             query?: never;
@@ -2308,6 +2486,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {unknown} */
+        AiProvider: "Anthropic" | "OpenAiCompatible";
+        AiSettingsDto: {
+            source: components["schemas"]["AiSettingsOrigin"];
+            provider: components["schemas"]["AiProvider"];
+            baseUrl: string;
+            hasApiKey: boolean;
+            model: string;
+            /** Format: int32 */
+            patienceSeconds: null | number | string;
+            isConfigured: boolean;
+        };
+        /** @enum {unknown} */
+        AiSettingsOrigin: "Configuration" | "Stored";
         AlertingDefaultsDto: {
             sensitivity: components["schemas"]["Sensitivity"];
             /** Format: int32 */
@@ -2337,6 +2529,7 @@ export interface components {
             name: string;
             /** Format: date-time */
             createdAt: string;
+            aiConsent: boolean;
         };
         AuthStatusDto: {
             needsSetup: boolean;
@@ -2408,6 +2601,7 @@ export interface components {
             /** Format: int32 */
             inheritedQuietWindowMinutes: number | string;
             journal: components["schemas"]["JournalEntryDto"][];
+            reading: null | components["schemas"]["ReadingDto"];
         };
         EpisodeDto: {
             /** Format: uuid */
@@ -2606,6 +2800,16 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        ReadingDto: {
+            state: components["schemas"]["ReadingStateDto"];
+            textEn: null | string;
+            textCs: null | string;
+            model: null | string;
+            /** Format: date-time */
+            writtenAt: null | string;
+        };
+        /** @enum {unknown} */
+        ReadingStateDto: "Pending" | "Written" | "Failed";
         ReleaseDto: {
             /** Format: uuid */
             serviceId: string;
@@ -2634,6 +2838,14 @@ export interface components {
             version: string;
             /** Format: date-time */
             since: string;
+        };
+        SaveAiSettingsRequest: {
+            provider: components["schemas"]["AiProvider"];
+            baseUrl: null | string;
+            apiKey: null | string;
+            model: string;
+            /** Format: int32 */
+            patienceSeconds: null | number | string;
         };
         SaveMailSettingsRequest: {
             host: string;
@@ -2722,6 +2934,9 @@ export interface components {
             debug: number | string;
             buckets: components["schemas"]["VolumeBucketDto"][];
         };
+        SetAiConsentRequest: {
+            aiConsent: boolean;
+        };
         SetApplicationAlertingRequest: {
             sensitivity: null | components["schemas"]["Sensitivity"];
             /** Format: int32 */
@@ -2785,6 +3000,10 @@ export interface components {
         SubscriptionsDto: {
             applicationIds: string[];
             serviceIds: string[];
+        };
+        TestCompletionResult: {
+            model: string;
+            answer: string;
         };
         TestMailResult: {
             sentTo: string;

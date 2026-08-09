@@ -50,4 +50,6 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
     public override string EpisodeLinkLabel => "Episode";
 
     public override string OpenEpisodeButton => "Open episode";
+
+    public override string ReadingLabel => "AI reading";
 }

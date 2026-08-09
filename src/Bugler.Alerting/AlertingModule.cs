@@ -12,6 +12,7 @@ using Bugler.Alerting.ManageSubscriptions;
 using Bugler.Alerting.ReadEffectiveSensitivity;
 using Bugler.Alerting.SummarizeEpisodesByService;
 using Bugler.Alerting.WatchHealthChecks;
+using Bugler.Alerting.WriteReadings;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -44,6 +45,11 @@ public static class AlertingModule
         // The tally of consecutive failures is the watcher's own memory, so it outlives a sweep.
         services.AddSingleton<HealthCheckWatcher>();
         services.AddHostedService<AlertingScheduler>();
+
+        // The Readings run on their own loop: a slow model must not hold up probing or delivery
+        // (Alerting ADR 0009 — the door is held by the delivery sweep, never by this beat).
+        services.AddSingleton<ReadingWriter>();
+        services.AddHostedService<ReadingScheduler>();
 
         // The typed client stays transient so the factory can rotate its handlers; the runner
         // resolves IChatSender from its per-run scope.

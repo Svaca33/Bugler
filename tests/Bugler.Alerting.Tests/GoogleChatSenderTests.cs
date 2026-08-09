@@ -16,6 +16,8 @@ public class GoogleChatSenderTests
         SeverityLabel: "ERROR",
         MatchInstant: "2026-07-29 09:59:58 UTC",
         MatchDetail: "Payment gateway timed out",
+        Reading: null,
+        ReadingLabel: "AI reading",
         EpisodeUrl: episodeUrl,
         TextBody: "irrelevant here",
         HtmlBody: "irrelevant here",
@@ -78,6 +80,24 @@ public class GoogleChatSenderTests
         Assert.Equal(
             "Health check (2026-07-29 09:59:58 UTC)",
             (string?)widgets[1]!["decoratedText"]!["topLabel"]);
+    }
+
+    [Fact]
+    public void A_reading_stands_above_the_evidence_labeled_machine_made()
+    {
+        var alert = Alert() with
+        {
+            Reading = "The payment gateway began timing out four minutes after 2.3.1 was deployed.",
+        };
+
+        var widgets = Payload(alert)["cardsV2"]![0]!["card"]!["sections"]![0]!["widgets"]!.AsArray();
+
+        Assert.Equal(4, widgets.Count);
+        Assert.Equal("AI reading", (string?)widgets[1]!["decoratedText"]!["topLabel"]);
+        Assert.Contains("four minutes after 2.3.1", (string?)widgets[1]!["decoratedText"]!["text"]);
+        Assert.Equal(
+            "First log (ERROR, 2026-07-29 09:59:58 UTC)",
+            (string?)widgets[2]!["decoratedText"]!["topLabel"]);
     }
 
     [Fact]

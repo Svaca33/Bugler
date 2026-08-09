@@ -67,4 +67,51 @@ export interface ServerMessages {
     sendRefused: string;
     sendFailedTitle: string;
   };
+
+  /** The AI provider card (ADR 0027) — the SMTP card's twin, plus the Alert's patience. */
+  ai: {
+    caption: string;
+    loading: string;
+    loadFailed: string;
+    intro: string;
+    providerLabel: string;
+    /** Labels of the providers, keyed by their API value. */
+    provider: { Anthropic: string; OpenAiCompatible: string };
+    baseUrlLabel: string;
+    /** Under the base URL per provider: optional override vs. required, /v1 included. */
+    baseUrlHelpAnthropic: string;
+    baseUrlHelpOpenAi: string;
+    apiKeyLabel: string;
+    apiKeyRemovedOnSave: string;
+    apiKeySavedKeep: string;
+    removeButton: string;
+    keepButton: string;
+    modelLabel: string;
+    modelPlaceholder: string;
+    /** How long an Alert holds the door for its Reading (Alerting ADR 0009). */
+    patienceLabel: string;
+    patience: { none: string; seconds: string; forever: string };
+    patienceSecondsLabel: string;
+    patienceHelp: string;
+    /** The card's verdict chips: whether the saved settings amount to AI being on at all. */
+    configuredNote: string;
+    notConfiguredNote: string;
+    saveButton: string;
+    savingButton: string;
+    storedNote: string;
+    resetButton: string;
+    resettingButton: string;
+    fromConfigurationNote: string;
+    saveFallback: string;
+    saveFailedTitle: string;
+    resetFailed: string;
+    testIntro: string;
+    askTestButton: string;
+    askingButton: string;
+    testsSavedNote: string;
+    /** Before the model's quoted answer. */
+    answerPrefix: string;
+    askRefused: string;
+    askFailedTitle: string;
+  };
 }

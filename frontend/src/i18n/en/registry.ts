@@ -84,6 +84,19 @@ export const registry: RegistryMessages = {
     healthCheckHelpAfterCode: "here means inside Bugler's own container, not your machine.",
   },
 
+  aiCard: {
+    caption: "AI",
+    consentLabel: "This application's telemetry may be shown to the AI provider",
+    whatLeaves:
+      "When an episode opens, Bugler sends the opening log with its attributes (stack traces "
+      + "included), the service's last ~25 log bodies before it, and its latest release version "
+      + "to the AI provider configured on the Server tab — to write a short reading of what is "
+      + "likely going on. Off until turned on here, and withdrawable at any moment.",
+    serverAiOffNote: "The server has no AI configured, so nothing leaves either way — the consent "
+      + "just waits.",
+    saveFailed: "The consent was not saved.",
+  },
+
   retention: {
     logs: {
       label: "Log retention (days)",

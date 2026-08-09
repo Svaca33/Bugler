@@ -1,5 +1,6 @@
 import { useT } from "@/i18n";
 
+import { AiSettingsCard } from "./AiSettingsCard";
 import { MailSettingsCard } from "./MailSettingsCard";
 import { ServerLanguageCard } from "./ServerLanguageCard";
 
@@ -15,6 +16,7 @@ export function ServerAdminPage() {
 
       <ServerLanguageCard />
       <MailSettingsCard />
+      <AiSettingsCard />
     </div>
   );
 }

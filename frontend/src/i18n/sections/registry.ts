@@ -84,6 +84,17 @@ export interface RegistryMessages {
     healthCheckHelpAfterCode: string;
   };
 
+  /** The AI Consent card on the application detail (ADR 0028). */
+  aiCard: {
+    caption: string;
+    consentLabel: string;
+    /** The promise in plain words: what leaves, and where to. Shown beside the switch, always. */
+    whatLeaves: string;
+    /** When the server itself has no AI configured — consent stays storable, nothing flows. */
+    serverAiOffNote: string;
+    saveFailed: string;
+  };
+
   retention: {
     logs: RetentionClockMessages;
     traces: RetentionClockMessages;

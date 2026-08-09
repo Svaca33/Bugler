@@ -330,6 +330,118 @@
         }
       }
     },
+    "/api/admin/ai/test": {
+      "post": {
+        "tags": [
+          "AskTestCompletion"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestCompletionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/ai/settings": {
+      "get": {
+        "tags": [
+          "AiSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AiSettingsEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAiSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AiSettingsEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/server/language": {
       "get": {
         "tags": [
@@ -2157,6 +2269,39 @@
         }
       }
     },
+    "/api/admin/applications/{id}/ai-consent": {
+      "put": {
+        "tags": [
+          "AdminCatalogEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAiConsentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/admin/applications/{applicationId}/services": {
       "get": {
         "tags": [
@@ -2383,6 +2528,59 @@
   },
   "components": {
     "schemas": {
+      "AiProvider": {
+        "enum": [
+          "Anthropic",
+          "OpenAiCompatible"
+        ]
+      },
+      "AiSettingsDto": {
+        "required": [
+          "source",
+          "provider",
+          "baseUrl",
+          "hasApiKey",
+          "model",
+          "patienceSeconds",
+          "isConfigured"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/AiSettingsOrigin"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/AiProvider"
+          },
+          "baseUrl": {
+            "type": "string"
+          },
+          "hasApiKey": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "string"
+          },
+          "patienceSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isConfigured": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AiSettingsOrigin": {
+        "enum": [
+          "Configuration",
+          "Stored"
+        ]
+      },
       "AlertingDefaultsDto": {
         "required": [
           "sensitivity",
@@ -2487,7 +2685,8 @@
         "required": [
           "id",
           "name",
-          "createdAt"
+          "createdAt",
+          "aiConsent"
         ],
         "type": "object",
         "properties": {
@@ -2501,6 +2700,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "aiConsent": {
+            "type": "boolean"
           }
         }
       },
@@ -2758,7 +2960,8 @@
           "effectiveSensitivity",
           "quietWindowMinutes",
           "inheritedQuietWindowMinutes",
-          "journal"
+          "journal",
+          "reading"
         ],
         "type": "object",
         "properties": {
@@ -2809,6 +3012,16 @@
             "items": {
               "$ref": "#/components/schemas/JournalEntryDto"
             }
+          },
+          "reading": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReadingDto"
+              }
+            ]
           }
         }
       },
@@ -3587,6 +3800,53 @@
           }
         }
       },
+      "ReadingDto": {
+        "required": [
+          "state",
+          "textEn",
+          "textCs",
+          "model",
+          "writtenAt"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/ReadingStateDto"
+          },
+          "textEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "textCs": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "writtenAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ReadingStateDto": {
+        "enum": [
+          "Pending",
+          "Written",
+          "Failed"
+        ]
+      },
       "ReleaseDto": {
         "required": [
           "serviceId",
@@ -3687,6 +3947,45 @@
           "since": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "SaveAiSettingsRequest": {
+        "required": [
+          "provider",
+          "baseUrl",
+          "apiKey",
+          "model",
+          "patienceSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/AiProvider"
+          },
+          "baseUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "apiKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "patienceSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -4052,6 +4351,17 @@
           }
         }
       },
+      "SetAiConsentRequest": {
+        "required": [
+          "aiConsent"
+        ],
+        "type": "object",
+        "properties": {
+          "aiConsent": {
+            "type": "boolean"
+          }
+        }
+      },
       "SetApplicationAlertingRequest": {
         "required": [
           "sensitivity",
@@ -4357,6 +4667,21 @@
           }
         }
       },
+      "TestCompletionResult": {
+        "required": [
+          "model",
+          "answer"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          }
+        }
+      },
       "TestMailResult": {
         "required": [
           "sentTo"
@@ -4643,6 +4968,12 @@
     },
     {
       "name": "MailSettingsEndpoints"
+    },
+    {
+      "name": "AskTestCompletion"
+    },
+    {
+      "name": "AiSettingsEndpoints"
     },
     {
       "name": "ServerLanguageEndpoints"

@@ -35,16 +35,31 @@ internal sealed class GoogleChatSender(HttpClient httpClient) : IChatSender
                     text = $"<b>{WebUtility.HtmlEncode(alert.Place)}</b> {WebUtility.HtmlEncode(alert.Opening)}",
                 },
             },
-            new
+        };
+
+        // Above the evidence, labeled machine-made — the same standing it has in the mail.
+        if (alert.Reading is not null)
+        {
+            widgets.Add(new
             {
                 decoratedText = new
                 {
-                    topLabel = $"{alert.EvidenceLabel} ({stamp})",
-                    text = WebUtility.HtmlEncode(alert.MatchDetail),
+                    topLabel = alert.ReadingLabel,
+                    text = $"<i>{WebUtility.HtmlEncode(alert.Reading)}</i>",
                     wrapText = true,
                 },
+            });
+        }
+
+        widgets.Add(new
+        {
+            decoratedText = new
+            {
+                topLabel = $"{alert.EvidenceLabel} ({stamp})",
+                text = WebUtility.HtmlEncode(alert.MatchDetail),
+                wrapText = true,
             },
-        };
+        });
 
         if (alert.EpisodeUrl is not null)
         {

@@ -6,7 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace Bugler.Registry.ManageCatalog;
 
-public sealed record ApplicationDto(Guid Id, string Name, DateTimeOffset CreatedAt);
+public sealed record ApplicationDto(Guid Id, string Name, DateTimeOffset CreatedAt, bool AiConsent);
+
+/// <summary>The whole verdict, not a toggle action: the row ends up exactly as sent (ADR 0028).</summary>
+public sealed record SetAiConsentRequest(bool AiConsent);
 
 public sealed record CreateApplicationRequest(string Name);
 
@@ -46,7 +49,7 @@ internal static class AdminCatalogEndpoints
         RegistryDbContext dbContext, CancellationToken cancellationToken) =>
         await dbContext.Applications
             .OrderBy(a => a.Name)
-            .Select(a => new ApplicationDto(a.Id.Value, a.Name, a.CreatedAt))
+            .Select(a => new ApplicationDto(a.Id.Value, a.Name, a.CreatedAt, a.AiConsent))
             .ToListAsync(cancellationToken);
 
     public static async Task<IResult> CreateApplication(
@@ -76,7 +79,32 @@ internal static class AdminCatalogEndpoints
         };
         dbContext.Applications.Add(application);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Results.Ok(new ApplicationDto(application.Id.Value, application.Name, application.CreatedAt));
+        return Results.Ok(new ApplicationDto(
+            application.Id.Value, application.Name, application.CreatedAt, application.AiConsent));
+    }
+
+    /// <summary>
+    /// Sets the Application's AI Consent (see CONTEXT.md). Nothing is generated here — the
+    /// features that would disclose telemetry ask <see cref="Contracts.IAiConsentReader"/> at
+    /// their own moment of disclosure (ADR 0028).
+    /// </summary>
+    public static async Task<IResult> SetAiConsent(
+        Guid id,
+        SetAiConsentRequest request,
+        RegistryDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var applicationId = new ApplicationId(id);
+        var application = await dbContext.Applications
+            .FirstOrDefaultAsync(a => a.Id == applicationId, cancellationToken);
+        if (application is null)
+        {
+            return Results.NotFound();
+        }
+
+        application.AiConsent = request.AiConsent;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Results.NoContent();
     }
 
     public static async Task<ServiceListDto> ListServices(

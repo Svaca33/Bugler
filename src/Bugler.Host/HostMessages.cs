@@ -24,6 +24,17 @@ internal abstract class HostMessages
     // Admin → Server: the server's language.
     public abstract string UnknownLanguage { get; }
 
+    // Admin → Server: AI settings.
+    public abstract string UnknownAiProvider { get; }
+    public abstract string AiModelRequired { get; }
+    public abstract string AiBaseUrlRequired { get; }
+    public abstract string AiBaseUrlInvalid { get; }
+    public abstract string AiPatienceOutOfRange { get; }
+
+    // The test completion.
+    public abstract string AiNotConfigured { get; }
+    public abstract string TestCompletionFailed { get; }
+
     // The test mail.
     public abstract string SessionCarriesNoAddress { get; }
     public abstract string TestMailNotSent { get; }

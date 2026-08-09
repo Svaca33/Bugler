@@ -72,4 +72,58 @@ export const server: ServerMessages = {
     sendRefused: "Server zprávu odmítl.",
     sendFailedTitle: "Zprávu se nepodařilo odeslat.",
   },
+
+  ai: {
+    caption: "AI",
+    loading: "Načítání nastavení AI…",
+    loadFailed: "Nastavení AI se nepodařilo načíst.",
+    intro:
+      "Model, kterého se tento Bugler smí ptát na výklad důkazů epizody. Nenastavené znamená AI "
+      + "vypnutou všude — a i nastavená nevidí nic z aplikace, jejíž souhlas správce nezapnul.",
+    providerLabel: "Provider",
+    provider: {
+      Anthropic: "Anthropic API",
+      OpenAiCompatible: "OpenAI-kompatibilní endpoint (Ollama, vLLM, …)",
+    },
+    baseUrlLabel: "Základní adresa",
+    baseUrlHelpAnthropic: "Nepovinná — prázdná znamená vlastní adresu Anthropicu.",
+    baseUrlHelpOpenAi: "Povinná, včetně segmentu verze — např. http://localhost:11434/v1",
+    apiKeyLabel: "API klíč",
+    apiKeyRemovedOnSave: "při uložení se odstraní",
+    apiKeySavedKeep: "uložen — ponechte prázdné pro zachování",
+    removeButton: "Odstranit",
+    keepButton: "Ponechat",
+    modelLabel: "Model",
+    modelPlaceholder: "např. claude-haiku-4-5 nebo llama3.1",
+    patienceLabel: "Jak dlouho výstraha čeká na svůj výklad",
+    patience: {
+      none: "Nečekat",
+      seconds: "Počet sekund",
+      forever: "Jak dlouho bude třeba",
+    },
+    patienceSecondsLabel: "Sekundy",
+    patienceHelp:
+      "Výstraha, jejíž výklad se ještě píše, se zdrží nejvýše takto dlouho, pak odejde bez něj. "
+      + "Výklad dopsaný pozdě se i tak objeví v detailu epizody.",
+    configuredNote: "AI je zapnutá: tato nastavení dávají dohromady funkčního providera.",
+    notConfiguredNote: "AI je vypnutá: nastavení je neúplné, nikdo se žádného modelu na nic neptá.",
+    saveButton: "Uložit",
+    savingButton: "Ukládání…",
+    storedNote: "Nakonfigurováno zde; nastavení Ai daného nasazení se ignoruje.",
+    resetButton: "Vrátit ke konfiguraci serveru",
+    resettingButton: "Obnovování…",
+    fromConfigurationNote: "Z konfigurace serveru — uložením se hodnoty napříště uchovají zde.",
+    saveFallback: "Nastavení se nepodařilo uložit.",
+    saveFailedTitle: "Nastavení nebylo uloženo.",
+    resetFailed: "Obnovení neproběhlo.",
+    testIntro:
+      "Položí uloženému providerovi jednu krátkou otázku. Pokud odpověď dorazí, výklady se budou "
+      + "psát pro aplikace, které daly souhlas.",
+    askTestButton: "Položit zkušební otázku",
+    askingButton: "Ptám se…",
+    testsSavedNote: "Testuje uloženou konfiguraci — úpravy výše se projeví až po uložení.",
+    answerPrefix: "Model odpověděl:",
+    askRefused: "Provider otázku odmítl.",
+    askFailedTitle: "Provider neodpověděl.",
+  },
 };

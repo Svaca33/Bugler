@@ -10,6 +10,7 @@ import { useT } from "@/i18n";
 import { getFormatLocale } from "@/i18n/runtime";
 import { serviceLabel } from "@/lib/serviceLabel";
 
+import { ApplicationAiCard } from "./ApplicationAiCard";
 import { ApplicationAlertingCard } from "./ApplicationAlertingCard";
 import { DeleteConfirmation } from "./DeleteConfirmation";
 import { serviceConfirmationPhrase } from "./deletionConfirmation";
@@ -217,6 +218,8 @@ function TopologyDetail(props: {
       />
 
       <ApplicationAlertingCard applicationId={props.applicationId} />
+
+      <ApplicationAiCard applicationId={props.applicationId} />
 
       {defaultRetentionDays !== undefined &&
         defaultTraceRetentionDays !== undefined &&

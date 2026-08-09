@@ -48,6 +48,10 @@ _Avoid_: span retention, trace TTL
 The days that actually govern one Service — its own override where it has one, the server-wide default where it has none, resolved for each of the two clocks on its own. What a purge works from, and what a change has to be judged against: dropping an override shortens retention whenever the default is the smaller of the two.
 _Avoid_: resolved retention, actual retention
 
+**AI Consent**:
+An Application's standing permission for its telemetry to be shown to the server's configured AI provider. Off until an Admin turns it on — for new and existing Applications alike — and read at the moment the data would leave, never earlier, so withdrawing it stops the very next disclosure. A statement about the Application's data, not about any one feature that wants it.
+_Avoid_: AI opt-in, opt-in flag, data sharing setting, AI enabled
+
 **Catalog**:
 The browsable inventory of Applications and their Services.
 _Avoid_: directory, inventory, list

@@ -153,6 +153,16 @@ export interface AlertingMessages {
     solvedBy(name: string): string;
   };
 
+  /** The machine's reading of the opening evidence (see Alerting CONTEXT.md: Reading). */
+  reading: {
+    caption: string;
+    /** The visible machine-made mark: which model wrote it. */
+    writtenBy(model: string): string;
+    pending: string;
+    /** Failure says only that the machine gave up — the evidence stands on its own. */
+    failed: string;
+  };
+
   /** The Quiet Window a kind of trouble keeps for itself (ADR 0004). */
   quietWindow: {
     caption: string;

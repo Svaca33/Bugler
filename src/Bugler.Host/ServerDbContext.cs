@@ -12,6 +12,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options)
 {
     public DbSet<StoredSmtpSettings> SmtpSettings => Set<StoredSmtpSettings>();
     public DbSet<StoredServerLanguage> ServerLanguage => Set<StoredServerLanguage>();
+    public DbSet<StoredAiSettings> AiSettings => Set<StoredAiSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +22,16 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options)
         {
             language.Property(l => l.Id).ValueGeneratedNever();
             language.Property(l => l.Language).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<StoredAiSettings>(settings =>
+        {
+            settings.Property(s => s.Id).ValueGeneratedNever();
+            // Stored by name, not number: an operator reading the table should not need the enum.
+            settings.Property(s => s.Provider).HasConversion<string>().HasMaxLength(30);
+            settings.Property(s => s.BaseUrl).HasMaxLength(1000);
+            settings.Property(s => s.ApiKey).HasMaxLength(1000);
+            settings.Property(s => s.Model).HasMaxLength(200);
         });
 
         modelBuilder.Entity<StoredSmtpSettings>(settings =>

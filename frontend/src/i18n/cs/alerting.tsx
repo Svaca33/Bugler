@@ -169,6 +169,13 @@ export const alerting: AlertingMessages = {
     solvedBy: name => `Epizodu vyřešil ${agent(name)}`,
   },
 
+  reading: {
+    caption: "VÝKLAD AI",
+    writtenBy: model => `Napsal ${model} — ověřte proti důkazům`,
+    pending: "Výklad důkazů se právě píše…",
+    failed: "Stroj to tentokrát vzdal; důkazy níže mluví samy za sebe.",
+  },
+
   quietWindow: {
     caption: "TICHÉ OKNO",
     badge: words => `tiché okno ${words}`,

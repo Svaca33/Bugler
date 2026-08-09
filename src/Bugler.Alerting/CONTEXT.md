@@ -56,6 +56,10 @@ _Avoid_: audit log, history, event log, activity feed
 The message announcing that an Episode opened: which Service, when, and the opening Match itself — the Log Record, or what the probe got back. Exactly one per Episode per channel.
 _Avoid_: notification, alarm
 
+**Reading**:
+The machine's reading of an Episode's opening evidence — two or three sentences on what is likely going on, written once as the Episode opens, in every language Bugler speaks. It stands beside the evidence and never above it: visibly machine-made, and no verdict rests on it — Solved stays a human's alone. An Episode has at most one, and only when the server has an AI provider and the Application has consented; trouble that returns gets a fresh one with its new Episode.
+_Avoid_: triage, summary, analysis, explanation, AI insight
+
 **Subscription**:
 A User's standing personal request to be mailed Alerts — for one Application (all its Services, present and future) or for one Service. Dormant while its User cannot currently read the Application; dies only with the Deletion of the User or of what it points at.
 _Avoid_: watch, recipient list, notification preference

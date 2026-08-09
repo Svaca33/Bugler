@@ -95,6 +95,19 @@ export const registry: RegistryMessages = {
     healthCheckHelpAfterCode: "zde znamená uvnitř kontejneru samotného Bugleru, ne váš počítač.",
   },
 
+  aiCard: {
+    caption: "AI",
+    consentLabel: "Telemetrie této aplikace smí být ukázána AI providerovi",
+    whatLeaves:
+      "Když se otevře epizoda, Bugler pošle otevírací log včetně atributů (i stack trace), "
+      + "posledních ~25 těl logů služby před ním a její poslední verzi release AI providerovi "
+      + "nastavenému na záložce Server — aby napsal krátký výklad, co se nejspíš děje. Vypnuto, "
+      + "dokud to zde někdo nezapne; odvolat lze kdykoli.",
+    serverAiOffNote:
+      "Server nemá AI nastavenou, takže tak jako tak nic neodchází — souhlas jen čeká.",
+    saveFailed: "Souhlas se nepodařilo uložit.",
+  },
+
   retention: {
     logs: {
       label: "Retence logů (dny)",

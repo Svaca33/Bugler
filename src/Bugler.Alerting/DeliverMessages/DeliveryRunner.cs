@@ -1,6 +1,8 @@
 using Bugler.Access.Contracts;
+using Bugler.Ai;
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
+using Bugler.Alerting.Readings;
 using Bugler.Mail;
 using Bugler.Registry.Contracts;
 using Bugler.SharedKernel;
@@ -20,6 +22,7 @@ namespace Bugler.Alerting.DeliverMessages;
 public sealed class DeliveryRunner(
     IServiceScopeFactory scopeFactory,
     IMailSender mailSender,
+    IAiSettingsSource aiSettings,
     IOptions<AlertingOptions> options,
     ILogger<DeliveryRunner> logger)
 {
@@ -56,6 +59,14 @@ public sealed class DeliveryRunner(
             .GetServicesAsync(cancellationToken);
         var identityByService = catalog.ToDictionary(s => s.Id);
 
+        // The Readings these Alerts would carry — and the patience the pending ones are owed
+        // (Alerting ADR 0009). The patience sits with the AI settings: it is a fact about the
+        // provider's speed, so it is read as fresh as they are.
+        var readings = await dbContext.Readings.AsNoTracking()
+            .Where(r => episodeIds.Contains(r.EpisodeId))
+            .ToDictionaryAsync(r => r.EpisodeId, cancellationToken);
+        var patienceSeconds = (await aiSettings.GetCurrentAsync(cancellationToken)).PatienceSeconds;
+
         var recipients = await ResolveRecipientsAsync(
             scope.ServiceProvider.GetRequiredService<IMailRecipients>(), due, episodes,
             cancellationToken);
@@ -70,6 +81,15 @@ public sealed class DeliveryRunner(
         foreach (var delivery in due)
         {
             var episode = episodes[delivery.EpisodeId];
+            var reading = readings.GetValueOrDefault(delivery.EpisodeId);
+
+            // The Alert holds the door for the Reading, bounded by the operator's patience
+            // (Alerting ADR 0009). A skipped Delivery just stays due — nothing is written, and
+            // the writer's terminal states (written, failed) release it on their own.
+            if (reading is { IsPending: true } && HoldsTheDoor(patienceSeconds, episode.OpenedAt))
+            {
+                continue;
+            }
 
             if (!identityByService.TryGetValue(episode.ServiceId, out var identity))
             {
@@ -78,24 +98,40 @@ public sealed class DeliveryRunner(
             }
             else if (delivery.Channel == DeliveryChannel.Mail)
             {
-                await AttemptMailAsync(delivery, episode, identity, recipients, cancellationToken);
+                await AttemptMailAsync(
+                    delivery, episode, identity, recipients, reading, cancellationToken);
             }
             else
             {
                 await AttemptChatAsync(
                     delivery, episode, identity, webhookByApplication, chatSender, chatLanguage,
-                    cancellationToken);
+                    reading, cancellationToken);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 
+    private static bool HoldsTheDoor(int? patienceSeconds, DateTimeOffset openedAt) =>
+        patienceSeconds switch
+        {
+            0 => false,
+            null => true, // As long as it takes — the writer's terminal states still bound it.
+            _ => DateTimeOffset.UtcNow < openedAt + TimeSpan.FromSeconds(patienceSeconds.Value),
+        };
+
+    /// <summary>A written Reading in the Alert's own Language; null while none is (late ones reach the UI alone).</summary>
+    private static string? ReadingIn(Reading? reading, Language language) =>
+        reading?.WrittenAt is null
+            ? null
+            : language == Language.Czech ? reading.Czech : reading.English;
+
     private async Task AttemptMailAsync(
         Delivery delivery,
         Episode episode,
         CatalogService identity,
         RecipientDirectory recipients,
+        Reading? reading,
         CancellationToken cancellationToken)
     {
         if (recipients.Unknown.Contains(delivery.UserId!.Value))
@@ -113,7 +149,8 @@ public sealed class DeliveryRunner(
         }
 
         var alert = MessageComposer.ComposeAlert(
-            episode, identity, options.Value.PublicBaseUrl, recipient.Language);
+            episode, identity, options.Value.PublicBaseUrl, recipient.Language,
+            ReadingIn(reading, recipient.Language));
         await AttemptAsync(
             delivery,
             () => mailSender.SendAsync(
@@ -128,6 +165,7 @@ public sealed class DeliveryRunner(
         IReadOnlyDictionary<ApplicationId, string> webhookByApplication,
         IChatSender chatSender,
         Language chatLanguage,
+        Reading? reading,
         CancellationToken cancellationToken)
     {
         if (!webhookByApplication.TryGetValue(episode.ApplicationId, out var webhookUrl))
@@ -138,7 +176,8 @@ public sealed class DeliveryRunner(
         }
 
         var alert = MessageComposer.ComposeAlert(
-            episode, identity, options.Value.PublicBaseUrl, chatLanguage);
+            episode, identity, options.Value.PublicBaseUrl, chatLanguage,
+            ReadingIn(reading, chatLanguage));
         await AttemptAsync(
             delivery,
             () => chatSender.SendAsync(webhookUrl, alert, cancellationToken));

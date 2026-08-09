@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bugler.Mail\Bugler.Mail.csproj" />
+    <ProjectReference Include="..\Bugler.Ai\Bugler.Ai.csproj" />
     <ProjectReference Include="..\Bugler.Ingestion\Bugler.Ingestion.csproj" />
     <ProjectReference Include="..\Bugler.Exploration\Bugler.Exploration.csproj" />
     <ProjectReference Include="..\Bugler.Registry\Bugler.Registry.csproj" />

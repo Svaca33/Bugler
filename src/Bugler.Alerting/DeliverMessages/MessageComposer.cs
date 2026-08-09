@@ -25,6 +25,10 @@ public sealed record ComposedAlert(
     string? SeverityLabel,
     string MatchInstant,
     string MatchDetail,
+    /// <summary>The Reading in the Alert's own Language, where one was written in time; null otherwise.</summary>
+    string? Reading,
+    /// <summary>What the Reading is labeled as — the visible machine-made mark (see CONTEXT.md: Reading).</summary>
+    string ReadingLabel,
     string? EpisodeUrl,
     string TextBody,
     string HtmlBody,
@@ -42,7 +46,11 @@ public sealed record ComposedAlert(
 public static class MessageComposer
 {
     public static ComposedAlert ComposeAlert(
-        Episode episode, CatalogService identity, string publicBaseUrl, Language language)
+        Episode episode,
+        CatalogService identity,
+        string publicBaseUrl,
+        Language language,
+        string? reading = null)
     {
         var messages = AlertingMessages.For(language);
         var place = $"{identity.ApplicationName} {identity.Namespace}/{identity.Environment}/{identity.Name}";
@@ -65,9 +73,11 @@ public static class MessageComposer
             SeverityLabel: severity,
             MatchInstant: instant,
             MatchDetail: body,
+            Reading: reading,
+            ReadingLabel: messages.ReadingLabel,
             EpisodeUrl: episodeUrl,
-            TextBody: ComposeText(place, words, severity, instant, body, episodeUrl, messages),
-            HtmlBody: ComposeHtml(place, words, severity, instant, body, episodeUrl, messages, language),
+            TextBody: ComposeText(place, words, severity, instant, body, reading, episodeUrl, messages),
+            HtmlBody: ComposeHtml(place, words, severity, instant, body, reading, episodeUrl, messages, language),
             OpenEpisodeLabel: messages.OpenEpisodeButton,
             Language: language);
     }
@@ -78,16 +88,24 @@ public static class MessageComposer
         string? severity,
         string instant,
         string body,
+        string? reading,
         string? episodeUrl,
         AlertingMessages messages)
     {
-        var lines = new List<string>
+        var lines = new List<string> { $"{place} {words.Opening}" };
+
+        // The Reading stands above the quoted evidence — it is what the alert is opened for —
+        // and beside it in authority: labeled machine-made, never part of the facts.
+        if (reading is not null)
         {
-            $"{place} {words.Opening}",
-            "",
-            $"{words.EvidenceLabel} ({Stamp(severity, instant)}):",
-            body,
-        };
+            lines.Add("");
+            lines.Add($"{messages.ReadingLabel}:");
+            lines.Add(reading);
+        }
+
+        lines.Add("");
+        lines.Add($"{words.EvidenceLabel} ({Stamp(severity, instant)}):");
+        lines.Add(body);
 
         // One link, and it points at the Episode, not the evidence: the Episode page is where the
         // trouble is acknowledged and solved, quotes the first log itself, and is one click from
@@ -109,10 +127,19 @@ public static class MessageComposer
         string? severity,
         string instant,
         string body,
+        string? reading,
         string? episodeUrl,
         AlertingMessages messages,
         Language language)
     {
+        var readingBlock = reading is null
+            ? ""
+            : $"""
+
+               <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">{WebUtility.HtmlEncode(messages.ReadingLabel)}:</p>
+               <p style="margin:0;padding:12px 14px;background:#FBF3E0;border-left:3px solid #B26E0E;border-radius:6px;font-size:14px;color:#2B2416;">{WebUtility.HtmlEncode(reading)}</p>
+               """;
+
         var button = episodeUrl is null
             ? ""
             : $"""
@@ -125,7 +152,7 @@ public static class MessageComposer
                 <html lang="{language.Code}">
                 <body style="margin:0;padding:24px;background:#F4EDDD;">
                 <div style="max-width:560px;margin:0 auto;background:#FFFCF4;border:1px solid #E3D5B4;border-radius:8px;padding:24px;font-family:'Segoe UI',Arial,sans-serif;color:#2B2416;">
-                <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> {WebUtility.HtmlEncode(words.Opening)}</p>
+                <p style="margin:0;font-size:16px;"><strong>{WebUtility.HtmlEncode(place)}</strong> {WebUtility.HtmlEncode(words.Opening)}</p>{readingBlock}
                 <p style="margin:20px 0 6px;font-size:13px;color:#7A6C4E;">{WebUtility.HtmlEncode(words.EvidenceLabel)} ({WebUtility.HtmlEncode(Stamp(severity, instant))}):</p>
                 <pre style="margin:0;padding:12px 14px;background:#F4EDDD;border-radius:6px;font-family:Consolas,Menlo,monospace;font-size:13px;white-space:pre-wrap;word-break:break-word;color:#2B2416;">{WebUtility.HtmlEncode(body)}</pre>{button}
                 </div>
