@@ -9,7 +9,11 @@
 
     Everything running out of the repo tree is stopped first, not just the dev servers: a
     local Bugler.Host or Bugler.SampleSource holds write locks on bin/obj and would fail the
-    build gate for reasons unrelated to the code. Whatever gets stopped is listed at the end.
+    build gate for reasons unrelated to the code. Bugler.Host and Bugler.SampleSource (and
+    their `dotnet run` wrappers) are stopped by name even outside the repo tree: a host that
+    lost :8080 to the container still runs its Alerting loops against the shared postgres,
+    and a sample source keeps streaming telemetry. Whatever gets stopped is listed at the
+    end.
 
     postgres is deliberately left running: the ingested telemetry and the admin account are
     what makes manual testing possible, and the image only bakes src/ and frontend/. mailpit
@@ -56,7 +60,16 @@ Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
     $commandLine = $_.CommandLine
     $runsFromRepo = $executable -and $executable.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)
     $runtimeInRepo = $commandLine -and ($devRuntimes -contains $_.Name) -and ($commandLine -like "*$repo*")
-    if ($runsFromRepo -or $runtimeInRepo) {
+    # A Bugler.Host that lost :8080 to the container keeps its Alerting loops polling the
+    # shared postgres and races the container's detector; a Bugler.SampleSource keeps
+    # streaming telemetry. Both are stopped by name no matter where they were started from -
+    # together with the `dotnet run --project ...` wrappers that spawned them and whose
+    # relative-path command lines escape the repo match above. The command-line match keeps
+    # every other dotnet.exe (docker tooling, VS Code's C# Dev Kit BuildHost.dll) out of reach.
+    $isStrayBugler = @('Bugler.Host.exe', 'Bugler.SampleSource.exe') -contains $_.Name
+    $isBuglerWrapper = ($_.Name -eq 'dotnet.exe') -and $commandLine -and
+        ($commandLine -match '\brun\b.*--project\s+\S*Bugler\.(Host|SampleSource)')
+    if ($runsFromRepo -or $runtimeInRepo -or $isStrayBugler -or $isBuglerWrapper) {
         $candidates[[int] $_.ProcessId] = $_.Name
     }
 }
