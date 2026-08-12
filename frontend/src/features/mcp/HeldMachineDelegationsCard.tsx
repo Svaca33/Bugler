@@ -53,6 +53,14 @@ export function HeldMachineDelegationsCard() {
               <dd className="text-[#A9BDD1]">{applicationName(delegation.applicationId)}</dd>
             </div>
             <div className="flex flex-col gap-0.5">
+              <dt className="text-[#7D93AA]">{t.mcp.grade.column}</dt>
+              <dd className="text-[#A9BDD1]">
+                {delegation.grade === "MachineHand"
+                  ? t.mcp.grade.machineHand
+                  : t.mcp.grade.reading}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
               <dt className="text-[#7D93AA]">{t.mcp.list.lastUsedColumn}</dt>
               <dd className="font-mono text-[#A9BDD1]">
                 {date(delegation.lastUsedAt) ?? t.mcp.list.neverUsed}

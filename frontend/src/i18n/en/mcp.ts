@@ -7,9 +7,9 @@ export const mcp: McpMessages = {
     title: "Machine delegations",
     subtitle:
       "Let a tool on your machine read telemetry in your name. A machine delegation never sees " +
-      "more than you do, never writes anything, and stops working the moment you revoke it. Its " +
-      "application and lifetime are fixed at issue and cannot be edited — if you need different " +
-      "ones, revoke this and issue another.",
+      "more than you do, writes nothing beyond the machine hand you may grant it, and stops " +
+      "working the moment you revoke it. Its application, grade and lifetime are fixed at issue " +
+      "and cannot be edited — if you need different ones, revoke this and issue another.",
     doorClosed:
       "This Bugler does not open a machine door. An administrator can open it under " +
       "Administration → Server.",
@@ -45,6 +45,16 @@ export const mcp: McpMessages = {
     lifetimeOption: days => `${days} days`,
     submit: "Issue",
     submitting: "Issuing…",
+  },
+
+  grade: {
+    column: "May do",
+    label: "Grade",
+    reading: "Read only",
+    machineHand: "Read + machine hand",
+    hint:
+      "The machine hand lets an agent claim an episode, pin a note, propose Solved and resign. " +
+      "Solved stays a human verdict either way.",
   },
 
   issued: {

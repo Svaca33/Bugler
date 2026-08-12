@@ -80,7 +80,8 @@ namespace Bugler.Alerting.Migrations
 
                     b.HasIndex("EpisodeId", "Kind", "Channel", "UserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_deliveries_episode_id_kind_channel_user_id");
+                        .HasDatabaseName("ix_deliveries_episode_id_kind_channel_user_id")
+                        .HasFilter("kind IN (1, 2)");
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("EpisodeId", "Kind", "Channel", "UserId"), false);
 
@@ -145,6 +146,22 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
 
+                    b.Property<DateTimeOffset?>("ClaimLeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("claim_lease_until");
+
+                    b.Property<DateTimeOffset?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("claimed_at");
+
+                    b.Property<Guid?>("ClaimedByDelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("claimed_by_delegation_id");
+
+                    b.Property<Guid?>("ClaimedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("claimed_by_user_id");
+
                     b.Property<short?>("CloseReason")
                         .HasColumnType("smallint")
                         .HasColumnName("close_reason");
@@ -184,9 +201,57 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_match_at");
 
+                    b.Property<Guid?>("NoteByDelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("note_by_delegation_id");
+
+                    b.Property<string>("NoteLink")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note_link");
+
+                    b.Property<string>("NoteText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note_text");
+
+                    b.Property<DateTimeOffset?>("NotedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("noted_at");
+
                     b.Property<DateTimeOffset>("OpenedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("opened_at");
+
+                    b.Property<Guid?>("ProposalByDelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposal_by_delegation_id");
+
+                    b.Property<string>("ProposalLink")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("proposal_link");
+
+                    b.Property<int?>("ProposalMatchesWhenLaid")
+                        .HasColumnType("integer")
+                        .HasColumnName("proposal_matches_when_laid");
+
+                    b.Property<DateTimeOffset?>("ProposedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("proposed_at");
+
+                    b.Property<string>("ResignationReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("resignation_reason");
+
+                    b.Property<DateTimeOffset?>("ResignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resigned_at");
+
+                    b.Property<Guid?>("ResignedByDelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resigned_by_delegation_id");
 
                     b.Property<Guid>("ServiceId")
                         .HasColumnType("uuid")
@@ -214,6 +279,10 @@ namespace Bugler.Alerting.Migrations
                     b.HasIndex("ApplicationId")
                         .HasDatabaseName("ix_episodes_application_id");
 
+                    b.HasIndex("ClaimLeaseUntil")
+                        .HasDatabaseName("ix_episodes_claim_lease_until")
+                        .HasFilter("claimed_by_delegation_id IS NOT NULL");
+
                     b.HasIndex("OpenedAt", "Id")
                         .HasDatabaseName("ix_episodes_opened_at_id");
 
@@ -240,6 +309,10 @@ namespace Bugler.Alerting.Migrations
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("at");
+
+                    b.Property<Guid?>("DelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegation_id");
 
                     b.Property<Guid>("EpisodeId")
                         .HasColumnType("uuid")
@@ -329,6 +402,10 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("chat_webhook_url");
 
+                    b.Property<int?>("ClaimLeaseHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("claim_lease_hours");
+
                     b.Property<int?>("QuietWindowMinutes")
                         .HasColumnType("integer")
                         .HasColumnName("quiet_window_minutes");
@@ -346,6 +423,8 @@ namespace Bugler.Alerting.Migrations
 
                     b.ToTable("application_settings", "alerting", t =>
                         {
+                            t.HasCheckConstraint("ck_application_settings_claim_lease", "claim_lease_hours >= 1");
+
                             t.HasCheckConstraint("ck_application_settings_quiet_window", "quiet_window_minutes >= 1");
                         });
                 });

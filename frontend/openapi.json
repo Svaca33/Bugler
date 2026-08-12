@@ -2416,6 +2416,75 @@
         }
       }
     },
+    "/api/alerting/episodes/{id}/proposal/reject": {
+      "post": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/resignation": {
+      "delete": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/claim": {
+      "delete": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/admin/applications": {
       "get": {
         "tags": [
@@ -2803,7 +2872,8 @@
       "AlertingDefaultsDto": {
         "required": [
           "sensitivity",
-          "quietWindowMinutes"
+          "quietWindowMinutes",
+          "claimLeaseHours"
         ],
         "type": "object",
         "properties": {
@@ -2811,6 +2881,14 @@
             "$ref": "#/components/schemas/Sensitivity"
           },
           "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "claimLeaseHours": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -2850,6 +2928,7 @@
           "applicationId",
           "sensitivity",
           "quietWindowMinutes",
+          "claimLeaseHours",
           "chatWebhook",
           "serviceOverrides",
           "defaults"
@@ -2871,6 +2950,15 @@
             ]
           },
           "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "claimLeaseHours": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -3133,7 +3221,9 @@
           "open",
           "quieted",
           "solved",
-          "muted"
+          "muted",
+          "proposals",
+          "resignations"
         ],
         "type": "object",
         "properties": {
@@ -3162,6 +3252,22 @@
             "format": "int32"
           },
           "muted": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "proposals": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "resignations": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3268,7 +3374,11 @@
           "earlierAcknowledgedAt",
           "earlierAcknowledgedBy",
           "priorCount",
-          "fingerprintQuietWindowMinutes"
+          "fingerprintQuietWindowMinutes",
+          "machineClaim",
+          "machineNote",
+          "solvedProposal",
+          "resignation"
         ],
         "type": "object",
         "properties": {
@@ -3407,6 +3517,46 @@
               "string"
             ],
             "format": "int32"
+          },
+          "machineClaim": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MachineClaimDto"
+              }
+            ]
+          },
+          "machineNote": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MachineNoteDto"
+              }
+            ]
+          },
+          "solvedProposal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SolvedProposalDto"
+              }
+            ]
+          },
+          "resignation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ResignationDto"
+              }
+            ]
           }
         }
       },
@@ -3550,6 +3700,7 @@
           "userId",
           "userEmail",
           "applicationId",
+          "grade",
           "createdAt",
           "expiresAt",
           "lastUsedAt"
@@ -3576,6 +3727,9 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "grade": {
+            "$ref": "#/components/schemas/MachineDelegationGrade"
           },
           "createdAt": {
             "type": "string",
@@ -3686,7 +3840,8 @@
         "required": [
           "name",
           "applicationId",
-          "lifetimeDays"
+          "lifetimeDays",
+          "grade"
         ],
         "type": "object",
         "properties": {
@@ -3708,6 +3863,16 @@
               "string"
             ],
             "format": "int32"
+          },
+          "grade": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MachineDelegationGrade"
+              }
+            ]
           }
         }
       },
@@ -3715,7 +3880,8 @@
         "required": [
           "kind",
           "at",
-          "by"
+          "by",
+          "machine"
         ],
         "type": "object",
         "properties": {
@@ -3731,6 +3897,16 @@
               "null",
               "string"
             ]
+          },
+          "machine": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MachineHandByDto"
+              }
+            ]
           }
         }
       },
@@ -3738,7 +3914,17 @@
         "enum": [
           "Acknowledged",
           "Withdrawn",
-          "Solved"
+          "Solved",
+          "Claimed",
+          "ClaimRenewed",
+          "ClaimReleased",
+          "ClaimLapsed",
+          "ClaimDisplaced",
+          "NotePinned",
+          "ProposalLaid",
+          "ProposalRejected",
+          "Resigned",
+          "ResignationDismissed"
         ]
       },
       "JsonElement": { },
@@ -3974,11 +4160,33 @@
           }
         }
       },
+      "MachineClaimDto": {
+        "required": [
+          "at",
+          "leaseUntil",
+          "by"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "leaseUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "$ref": "#/components/schemas/MachineHandByDto"
+          }
+        }
+      },
       "MachineDelegationDto": {
         "required": [
           "id",
           "name",
           "applicationId",
+          "grade",
           "createdAt",
           "expiresAt",
           "lastUsedAt"
@@ -3999,6 +4207,9 @@
             ],
             "format": "uuid"
           },
+          "grade": {
+            "$ref": "#/components/schemas/MachineDelegationGrade"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -4013,6 +4224,63 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "MachineDelegationGrade": {
+        "enum": [
+          "Reading",
+          "MachineHand"
+        ]
+      },
+      "MachineHandByDto": {
+        "required": [
+          "name",
+          "holderEmail"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "holderEmail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "MachineNoteDto": {
+        "required": [
+          "text",
+          "link",
+          "at",
+          "by"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "link": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "by": {
+            "$ref": "#/components/schemas/MachineHandByDto"
           }
         }
       },
@@ -4322,6 +4590,30 @@
           },
           "newPassword": {
             "type": "string"
+          }
+        }
+      },
+      "ResignationDto": {
+        "required": [
+          "reason",
+          "at",
+          "overtaken",
+          "by"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overtaken": {
+            "type": "boolean"
+          },
+          "by": {
+            "$ref": "#/components/schemas/MachineHandByDto"
           }
         }
       },
@@ -4779,7 +5071,8 @@
       "SetApplicationAlertingRequest": {
         "required": [
           "sensitivity",
-          "quietWindowMinutes"
+          "quietWindowMinutes",
+          "claimLeaseHours"
         ],
         "type": "object",
         "properties": {
@@ -4794,6 +5087,15 @@
             ]
           },
           "quietWindowMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "claimLeaseHours": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -5015,6 +5317,42 @@
           "StartTls",
           "ImplicitTls"
         ]
+      },
+      "SolvedProposalDto": {
+        "required": [
+          "link",
+          "at",
+          "matchesSince",
+          "overtaken",
+          "by"
+        ],
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "matchesSince": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "overtaken": {
+            "type": "boolean"
+          },
+          "by": {
+            "$ref": "#/components/schemas/MachineHandByDto"
+          }
+        }
       },
       "StorageReportResponse": {
         "required": [

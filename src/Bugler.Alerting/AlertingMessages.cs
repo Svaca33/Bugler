@@ -32,6 +32,7 @@ internal abstract class AlertingMessages
 
     // Alerting settings.
     public abstract string QuietWindowAtLeastOneMinute { get; }
+    public abstract string ClaimLeaseAtLeastOneHour { get; }
     public abstract string WebhookMustBeHttps { get; }
     public abstract string HealthCheckMustBeUrl { get; }
     public abstract string QuietWindowBetween(int maxMinutes);
@@ -44,6 +45,9 @@ internal abstract class AlertingMessages
 
     // The Alert.
     public abstract AlertWords WordsFor(Watch watch);
+
+    /// <summary>The Resignation message's phrases (see CONTEXT.md: Resignation) — the quoted evidence is the machine's reason.</summary>
+    public abstract AlertWords ResignationWords { get; }
     public abstract string NoBody { get; }
     public abstract string EpisodeLinkLabel { get; }
     public abstract string OpenEpisodeButton { get; }

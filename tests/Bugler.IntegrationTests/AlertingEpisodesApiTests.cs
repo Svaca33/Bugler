@@ -116,10 +116,10 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         // Counts follow the faces (1 open + 1 quieted), not the episodes (1 + 3).
         var grouped = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
             "/api/alerting/episodes/counts?latestPerFingerprint=true");
-        Assert.Equal(new EpisodeCountsResponse(1, 1, 0, 0), grouped);
+        Assert.Equal(new EpisodeCountsResponse(1, 1, 0, 0, 0, 0), grouped);
         var flat = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
             "/api/alerting/episodes/counts");
-        Assert.Equal(new EpisodeCountsResponse(1, 3, 0, 0), flat);
+        Assert.Equal(new EpisodeCountsResponse(1, 3, 0, 0, 0, 0), flat);
     }
 
     [Fact]

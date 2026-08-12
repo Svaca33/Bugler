@@ -18,6 +18,9 @@ internal sealed class CzechAlertingMessages : AlertingMessages
     public override string QuietWindowAtLeastOneMinute =>
         "Tiché okno musí být alespoň 1 minuta.";
 
+    public override string ClaimLeaseAtLeastOneHour =>
+        "Lease strojního převzetí musí být alespoň 1 hodina.";
+
     public override string WebhookMustBeHttps => "Webhook musí být absolutní https URL.";
 
     public override string HealthCheckMustBeUrl =>
@@ -44,6 +47,12 @@ internal sealed class CzechAlertingMessages : AlertingMessages
             "Bez odpovědi od", "přestal odpovídat na svůj health check.", "Health check"),
         _ => new AlertWords("Potíže v", "začal logovat potíže.", "První log"),
     };
+
+    public override AlertWords ResignationWords => new(
+        "Stroj se vzdal v",
+        "nese potíže, které stroj vzdal: podíval se a z kódu je opravit neumí. "
+        + "Je potřeba lidská ruka.",
+        "Důvod stroje");
 
     public override string NoBody => "(bez těla)";
 

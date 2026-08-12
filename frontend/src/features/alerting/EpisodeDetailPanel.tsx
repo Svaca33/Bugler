@@ -198,6 +198,16 @@ function EpisodeBody(props: {
       {/* The machine's reading of the evidence — beside it, never above it (CONTEXT.md: Reading). */}
       {detail?.reading != null && <ReadingSection reading={detail.reading} />}
 
+      {/* The machine hand's live marks and the human answers to them (CONTEXT.md: Machine Claim,
+          Machine Note, Solved Proposal, Resignation). */}
+      <MachineHandSection
+        episode={episode}
+        actions={actions}
+        isNewest={isNewest}
+        onConfirm={() => setSolveOpen(true)}
+      />
+
+
       {/* Lifecycle */}
       <div className="flex flex-col gap-2">
         <p className={CAPTION}>{t.alerting.detail.lifecycleCaption}</p>
@@ -281,6 +291,7 @@ function EpisodeBody(props: {
             <StillMatching
               lastMatchAt={episode.lastMatchAt}
               acknowledged={episode.acknowledgedAt !== null}
+              machineClaimed={episode.machineClaim != null}
               quietWindowMinutes={detail === undefined ? undefined : Number(detail.quietWindowMinutes)}
               healthCheck={isHealthCheck}
             />
@@ -444,6 +455,153 @@ function EpisodeBody(props: {
 }
 
 /**
+ * The machine hand on this Episode (Alerting CONTEXT.md): the claim that holds it, the pinned
+ * note, the Solved Proposal awaiting a verdict, the Resignation calling for a human hand — and
+ * the buttons that answer them. Confirming the proposal is the Solve itself, so it opens the
+ * same dialog; nothing here renders anything on its own. Absent entirely while no mark stands.
+ */
+function MachineHandSection(props: {
+  episode: Episode;
+  actions: ReturnType<typeof useEpisodeActions>;
+  isNewest: boolean | undefined;
+  onConfirm: () => void;
+}) {
+  const t = useT();
+  const { episode, actions } = props;
+  const claim = episode.machineClaim;
+  const note = episode.machineNote;
+  const proposal = episode.solvedProposal;
+  const resignation = episode.resignation;
+
+  if (claim == null && note == null && proposal == null && resignation == null) {
+    return null;
+  }
+
+  const handOf = (by: { name: string | null; holderEmail: string | null }) =>
+    by.name === null
+      ? t.alerting.machine.formerHand
+      : t.alerting.machine.hand(by.name, by.holderEmail);
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p className={CAPTION}>{t.alerting.machine.caption}</p>
+
+      {claim != null && (
+        <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="text-[12.5px]">{t.alerting.machine.claimHeld(handOf(claim.by))}</p>
+            <p className="font-mono text-[11px] text-[#7D93AA]">
+              {t.alerting.machine.leaseUntil(clock(claim.leaseUntil))}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actions.withdrawClaim.isPending}
+            onClick={() => actions.withdrawClaim.mutate()}
+          >
+            {t.alerting.machine.withdrawClaim}
+          </Button>
+        </div>
+      )}
+
+      {note != null && (
+        <div className="flex flex-col gap-1 rounded-lg border border-[#1E344C] bg-card px-[11px] py-2.5">
+          <p className="font-mono text-[10px] tracking-[0.12em] text-[#5F7590]">
+            {t.alerting.machine.noteCaption} · {clock(note.at)}
+          </p>
+          {note.text != null && (
+            <p className="text-[12.5px] leading-[1.55] text-[#DCE8F3]">{note.text}</p>
+          )}
+          {note.link != null && (
+            <a
+              className="truncate text-[11.5px] text-primary hover:underline"
+              href={note.link}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t.alerting.machine.openLink}
+            </a>
+          )}
+        </div>
+      )}
+
+      {proposal != null && (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-[rgba(233,164,60,0.45)] bg-[rgba(233,164,60,0.07)] px-[11px] py-2.5">
+          <p className="text-[12.5px] font-medium text-[#DCE8F3]">
+            {t.alerting.machine.proposalHeading}
+          </p>
+          <p className="text-[11.5px] text-[#8CA1B8]">
+            {t.alerting.machine.proposalLaidBy(handOf(proposal.by))} · {clock(proposal.at)}
+          </p>
+          <p className="font-mono text-[11px] text-[#A9BDD1]">
+            {t.alerting.machine.matchesSince(Number(proposal.matchesSince))}
+          </p>
+          {proposal.link != null && (
+            <a
+              className="truncate text-[11.5px] text-primary hover:underline"
+              href={proposal.link}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t.alerting.machine.openPr}
+            </a>
+          )}
+          {proposal.overtaken ? (
+            <p className="text-[11.5px] text-[#8CA1B8]">{t.alerting.machine.overtakenNote}</p>
+          ) : (
+            <div className="mt-1 flex items-center gap-2">
+              <Button
+                size="sm"
+                disabled={props.isNewest !== true || episode.state === "Solved"}
+                onClick={props.onConfirm}
+              >
+                {t.alerting.machine.confirmSolved}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={actions.rejectProposal.isPending}
+                onClick={() => actions.rejectProposal.mutate()}
+              >
+                {t.alerting.machine.reject}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {resignation != null && (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-[rgba(201,123,18,0.45)] bg-[rgba(201,123,18,0.07)] px-[11px] py-2.5">
+          <p className="text-[12.5px] font-medium text-[#DCE8F3]">
+            {t.alerting.machine.resignationHeading}
+          </p>
+          <p className="text-[12.5px] leading-[1.55] text-[#DCE8F3]">{resignation.reason}</p>
+          <p className="text-[11.5px] text-[#8CA1B8]">
+            {t.alerting.machine.resignedBy(handOf(resignation.by))} · {clock(resignation.at)}
+          </p>
+          {resignation.overtaken ? (
+            <p className="text-[11.5px] text-[#8CA1B8]">
+              {t.alerting.machine.resignationOvertakenNote}
+            </p>
+          ) : null}
+          <div className="mt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={actions.dismissResignation.isPending}
+              onClick={() => actions.dismissResignation.mutate()}
+            >
+              {t.alerting.machine.dismiss}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * The machine's reading of the opening evidence: visibly machine-made (the model is named), in
  * the viewer's own language, and carrying no authority — Solved stays a human verdict. Pending
  * and failed states are said quietly; the evidence never depends on this card.
@@ -572,6 +730,37 @@ function JournalMoments(props: {
     const isMe = entry.by !== null && entry.by === props.myName;
     const name = entry.by ?? words.formerUser;
 
+    // The machine hand's entries: narrated by the delegation's name, and where a person acted
+    // over a machine's mark, the entry names both hands.
+    const machine = entry.machine?.name ?? words.formerMachine;
+    const machineText: Partial<Record<typeof entry.kind, string>> = {
+      Claimed: words.claimed(machine),
+      ClaimRenewed: words.claimRenewed(machine),
+      ClaimReleased: words.claimReleased(machine),
+      ClaimLapsed: words.claimLapsed(machine),
+      ClaimDisplaced: words.claimDisplaced(name, machine),
+      NotePinned: words.notePinned(machine),
+      ProposalLaid: words.proposalLaid(machine),
+      ProposalRejected: words.proposalRejected(name, machine),
+      Resigned: words.resigned(machine),
+      ResignationDismissed: words.resignationDismissed(name, machine),
+    };
+    const machineNarration = machineText[entry.kind];
+    if (machineNarration !== undefined) {
+      const machineDot =
+        entry.kind === "Resigned"
+          ? "bg-severity-warn-rail"
+          : entry.kind === "ProposalLaid"
+            ? "bg-primary"
+            : "bg-[#22394F]";
+      return (
+        <Moment key={index} dot={machineDot}>
+          <p className="text-[12.5px]">{machineNarration}</p>
+          <p className="font-mono text-[11px] text-[#7D93AA]">{clock(entry.at)}</p>
+        </Moment>
+      );
+    }
+
     let text: string;
     let dot: string;
     if (entry.kind === "Acknowledged") {
@@ -629,6 +818,7 @@ function Moment(props: { dot: string; pulse?: boolean; children: ReactNode }) {
 function StillMatching(props: {
   lastMatchAt: string;
   acknowledged: boolean;
+  machineClaimed: boolean;
   quietWindowMinutes: number | undefined;
   healthCheck: boolean;
 }) {
@@ -644,6 +834,9 @@ function StillMatching(props: {
       </p>
       {props.acknowledged ? (
         <p className="font-mono text-[11px] text-[#7D93AA]">{t.alerting.detail.heldOpenNote}</p>
+      ) : props.machineClaimed ? (
+        // The same hold on a lease (CONTEXT.md: Machine Claim) — said in the machine's terms.
+        <p className="font-mono text-[11px] text-[#7D93AA]">{t.alerting.machine.heldOpenNote}</p>
       ) : (
         props.quietWindowMinutes !== undefined && (
           <p className="font-mono text-[11px] text-[#7D93AA]">

@@ -124,6 +124,10 @@ namespace Bugler.Access.Migrations
                         .HasColumnType("bytea")
                         .HasColumnName("fingerprint");
 
+                    b.Property<short>("Grade")
+                        .HasColumnType("smallint")
+                        .HasColumnName("grade");
+
                     b.Property<DateTimeOffset?>("LastUsedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_used_at");

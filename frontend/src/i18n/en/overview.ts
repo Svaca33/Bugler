@@ -63,6 +63,13 @@ export const overview: OverviewMessages = {
   sparklineBar: (stamp, error, warn, logs) =>
     `${stamp} · ${error.toLocaleString(FORMAT_LOCALES.en)} err · ` +
     `${warn.toLocaleString(FORMAT_LOCALES.en)} warn · ${logs.toLocaleString(FORMAT_LOCALES.en)} logs`,
+  machineHand: {
+    proposals: count =>
+      `${count} machine proposal${count === 1 ? "" : "s"} awaiting a verdict`,
+    resignations: count =>
+      `${count} machine resignation${count === 1 ? "" : "s"} — a human hand is needed`,
+    title: "The machine hand awaits a person — open the episodes",
+  },
   table: {
     header: {
       service: "SERVICE",

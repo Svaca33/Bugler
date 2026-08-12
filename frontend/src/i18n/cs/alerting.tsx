@@ -167,6 +167,60 @@ export const alerting: AlertingMessages = {
     withdrewOf: (name, holder) => `${subj(name)} vrátil převzetí uživatele ${holder}`,
     solvedByYou: "Epizodu jste vyřešili",
     solvedBy: name => `Epizodu vyřešil ${agent(name)}`,
+    formerMachine: "neznámý",
+    claimed: machine => `Stroj „${machine}“ epizodu převzal`,
+    claimRenewed: machine => `Stroj „${machine}“ obnovil svůj lease`,
+    claimReleased: machine => `Stroj „${machine}“ epizodu vrátil`,
+    claimLapsed: machine => `Převzetí stroje „${machine}“ vypršelo`,
+    claimDisplaced: (name, machine) => `${subj(name)} odebral převzetí stroji „${machine}“`,
+    notePinned: machine => `Stroj „${machine}“ připnul poznámku`,
+    proposalLaid: machine => `Stroj „${machine}“ navrhl: vyřešeno`,
+    proposalRejected: (name, machine) => `${subj(name)} zamítl návrh stroje „${machine}“`,
+    resigned: machine => `Stroj „${machine}“ se vzdal — tohle opravit neumí`,
+    resignationDismissed: (name, machine) => `${subj(name)} smetl rezignaci stroje „${machine}“`,
+  },
+
+  machine: {
+    badgeClaimed: "drží stroj",
+    badgeClaimedTitle: machine => `Epizodu drží stroj: ${machine}`,
+    badgeProposal: "návrh: vyřešeno",
+    badgeProposalTitle:
+      "Stroj věří, že příčina je opravená — potvrďte nebo zamítněte v detailu",
+    badgeResigned: "stroj se vzdal",
+    badgeResignedTitle:
+      "Stroj se podíval a tvrdí, že tohle opravit neumí — je potřeba lidská ruka",
+    caption: "STROJNÍ RUKA",
+    hand: (machine, holder) => (holder === null ? `„${machine}“` : `„${machine}“ (${holder})`),
+    formerHand: "delegace, která už tu není",
+    claimHeld: hand => `Epizodu drží stroj ${hand}.`,
+    leaseUntil: clockText => `lease běží do ${clockText}`,
+    withdrawClaim: "Odebrat převzetí",
+    noteCaption: "Poznámka stroje",
+    openLink: "Otevřít odkaz ›",
+    proposalHeading: "Stroj navrhuje: vyřešeno",
+    proposalLaidBy: hand => `Položil ${hand}`,
+    openPr: "Otevřít PR ›",
+    matchesSince: count =>
+      count === 0
+        ? "od návrhu žádná shoda"
+        : plural("cs", count, {
+            one: `${count} shoda od návrhu`,
+            few: `${count} shody od návrhu`,
+            other: `${count} shod od návrhu`,
+          }),
+    overtakenNote:
+      "Překonáno — potíž se vrátila v novější epizodě, fix tedy nedržel. Návrh už nelze potvrdit.",
+    resignationOvertakenNote:
+      "Překonáno — druh potíží se vrátil v novější epizodě; tohle prohlášení je historie.",
+    confirmSolved: "Potvrdit — vyřešit",
+    reject: "Zamítnout",
+    resignationHeading: "Stroj se vzdal: tohle opravit neumí",
+    resignedBy: hand => `Prohlásil ${hand}`,
+    dismiss: "Smést",
+    heldOpenNote: "drží ji otevřenou strojní převzetí — utichnout může až po jeho konci",
+    rejectFailed: "Zamítnutí se neuložilo.",
+    dismissFailed: "Rezignaci se nepodařilo smést.",
+    withdrawClaimFailed: "Převzetí se nepodařilo odebrat.",
   },
 
   reading: {

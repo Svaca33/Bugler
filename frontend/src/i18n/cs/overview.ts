@@ -89,6 +89,21 @@ export const overview: OverviewMessages = {
       few: `${logs.toLocaleString(FORMAT_LOCALES.cs)} logy`,
       other: `${logs.toLocaleString(FORMAT_LOCALES.cs)} logů`,
     }),
+  machineHand: {
+    proposals: count =>
+      plural("cs", count, {
+        one: `${count} strojní návrh čeká na verdikt`,
+        few: `${count} strojní návrhy čekají na verdikt`,
+        other: `${count} strojních návrhů čeká na verdikt`,
+      }),
+    resignations: count =>
+      plural("cs", count, {
+        one: `${count} strojní rezignace — je potřeba lidská ruka`,
+        few: `${count} strojní rezignace — je potřeba lidská ruka`,
+        other: `${count} strojních rezignací — je potřeba lidská ruka`,
+      }),
+    title: "Strojní ruka čeká na člověka — otevřít epizody",
+  },
   table: {
     header: {
       service: "SLUŽBA",

@@ -31,6 +31,7 @@ import { EpisodesFilterRail } from "./EpisodesFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
 import { clock, dayLabel, historyStamp } from "./format";
 import { HealthCheckBadge } from "./HealthCheckBadge";
+import { MachineHandBadges } from "./MachineHandBadges";
 import { OpenNowBand } from "./OpenNowBand";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { indexServices, type KnownService } from "./serviceIndex";
@@ -440,6 +441,7 @@ function EpisodeRow(props: {
               )}
               {historyToggle}
               <QuietWindowBadge episode={episode} />
+              <MachineHandBadges episode={episode} />
               {owner !== undefined && <span className="truncate">{owner}</span>}
             </>
           )}

@@ -33,7 +33,12 @@ public sealed record EpisodeDto(
     string? EarlierAcknowledgedBy,
     int PriorCount,
     /// <summary>The Quiet Window this kind of trouble keeps for itself; null means it inherits the Service's.</summary>
-    int? FingerprintQuietWindowMinutes);
+    int? FingerprintQuietWindowMinutes,
+    /// <summary>The machine hand's live marks, where one stands (see CONTEXT.md: Machine Claim).</summary>
+    MachineClaimDto? MachineClaim,
+    MachineNoteDto? MachineNote,
+    SolvedProposalDto? SolvedProposal,
+    ResignationDto? Resignation);
 
 public sealed record ListEpisodesResponse(IReadOnlyList<EpisodeDto> Items);
 
@@ -60,6 +65,7 @@ internal static class EpisodesEndpoint
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
         IUserNames userNames,
+        IMachineDelegationNames delegationNames,
         CancellationToken cancellationToken)
     {
         if (GetUserId(principal) is not { } callerId)
@@ -138,6 +144,13 @@ internal static class EpisodesEndpoint
                     .Where(w => w.ServiceId == e.ServiceId && w.Fingerprint == e.Fingerprint)
                     .Select(w => (int?)w.QuietWindowMinutes)
                     .FirstOrDefault(),
+                // Only a proposal or a Resignation ages into "overtaken", so the sibling check
+                // is paid only where one stands.
+                NewerExists = (e.ProposedAt != null || e.ResignedAt != null)
+                    && dbContext.Episodes.Any(p =>
+                        p.ServiceId == e.ServiceId
+                        && p.Fingerprint == e.Fingerprint
+                        && p.Id.CompareTo(e.Id) > 0),
             })
             .ToListAsync(cancellationToken);
 
@@ -150,6 +163,9 @@ internal static class EpisodesEndpoint
                 .OfType<Guid>()
                 .ToHashSet(),
             cancellationToken);
+        var machines = await delegationNames.ResolveAsync(
+            rows.SelectMany(r => MachineHandDtos.DelegationIds(r.Episode)).ToHashSet(),
+            cancellationToken);
 
         var items = rows.Select(r => new EpisodeDto(
             r.Episode.Id, r.Episode.ApplicationId.Value, r.Episode.ServiceId.Value,
@@ -160,7 +176,11 @@ internal static class EpisodesEndpoint
             r.Episode.AcknowledgedAt, NameOf(names, r.Episode.AcknowledgedByUserId),
             r.Episode.SolvedAt, NameOf(names, r.Episode.SolvedByUserId),
             r.EarlierAck?.AcknowledgedAt, NameOf(names, r.EarlierAck?.AcknowledgedByUserId),
-            r.PriorCount, r.FingerprintQuietWindowMinutes)).ToList();
+            r.PriorCount, r.FingerprintQuietWindowMinutes,
+            MachineHandDtos.Claim(r.Episode, machines),
+            MachineHandDtos.Note(r.Episode, machines),
+            MachineHandDtos.Proposal(r.Episode, r.NewerExists, machines),
+            MachineHandDtos.Resignation(r.Episode, r.NewerExists, machines))).ToList();
 
         return Results.Ok(new ListEpisodesResponse(items));
     }

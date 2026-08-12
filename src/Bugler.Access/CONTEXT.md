@@ -47,15 +47,17 @@ _Avoid_: logout as a fact about one browser, session close
 
 **Machine Delegation**:
 A User's own reading, lent to a tool on their machine: it reads telemetry in their name, never past
-their Visibility Scope, never wider than the one Application it may be narrowed to, and never writes
-anything at all. Proven by a Secret shown once at issue and never restorable, read back against the
-User behind it on every request — so Deactivation and Deletion end it at once, while a Password
-Change does not, because unlike a Session it was never minted from a password. Worth holding for a
-fixed span rather than forever: its Secret lives in a configuration file on somebody's laptop, and
-time is what bounds a leak nobody noticed. The Application it is narrowed to and the span it lasts
-are **stamped into it at issue and cannot be edited** — wanting different ones means revoking it and
-issuing another, which is what makes it a credential rather than a setting. Not an identity of its
-own: nothing is delegated that the User does not already hold, and nothing survives them.
+their Visibility Scope, never wider than the one Application it may be narrowed to — and it writes
+nothing beyond the machine hand's narrow Alerting verbs, and those only when its Grade grants them.
+The Grade is one of two — reading alone (the default), or reading and the machine hand — and like
+the narrowing it is **stamped in at issue and cannot be edited**. Proven by a Secret shown once at
+issue and never restorable, read back against the User behind it on every request — so Deactivation
+and Deletion end it at once, while a Password Change does not, because unlike a Session it was never
+minted from a password. Worth holding for a fixed span rather than forever: its Secret lives in a
+configuration file on somebody's laptop, and time is what bounds a leak nobody noticed. The
+Application, the Grade and the span are fixed at issue — wanting different ones means revoking it
+and issuing another, which is what makes it a credential rather than a setting. Not an identity of
+its own: nothing is delegated that the User does not already hold, and nothing survives them.
 _Avoid_: token, PAT, personal access token, service account, machine user, API key, bot, access rule
 
 **Password Change**:

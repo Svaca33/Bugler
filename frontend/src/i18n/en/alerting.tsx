@@ -148,6 +148,58 @@ export const alerting: AlertingMessages = {
     withdrewOf: (name, holder) => `${cap(name)} withdrew ${holder}'s acknowledgement`,
     solvedByYou: "Solved by you",
     solvedBy: name => `Solved by ${name}`,
+    formerMachine: "unknown",
+    claimed: machine => `Machine "${machine}" claimed the episode`,
+    claimRenewed: machine => `Machine "${machine}" renewed its lease`,
+    claimReleased: machine => `Machine "${machine}" gave the episode back`,
+    claimLapsed: machine => `The claim of "${machine}" lapsed`,
+    claimDisplaced: (name, machine) => `${cap(name)} withdrew the claim of "${machine}"`,
+    notePinned: machine => `Machine "${machine}" pinned its note`,
+    proposalLaid: machine => `Machine "${machine}" proposed: solved`,
+    proposalRejected: (name, machine) => `${cap(name)} rejected the proposal of "${machine}"`,
+    resigned: machine => `Machine "${machine}" resigned — not one it can fix`,
+    resignationDismissed: (name, machine) =>
+      `${cap(name)} swept the resignation of "${machine}" aside`,
+  },
+
+  machine: {
+    badgeClaimed: "machine-held",
+    badgeClaimedTitle: machine => `A machine holds this episode: ${machine}`,
+    badgeProposal: "proposes: solved",
+    badgeProposalTitle:
+      "The machine believes the cause is fixed — confirm or reject in the detail",
+    badgeResigned: "machine resigned",
+    badgeResignedTitle:
+      "A machine looked and says this is not one it can fix — a human hand is needed",
+    caption: "MACHINE HAND",
+    hand: (machine, holder) => (holder === null ? `"${machine}"` : `"${machine}" (${holder})`),
+    formerHand: "a machine delegation no longer here",
+    claimHeld: hand => `Machine ${hand} holds this episode.`,
+    leaseUntil: clockText => `lease runs until ${clockText}`,
+    withdrawClaim: "Withdraw the claim",
+    noteCaption: "The machine's note",
+    openLink: "Open the link ›",
+    proposalHeading: "The machine proposes: solved",
+    proposalLaidBy: hand => `Laid by ${hand}`,
+    openPr: "Open the PR ›",
+    matchesSince: count =>
+      count === 0
+        ? "no matches since the proposal"
+        : `${count} match${count === 1 ? "" : "es"} since the proposal`,
+    overtakenNote:
+      "Overtaken — the trouble returned in a newer episode, so the fix did not hold. The "
+      + "proposal can no longer be confirmed.",
+    resignationOvertakenNote:
+      "Overtaken — the kind of trouble returned in a newer episode; this statement is history.",
+    confirmSolved: "Confirm — solve",
+    reject: "Reject",
+    resignationHeading: "The machine resigned: not one it can fix",
+    resignedBy: hand => `Said by ${hand}`,
+    dismiss: "Dismiss",
+    heldOpenNote: "held open by the machine's claim — it can quiet only after the claim ends",
+    rejectFailed: "The rejection was not saved.",
+    dismissFailed: "The resignation was not dismissed.",
+    withdrawClaimFailed: "The claim was not withdrawn.",
   },
 
   reading: {

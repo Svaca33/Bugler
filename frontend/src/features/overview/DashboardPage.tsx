@@ -92,6 +92,19 @@ export function DashboardPage(props: {
     enabled: ready,
   });
 
+  // The machine hand's standing marks: proposals awaiting a verdict, resignations calling for
+  // a human hand. Counted by the alerting counts endpoint within the caller's visibility.
+  const machineHand = useQuery({
+    queryKey: ["alerts", "machine-hand-counts"],
+    queryFn: async () => {
+      const { data, error } = await api.GET("/api/alerting/episodes/counts", {});
+      if (error !== undefined) throw new Error("Failed to count the machine hand's marks");
+      return data;
+    },
+    refetchInterval: REFETCH_MS,
+    enabled: ready,
+  });
+
   const subscriptions = useQuery({
     queryKey: ["alerts", "subscriptions"],
     queryFn: async () => {
@@ -277,6 +290,31 @@ export function DashboardPage(props: {
           <h1 className="text-[19px] font-semibold tracking-[-0.4px]">{t.overview.title}</h1>
           <p className="text-[12.5px] text-[#8CA1B8]">{t.overview.subtitle}</p>
         </div>
+        {(Number(machineHand.data?.proposals ?? 0) > 0
+          || Number(machineHand.data?.resignations ?? 0) > 0) && (
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2 pb-0.5">
+            {Number(machineHand.data?.proposals ?? 0) > 0 && (
+              <button
+                type="button"
+                className="cursor-pointer rounded-sm border border-[rgba(233,164,60,0.55)] px-2 py-0.5 font-mono text-[11px] text-primary hover:bg-[rgba(233,164,60,0.08)]"
+                title={t.overview.machineHand.title}
+                onClick={() => navigate({ to: "/episodes", search: { section: "episodes" } })}
+              >
+                {t.overview.machineHand.proposals(Number(machineHand.data?.proposals ?? 0))}
+              </button>
+            )}
+            {Number(machineHand.data?.resignations ?? 0) > 0 && (
+              <button
+                type="button"
+                className="cursor-pointer rounded-sm border border-[rgba(201,123,18,0.5)] px-2 py-0.5 font-mono text-[11px] text-severity-warn hover:bg-[rgba(201,123,18,0.08)]"
+                title={t.overview.machineHand.title}
+                onClick={() => navigate({ to: "/episodes", search: { section: "episodes" } })}
+              >
+                {t.overview.machineHand.resignations(Number(machineHand.data?.resignations ?? 0))}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <DashboardControls

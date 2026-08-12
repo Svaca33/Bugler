@@ -46,7 +46,11 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
     queryClient.invalidateQueries({ queryKey: ["admin", "alerting", props.applicationId] });
 
   const save = useMutation({
-    mutationFn: async (body: { sensitivity: Sensitivity | null; quietWindowMinutes: number | null }) => {
+    mutationFn: async (body: {
+      sensitivity: Sensitivity | null;
+      quietWindowMinutes: number | null;
+      claimLeaseHours: number | null;
+    }) => {
       const { error } = await api.PUT("/api/admin/applications/{applicationId}/alerting", {
         params: { path: { applicationId: props.applicationId } },
         body,
@@ -63,6 +67,7 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
 
   // The generated client types integers as `number | string`; the UI works in numbers.
   const quietWindow = data.quietWindowMinutes == null ? null : Number(data.quietWindowMinutes);
+  const claimLease = data.claimLeaseHours == null ? null : Number(data.claimLeaseHours);
 
   const defaultSensitivityLabel =
     t.registry.alertingCard.sensitivity[data.defaults.sensitivity ?? "Errors"];
@@ -79,7 +84,7 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
           inheritLabel={t.registry.alertingCard.defaultOption(defaultSensitivityLabel)}
           disabled={save.isPending}
           onChange={sensitivity =>
-            save.mutate({ sensitivity, quietWindowMinutes: quietWindow })}
+            save.mutate({ sensitivity, quietWindowMinutes: quietWindow, claimLeaseHours: claimLease })}
         />
         <QuietWindowField
           id={`alerting-quiet-${props.applicationId}`}
@@ -88,7 +93,24 @@ export function ApplicationAlertingCard(props: { applicationId: string }) {
           disabled={save.isPending}
           help={t.registry.alertingCard.quietWindowHelp}
           onCommit={quietWindowMinutes =>
-            save.mutate({ sensitivity: data.sensitivity ?? null, quietWindowMinutes })}
+            save.mutate({
+              sensitivity: data.sensitivity ?? null,
+              quietWindowMinutes,
+              claimLeaseHours: claimLease,
+            })}
+        />
+        <ClaimLeaseField
+          id={`alerting-lease-${props.applicationId}`}
+          value={claimLease}
+          placeholder={`${data.defaults.claimLeaseHours}`}
+          disabled={save.isPending}
+          help={t.registry.alertingCard.claimLeaseHelp}
+          onCommit={claimLeaseHours =>
+            save.mutate({
+              sensitivity: data.sensitivity ?? null,
+              quietWindowMinutes: quietWindow,
+              claimLeaseHours,
+            })}
         />
         <WebhookField applicationId={props.applicationId} webhook={data.chatWebhook} />
       </div>
@@ -158,6 +180,58 @@ export function QuietWindowField(props: {
       <div className="flex items-center gap-1.5">
         <Label htmlFor={props.id}>{t.registry.alertingCard.quietWindowLabel}</Label>
         {props.help !== undefined && <HelpTip text={props.help} />}
+      </div>
+      <Input
+        id={props.id}
+        key={`${props.value ?? ""}`}
+        className="w-[136px]"
+        type="number"
+        min={1}
+        placeholder={props.placeholder}
+        defaultValue={props.value ?? ""}
+        disabled={props.disabled}
+        onBlur={event => commit(event.currentTarget.value)}
+        onKeyDown={event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit(event.currentTarget.value);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * How long a Machine Claim's lease runs for this application's episodes (Alerting CONTEXT.md:
+ * Machine Claim) — the same commit-on-blur shape as the quiet window beside it.
+ */
+function ClaimLeaseField(props: {
+  id: string;
+  value: number | null | undefined;
+  placeholder: string;
+  disabled: boolean;
+  help: string;
+  onCommit: (value: number | null) => void;
+}) {
+  const t = useT();
+  const commit = (raw: string) => {
+    const trimmed = raw.trim();
+    const next = trimmed === "" ? null : Number(trimmed);
+    if (next !== null && (!Number.isInteger(next) || next < 1)) {
+      return; // The API refuses it anyway; an uncommitted field is clearer than an error.
+    }
+
+    if (next !== (props.value ?? null)) {
+      props.onCommit(next);
+    }
+  };
+
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <Label htmlFor={props.id}>{t.registry.alertingCard.claimLeaseLabel}</Label>
+        <HelpTip text={props.help} />
       </div>
       <Input
         id={props.id}

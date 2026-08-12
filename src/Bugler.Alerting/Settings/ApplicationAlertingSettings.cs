@@ -10,6 +10,9 @@ public sealed class ApplicationAlertingSettings
     public Sensitivity? Sensitivity { get; set; }
     public int? QuietWindowMinutes { get; set; }
 
+    /// <summary>How long this Application's Machine Claims lease for; null means the default applies.</summary>
+    public int? ClaimLeaseHours { get; set; }
+
     /// <summary>The Chat Webhook (see CONTEXT.md) — a secret; endpoints expose only its host.</summary>
     public string? ChatWebhookUrl { get; set; }
 

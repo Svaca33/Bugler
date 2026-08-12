@@ -13,14 +13,21 @@ a machine holds is a **Machine Delegation** — that same User's reading, lent t
 It is proven by a Secret shown once at issue (prefix `blgrd_`, distinct from `blgr_` because the two
 open opposite doors and a leak should be recognisable as what it is; only its SHA-256 is stored),
 it may be narrowed to one Application but never widened past its User's Visibility Scope, it
-reads and never writes, it expires (90 days by default), and the User behind it is read back on
-every request — so Deactivation and Deletion end it at once, while a Password Change does not,
-because unlike a Session it was never minted from a password.
+reads and does not write (see the revision below), it expires (90 days by default), and the User
+behind it is read back on every request — so Deactivation and Deletion end it at once, while a
+Password Change does not, because unlike a Session it was never minted from a password.
 
-The narrowing and the span are **stamped in at issue and cannot be edited**. That is what keeps it a
-credential rather than a setting: wanting different ones means revoking this one and issuing
-another, exactly as with an API Key. A screen that let them be changed would make the same string
-mean something new tomorrow, and every tool already holding it would silently gain or lose reach.
+The narrowing, the grade and the span are **stamped in at issue and cannot be edited**. That is what
+keeps it a credential rather than a setting: wanting different ones means revoking this one and
+issuing another, exactly as with an API Key. A screen that let them be changed would make the same
+string mean something new tomorrow, and every tool already holding it would silently gain or lose
+reach.
+
+**Revised for the machine hand** (Alerting ADR 0010): a Machine Delegation writes nothing *but* the
+machine hand's narrow Alerting verbs — claim, note, propose Solved, resign — and only when the
+**grade** stamped into it at issue says so; the default grade keeps today's behaviour, reading
+alone. Solved stays a human verdict by construction, now with the construction stated: the machine
+may propose it and can do no more, because no verb that renders a verdict exists behind the door.
 
 ## Considered Options
 
@@ -45,9 +52,11 @@ mean something new tomorrow, and every tool already holding it would silently ga
 - Revocation costs nothing where it matters most: withdrawing an Application Grant narrows what the
   machine sees on its next query, because `ScopeResolver` asks Access each time; deactivating or
   deleting the User ends the Machine Delegation outright, on the same rule that already ends a Session.
-- **No mutation ever travels this way.** Acknowledge, Solve and Quiet Window are not "unmapped for
-  now" — a Machine Delegation cannot write, so Solved stays a human verdict by construction rather than by
-  restraint.
+- **No human verb ever travels this way.** Acknowledge, Solve and Quiet Window are not "unmapped
+  for now" — they do not exist behind the door, so Solved stays a human verdict by construction
+  rather than by restraint. What does travel, behind the machine-hand grade alone, is the machine
+  hand's own verbs (Alerting ADR 0010) — marks a machine lays about its own work, never a verdict
+  about anyone's.
 - A User issues their own without an Admin's approval, because there is nothing to approve: it
   cannot reach past what they already hold. The Admin's leverage is elsewhere and stronger — the
   server switch, the unrouted port (ADR 0030), and sight of every Machine Delegation issued, any of which

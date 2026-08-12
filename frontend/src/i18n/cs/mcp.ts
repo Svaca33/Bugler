@@ -7,9 +7,9 @@ export const mcp: McpMessages = {
     title: "Strojové delegace",
     subtitle:
       "Nechte nástroj na svém počítači číst telemetrii vaším jménem. Strojová delegace nikdy " +
-      "nevidí víc než vy, nic nezapisuje a v okamžiku, kdy ji odvoláte, přestane fungovat. " +
-      "Aplikaci a platnost si nese od vydání a změnit je nelze — potřebujete-li jiné, tuhle " +
-      "odvolejte a vydejte novou.",
+      "nevidí víc než vy, nezapisuje nic nad strojní ruku, kterou jí případně svěříte, a " +
+      "v okamžiku, kdy ji odvoláte, přestane fungovat. Aplikaci, oprávnění a platnost si nese " +
+      "od vydání a změnit je nelze — potřebujete-li jiné, tuhle odvolejte a vydejte novou.",
     doorClosed:
       "Tento Bugler neotevírá strojové dveře. Správce je může otevřít ve Správě → Server.",
     addressMissing:
@@ -45,6 +45,16 @@ export const mcp: McpMessages = {
     lifetimeOption: days => `${days} dní`,
     submit: "Vydat",
     submitting: "Vydávám…",
+  },
+
+  grade: {
+    column: "Smí",
+    label: "Oprávnění",
+    reading: "Jen čtení",
+    machineHand: "Čtení + strojní ruka",
+    hint:
+      "Strojní ruka nechá agenta epizodu převzít, připnout poznámku, navrhnout Vyřešeno a " +
+      "vzdát se jí. Verdikt Vyřešeno zůstává v obou případech na člověku.",
   },
 
   issued: {

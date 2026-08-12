@@ -26,7 +26,38 @@ public sealed record EpisodeSummary(
     long? FirstMatchLogId,
     string? FirstMatchDetail,
     DateTimeOffset? AcknowledgedAt,
-    DateTimeOffset? SolvedAt);
+    DateTimeOffset? SolvedAt,
+    /// <summary>The machine hand's marks, where one stands — so agents see each other's work.</summary>
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ClaimMark? Claim,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    NoteMark? Note,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ProposalMark? Proposal,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ResignationMark? Resignation);
+
+/// <summary>The Machine Claim on an Episode: whose delegation, since when, and how long the lease still runs.</summary>
+public sealed record ClaimMark(
+    string? Holder, string? HolderEmail, DateTimeOffset At, DateTimeOffset LeaseUntil);
+
+/// <summary>The claim-holder's pinned note; By is the delegation's name.</summary>
+public sealed record NoteMark(string? Text, string? Link, DateTimeOffset At, string? By);
+
+/// <summary>
+/// The Solved Proposal, aged in matches rather than minutes: 0 since is persuasive, 400 is a
+/// rejection waiting to happen. Overtaken means a newer Episode of the kind exists — the fix did
+/// not hold and the proposal can no longer be confirmed.
+/// </summary>
+public sealed record ProposalMark(
+    string? PrLink, DateTimeOffset At, int MatchesSince, bool Overtaken, string? By);
+
+/// <summary>
+/// A machine's statement about itself: this trouble is not one it can fix — with the reason.
+/// While it stands, no machine claims this Episode; only a person sweeps it aside. Overtaken
+/// means the kind returned in a newer Episode; read the history before retrying anything.
+/// </summary>
+public sealed record ResignationMark(string Reason, DateTimeOffset At, bool Overtaken, string? By);
 
 public sealed record EpisodeListAnswer(
     IReadOnlyList<EpisodeSummary> Episodes,

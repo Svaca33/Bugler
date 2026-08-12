@@ -84,6 +84,13 @@ export interface OverviewMessages {
   };
   /** A sparkline bar's tooltip: the bucket's stamp and its counts. */
   sparklineBar(stamp: string, error: number, warn: number, logs: number): string;
+  /** The machine hand's standing marks, chip-linked in the header when any await a person. */
+  machineHand: {
+    proposals(count: number): string;
+    resignations(count: number): string;
+    /** The chips' shared tooltip — they open the Episodes page. */
+    title: string;
+  };
   table: {
     header: {
       service: string;

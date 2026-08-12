@@ -17,6 +17,7 @@ import { getFormatLocale, useT } from "@/i18n";
 import { IssuedMachineDelegationPanel } from "./IssuedMachineDelegationPanel";
 import {
   type IssuedMachineDelegation,
+  type MachineDelegationGrade,
   useIssueMachineDelegation,
   useMcpConnection,
   useOwnMachineDelegations,
@@ -44,6 +45,7 @@ export function MachineDelegationsCard() {
   const [name, setName] = useState("");
   const [application, setApplication] = useState<string>(ALL);
   const [lifetime, setLifetime] = useState(90);
+  const [grade, setGrade] = useState<MachineDelegationGrade>("Reading");
   const [issued, setIssued] = useState<IssuedMachineDelegation | null>(null);
 
   const date = (value: string | null | undefined) =>
@@ -95,6 +97,7 @@ export function MachineDelegationsCard() {
                 name: name.trim(),
                 applicationId: application === ALL ? null : application,
                 lifetimeDays: lifetime,
+                grade,
               },
               { onSuccess: setIssued },
             );
@@ -146,6 +149,23 @@ export function MachineDelegationsCard() {
             </div>
           </div>
 
+          <div className="grid gap-1.5">
+            <Label htmlFor="delegation-grade">{t.mcp.grade.label}</Label>
+            <Select
+              value={grade}
+              onValueChange={value => setGrade(value as MachineDelegationGrade)}
+            >
+              <SelectTrigger id="delegation-grade" className="w-full sm:w-[calc(50%-7px)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Reading">{t.mcp.grade.reading}</SelectItem>
+                <SelectItem value="MachineHand">{t.mcp.grade.machineHand}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11.5px] text-[#7D93AA]">{t.mcp.grade.hint}</p>
+          </div>
+
           {issue.isError && <p className="text-[12.5px] text-destructive">{issue.error.message}</p>}
 
           <div>
@@ -171,6 +191,14 @@ export function MachineDelegationsCard() {
             </div>
 
             <dl className="hidden gap-5 text-[11.5px] sm:flex">
+              <div className="flex flex-col gap-0.5">
+                <dt className="text-[#7D93AA]">{t.mcp.grade.column}</dt>
+                <dd className="text-[#A9BDD1]">
+                  {delegation.grade === "MachineHand"
+                    ? t.mcp.grade.machineHand
+                    : t.mcp.grade.reading}
+                </dd>
+              </div>
               <div className="flex flex-col gap-0.5">
                 <dt className="text-[#7D93AA]">{t.mcp.list.lastUsedColumn}</dt>
                 <dd className="font-mono text-[#A9BDD1]">

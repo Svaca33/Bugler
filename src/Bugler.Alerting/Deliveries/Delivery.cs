@@ -29,6 +29,12 @@ public enum DeliveryKind : short
 
     /// <summary>Historical only: ADR 0003 retired the All Clear. Old rows keep the value; nothing writes it.</summary>
     AllClear = 2,
+
+    /// <summary>
+    /// The message a Resignation owes (see CONTEXT.md: Resignation): unlike a Solved Proposal it
+    /// has no PR notifying anyone on the code side, so if nobody is told, nobody comes.
+    /// </summary>
+    Resignation = 3,
 }
 
 public enum DeliveryChannel : short

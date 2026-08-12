@@ -72,6 +72,11 @@ export const registry: RegistryMessages = {
       "Jak epizoda končí: jakmile služba po tento počet minut nezaloguje nic, co odpovídá "
       + "citlivosti, epizoda se uzavře a odejde zpráva, že je vše v pořádku. Každý nový "
       + "odpovídající log odpočet restartuje. Ponechte prázdné pro výchozí hodnotu.",
+    claimLeaseLabel: "Lease strojního převzetí (h)",
+    claimLeaseHelp:
+      "Jak dlouho drží strojní převzetí epizody, než zvadne, pokud ho agent neobnoví — "
+      + "spadlý agent epizodu vrátí nejpozději po tolika hodinách. Ponechte prázdné pro "
+      + "výchozí hodnotu.",
     explainer:
       "Vypnuto okamžitě a tiše uzavře otevřené epizody. Komu chodí e-maily, je volbou každého "
       + "v Epizody → Odběry; webhook posílá každou epizodu této aplikace do jednoho prostoru "

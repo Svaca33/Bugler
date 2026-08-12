@@ -40,8 +40,13 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             settings.HasKey(s => s.ApplicationId);
             settings.Property(s => s.ApplicationId).HasConversion(ApplicationIdConverter);
             settings.Property(s => s.ChatWebhookUrl).HasMaxLength(1000);
-            settings.ToTable(table => table.HasCheckConstraint(
-                "ck_application_settings_quiet_window", "quiet_window_minutes >= 1"));
+            settings.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_application_settings_quiet_window", "quiet_window_minutes >= 1");
+                table.HasCheckConstraint(
+                    "ck_application_settings_claim_lease", "claim_lease_hours >= 1");
+            });
         });
 
         modelBuilder.Entity<ServiceAlertingSettings>(settings =>
@@ -104,6 +109,13 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
                 .HasDatabaseName("ix_episodes_kind_history");
             episode.HasIndex(e => e.ApplicationId);
             episode.HasIndex(e => new { e.OpenedAt, e.Id });
+            episode.Property(e => e.NoteText).HasMaxLength(Episode.MaxMachineTextLength);
+            episode.Property(e => e.NoteLink).HasMaxLength(Episode.MaxMachineLinkLength);
+            episode.Property(e => e.ProposalLink).HasMaxLength(Episode.MaxMachineLinkLength);
+            episode.Property(e => e.ResignationReason).HasMaxLength(Episode.MaxMachineTextLength);
+            // The lapse sweep's only query: claims whose lease has run out.
+            episode.HasIndex(e => e.ClaimLeaseUntil)
+                .HasFilter("claimed_by_delegation_id IS NOT NULL");
         });
 
         modelBuilder.Entity<JournalEntry>(entry =>
@@ -127,8 +139,9 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             delivery.HasIndex(d => d.NextAttemptAt)
                 .HasFilter("delivered_at IS NULL AND lapsed_at IS NULL");
             // Belt and braces: one Alert and one All Clear per Episode, channel and recipient.
+            // Resignations sit outside it — a dismissed Resignation may be laid (and owed) again.
             delivery.HasIndex(d => new { d.EpisodeId, d.Kind, d.Channel, d.UserId })
-                .IsUnique().AreNullsDistinct(false);
+                .IsUnique().AreNullsDistinct(false).HasFilter("kind IN (1, 2)");
         });
 
         modelBuilder.Entity<Reading>(reading =>

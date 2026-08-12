@@ -30,6 +30,12 @@ internal sealed class MachineDelegationAuthenticationHandler(
     /// <summary>The one Application a narrowed Machine Delegation may read, carried on the principal.</summary>
     public const string ApplicationClaim = "access.delegated_application";
 
+    /// <summary>Which Machine Delegation is asking — the identity every machine-hand mark is attributed to.</summary>
+    public const string DelegationClaim = "access.delegation";
+
+    /// <summary>The delegation's <see cref="MachineDelegationGrade"/> by name, read from the row on every request.</summary>
+    public const string GradeClaim = "access.delegation_grade";
+
     /// <summary>
     /// How stale <see cref="MachineDelegation.LastUsedAt"/> is allowed to be. An agent asks in bursts, and
     /// the column exists so somebody can tell a live Machine Delegation from a dead one — a resolution of
@@ -67,8 +73,8 @@ internal sealed class MachineDelegationAuthenticationHandler(
         var held = await dbContext.MachineDelegations
             .Where(d => d.Fingerprint == fingerprint)
             .Join(dbContext.Users, d => d.UserId, u => u.Id, (d, u) => new PresentedMachineDelegation(
-                d.Id, d.UserId, u.Email, u.IsAdmin, u.DeactivatedAt, d.ApplicationId, d.ExpiresAt,
-                d.RevokedAt, d.LastUsedAt))
+                d.Id, d.UserId, u.Email, u.IsAdmin, u.DeactivatedAt, d.ApplicationId, d.Grade,
+                d.ExpiresAt, d.RevokedAt, d.LastUsedAt))
             .FirstOrDefaultAsync(Context.RequestAborted);
 
         // One answer for every way of being invalid. Which way it was is the holder's business and
@@ -87,6 +93,8 @@ internal sealed class MachineDelegationAuthenticationHandler(
         {
             new(ClaimTypes.NameIdentifier, held.UserId.ToString()),
             new(ClaimTypes.Email, held.Email),
+            new(DelegationClaim, held.Id.ToString()),
+            new(GradeClaim, held.Grade.ToString()),
         };
 
         if (held.IsAdmin)
@@ -159,6 +167,7 @@ internal sealed class MachineDelegationAuthenticationHandler(
         bool IsAdmin,
         DateTimeOffset? DeactivatedAt,
         SharedKernel.ApplicationId? ApplicationId,
+        MachineDelegationGrade Grade,
         DateTimeOffset ExpiresAt,
         DateTimeOffset? RevokedAt,
         DateTimeOffset? LastUsedAt);

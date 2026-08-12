@@ -64,6 +64,9 @@ export interface RegistryMessages {
     inheritOption(label: string): string;
     quietWindowLabel: string;
     quietWindowHelp: string;
+    /** The Machine Claim lease (Alerting CONTEXT.md: Machine Claim) — hours, empty inherits. */
+    claimLeaseLabel: string;
+    claimLeaseHelp: string;
     explainer: string;
     webhookLabel: string;
     /** The chip on a stored webhook — only its host ever comes back. */

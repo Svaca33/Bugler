@@ -2334,6 +2334,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alerting/episodes/{id}/proposal/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/resignation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications": {
         parameters: {
             query?: never;
@@ -2797,6 +2902,8 @@ export interface components {
             sensitivity: components["schemas"]["Sensitivity"];
             /** Format: int32 */
             quietWindowMinutes: number | string;
+            /** Format: int32 */
+            claimLeaseHours: number | string;
         };
         ApiKeyDto: {
             /** Format: uuid */
@@ -2812,6 +2919,8 @@ export interface components {
             sensitivity: null | components["schemas"]["Sensitivity"];
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+            /** Format: int32 */
+            claimLeaseHours: null | number | string;
             chatWebhook: null | components["schemas"]["ChatWebhookDto"];
             serviceOverrides: components["schemas"]["ServiceAlertingOverrideDto"][];
             defaults: components["schemas"]["AlertingDefaultsDto"];
@@ -2883,6 +2992,10 @@ export interface components {
             solved: number | string;
             /** Format: int32 */
             muted: number | string;
+            /** Format: int32 */
+            proposals: number | string;
+            /** Format: int32 */
+            resignations: number | string;
         };
         EpisodeDetailDto: {
             episode: components["schemas"]["EpisodeDto"];
@@ -2936,6 +3049,10 @@ export interface components {
             priorCount: number | string;
             /** Format: int32 */
             fingerprintQuietWindowMinutes: null | number | string;
+            machineClaim: null | components["schemas"]["MachineClaimDto"];
+            machineNote: null | components["schemas"]["MachineNoteDto"];
+            solvedProposal: null | components["schemas"]["SolvedProposalDto"];
+            resignation: null | components["schemas"]["ResignationDto"];
         };
         EpisodesByServiceResponse: {
             services: components["schemas"]["ServiceEpisodesDto"][];
@@ -2981,6 +3098,7 @@ export interface components {
             userEmail: string;
             /** Format: uuid */
             applicationId: null | string;
+            grade: components["schemas"]["MachineDelegationGrade"];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3019,15 +3137,17 @@ export interface components {
             applicationId: null | string;
             /** Format: int32 */
             lifetimeDays: null | number | string;
+            grade: null | components["schemas"]["MachineDelegationGrade"];
         };
         JournalEntryDto: {
             kind: components["schemas"]["JournalEntryKind"];
             /** Format: date-time */
             at: string;
             by: null | string;
+            machine: null | components["schemas"]["MachineHandByDto"];
         };
         /** @enum {unknown} */
-        JournalEntryKind: "Acknowledged" | "Withdrawn" | "Solved";
+        JournalEntryKind: "Acknowledged" | "Withdrawn" | "Solved" | "Claimed" | "ClaimRenewed" | "ClaimReleased" | "ClaimLapsed" | "ClaimDisplaced" | "NotePinned" | "ProposalLaid" | "ProposalRejected" | "Resigned" | "ResignationDismissed";
         JsonElement: unknown;
         ListEpisodesResponse: {
             items: components["schemas"]["EpisodeDto"][];
@@ -3087,18 +3207,39 @@ export interface components {
             bucket: string;
             buckets: components["schemas"]["VolumeBucketDto"][];
         };
+        MachineClaimDto: {
+            /** Format: date-time */
+            at: string;
+            /** Format: date-time */
+            leaseUntil: string;
+            by: components["schemas"]["MachineHandByDto"];
+        };
         MachineDelegationDto: {
             /** Format: uuid */
             id: string;
             name: string;
             /** Format: uuid */
             applicationId: null | string;
+            grade: components["schemas"]["MachineDelegationGrade"];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             expiresAt: string;
             /** Format: date-time */
             lastUsedAt: null | string;
+        };
+        /** @enum {unknown} */
+        MachineDelegationGrade: "Reading" | "MachineHand";
+        MachineHandByDto: {
+            name: null | string;
+            holderEmail: null | string;
+        };
+        MachineNoteDto: {
+            text: null | string;
+            link: null | string;
+            /** Format: date-time */
+            at: string;
+            by: components["schemas"]["MachineHandByDto"];
         };
         MailAlertDto: {
             /** Format: int32 */
@@ -3175,6 +3316,13 @@ export interface components {
         ResetPasswordRequest: {
             token: string;
             newPassword: string;
+        };
+        ResignationDto: {
+            reason: string;
+            /** Format: date-time */
+            at: string;
+            overtaken: boolean;
+            by: components["schemas"]["MachineHandByDto"];
         };
         RunningVersionDto: {
             /** Format: uuid */
@@ -3289,6 +3437,8 @@ export interface components {
             sensitivity: null | components["schemas"]["Sensitivity"];
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+            /** Format: int32 */
+            claimLeaseHours: null | number | string;
         };
         SetFingerprintQuietWindowRequest: {
             /** Format: int32 */
@@ -3334,6 +3484,15 @@ export interface components {
         };
         /** @enum {unknown} */
         SmtpSecurity: "Automatic" | "None" | "StartTls" | "ImplicitTls";
+        SolvedProposalDto: {
+            link: null | string;
+            /** Format: date-time */
+            at: string;
+            /** Format: int32 */
+            matchesSince: number | string;
+            overtaken: boolean;
+            by: components["schemas"]["MachineHandByDto"];
+        };
         StorageReportResponse: {
             /** Format: date-time */
             windowStart: string;

@@ -12,6 +12,7 @@ public sealed record MachineDelegationDto(
     Guid Id,
     string Name,
     Guid? ApplicationId,
+    MachineDelegationGrade Grade,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt,
     DateTimeOffset? LastUsedAt);
@@ -23,11 +24,14 @@ public sealed record HeldMachineDelegationDto(
     Guid UserId,
     string UserEmail,
     Guid? ApplicationId,
+    MachineDelegationGrade Grade,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt,
     DateTimeOffset? LastUsedAt);
 
-public sealed record IssueMachineDelegationRequest(string Name, Guid? ApplicationId, int? LifetimeDays);
+/// <summary>Grade left unsaid means <see cref="MachineDelegationGrade.Reading"/> — the machine hand is asked for, never presumed.</summary>
+public sealed record IssueMachineDelegationRequest(
+    string Name, Guid? ApplicationId, int? LifetimeDays, MachineDelegationGrade? Grade);
 
 /// <summary>
 /// The one and only answer carrying a Secret. It is not stored in a form anything can read back,
@@ -51,7 +55,7 @@ internal static class MachineDelegationEndpoints
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => new MachineDelegationDto(
                 d.Id, d.Name, d.ApplicationId == null ? null : d.ApplicationId.Value.Value,
-                d.CreatedAt, d.ExpiresAt, d.LastUsedAt))
+                d.Grade, d.CreatedAt, d.ExpiresAt, d.LastUsedAt))
             .ToListAsync(cancellationToken);
     }
 
@@ -103,6 +107,7 @@ internal static class MachineDelegationEndpoints
             Name = name,
             Fingerprint = MachineDelegationMaterial.Fingerprint(secret),
             ApplicationId = request.ApplicationId is { } id ? new ApplicationId(id) : null,
+            Grade = request.Grade ?? MachineDelegationGrade.Reading,
             CreatedAt = now,
             ExpiresAt = now.AddDays(lifetime),
         };
@@ -113,7 +118,7 @@ internal static class MachineDelegationEndpoints
         return Results.Ok(new IssuedMachineDelegationDto(
             new MachineDelegationDto(
                 delegation.Id, delegation.Name, request.ApplicationId,
-                delegation.CreatedAt, delegation.ExpiresAt, null),
+                delegation.Grade, delegation.CreatedAt, delegation.ExpiresAt, null),
             secret));
     }
 
@@ -156,6 +161,7 @@ internal static class MachineDelegationEndpoints
                 row.User.Id,
                 row.User.Email,
                 row.MachineDelegation.ApplicationId?.Value,
+                row.MachineDelegation.Grade,
                 row.MachineDelegation.CreatedAt,
                 row.MachineDelegation.ExpiresAt,
                 row.MachineDelegation.LastUsedAt))

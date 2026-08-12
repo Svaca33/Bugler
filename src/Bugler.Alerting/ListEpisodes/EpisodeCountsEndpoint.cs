@@ -6,7 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bugler.Alerting.ListEpisodes;
 
-public sealed record EpisodeCountsResponse(int Open, int Quieted, int Solved, int Muted);
+/// <summary>
+/// Proposals and Resignations are counted only where they stand — on the newest Episode of
+/// their kind; an overtaken mark is history, not a call for a verdict.
+/// </summary>
+public sealed record EpisodeCountsResponse(
+    int Open, int Quieted, int Solved, int Muted, int Proposals, int Resignations);
 
 internal static class EpisodeCountsEndpoint
 {
@@ -41,7 +46,7 @@ internal static class EpisodeCountsEndpoint
         var visible = await readVisibility.GetVisibleApplicationsAsync(cancellationToken);
         if (visible is { Count: 0 })
         {
-            return Results.Ok(new EpisodeCountsResponse(0, 0, 0, 0));
+            return Results.Ok(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0));
         }
 
         // One pass over the filtered set: each state as its defining predicate (ADR 0003 — the
@@ -69,9 +74,23 @@ internal static class EpisodeCountsEndpoint
             })
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Standing machine marks awaiting a person: counted apart because "newest of its kind"
+        // is a sibling question the state axis never asks.
+        var proposals = await filtered.CountAsync(e =>
+            e.ProposedAt != null && !dbContext.Episodes.Any(p =>
+                p.ServiceId == e.ServiceId
+                && p.Fingerprint == e.Fingerprint
+                && p.Id.CompareTo(e.Id) > 0), cancellationToken);
+        var resignations = await filtered.CountAsync(e =>
+            e.ResignedAt != null && !dbContext.Episodes.Any(p =>
+                p.ServiceId == e.ServiceId
+                && p.Fingerprint == e.Fingerprint
+                && p.Id.CompareTo(e.Id) > 0), cancellationToken);
+
         return Results.Ok(counts is null
-            ? new EpisodeCountsResponse(0, 0, 0, 0)
-            : new EpisodeCountsResponse(counts.Open, counts.Quieted, counts.Solved, counts.Muted));
+            ? new EpisodeCountsResponse(0, 0, 0, 0, proposals, resignations)
+            : new EpisodeCountsResponse(
+                counts.Open, counts.Quieted, counts.Solved, counts.Muted, proposals, resignations));
     }
 
     // Access's claim helper is internal to Access; the two lines are cheaper than a contract.

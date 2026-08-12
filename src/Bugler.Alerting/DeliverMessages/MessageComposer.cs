@@ -7,10 +7,11 @@ using Bugler.SharedKernel;
 namespace Bugler.Alerting.DeliverMessages;
 
 /// <summary>
-/// The Alert in every shape it leaves Bugler in. The named fields are the facts; TextBody and
-/// HtmlBody are those facts rendered for mail, and the chat sender renders them again into its
-/// own card. EpisodeUrl is null when no PublicBaseUrl is configured — messages then carry no
-/// links rather than broken ones.
+/// A message in every shape it leaves Bugler in — the Alert, or the Resignation message, which
+/// wears the same shapes with the machine's reason for evidence. The named fields are the facts;
+/// TextBody and HtmlBody are those facts rendered for mail, and the chat sender renders them
+/// again into its own card. EpisodeUrl is null when no PublicBaseUrl is configured — messages
+/// then carry no links rather than broken ones.
 /// </summary>
 public sealed record ComposedAlert(
     string Subject,
@@ -38,10 +39,11 @@ public sealed record ComposedAlert(
     Language Language);
 
 /// <summary>
-/// Turns an Episode into the words that leave Bugler — the Alert only, since ADR 0003 retired
-/// the All Clear. Everything comes from the Episode row and the catalog — composition never
-/// reads telemetry, so a purged first log changes nothing here. The Language is the caller's to
-/// choose: whose eyes the message is for is a fact about the Delivery, not the Episode.
+/// Turns an Episode into the words that leave Bugler — the Alert, and since the machine hand,
+/// the Resignation message; ADR 0003 retired the All Clear. Everything comes from the Episode
+/// row and the catalog — composition never reads telemetry, so a purged first log changes
+/// nothing here. The Language is the caller's to choose: whose eyes the message is for is a
+/// fact about the Delivery, not the Episode.
 /// </summary>
 public static class MessageComposer
 {
@@ -78,6 +80,46 @@ public static class MessageComposer
             EpisodeUrl: episodeUrl,
             TextBody: ComposeText(place, words, severity, instant, body, reading, episodeUrl, messages),
             HtmlBody: ComposeHtml(place, words, severity, instant, body, reading, episodeUrl, messages, language),
+            OpenEpisodeLabel: messages.OpenEpisodeButton,
+            Language: language);
+    }
+
+    /// <summary>
+    /// The Resignation as a message (see CONTEXT.md: Resignation): the same shapes the Alert
+    /// leaves in, with the machine's reason standing where the evidence stands in an Alert —
+    /// because the reason is what the reader is being called for.
+    /// </summary>
+    public static ComposedAlert ComposeResignation(
+        Episode episode,
+        CatalogService identity,
+        string publicBaseUrl,
+        Language language)
+    {
+        var messages = AlertingMessages.For(language);
+        var place = $"{identity.ApplicationName} {identity.Namespace}/{identity.Environment}/{identity.Name}";
+        var words = messages.ResignationWords;
+        var instant = Instant(episode.ResignedAt ?? episode.LastMatchAt);
+        var reason = episode.ResignationReason ?? messages.NoBody;
+        var episodeUrl = publicBaseUrl.Length == 0
+            ? null
+            : $"{publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}";
+
+        var headline = $"{words.Subject} {place}";
+
+        return new ComposedAlert(
+            Subject: $"[Bugler] {headline}",
+            Headline: headline,
+            Place: place,
+            Opening: words.Opening,
+            EvidenceLabel: words.EvidenceLabel,
+            SeverityLabel: null,
+            MatchInstant: instant,
+            MatchDetail: reason,
+            Reading: null,
+            ReadingLabel: messages.ReadingLabel,
+            EpisodeUrl: episodeUrl,
+            TextBody: ComposeText(place, words, null, instant, reason, null, episodeUrl, messages),
+            HtmlBody: ComposeHtml(place, words, null, instant, reason, null, episodeUrl, messages, language),
             OpenEpisodeLabel: messages.OpenEpisodeButton,
             Language: language);
     }

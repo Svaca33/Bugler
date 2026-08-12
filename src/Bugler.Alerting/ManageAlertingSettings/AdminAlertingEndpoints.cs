@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bugler.Alerting.ManageAlertingSettings;
 
-public sealed record AlertingDefaultsDto(Sensitivity Sensitivity, int QuietWindowMinutes);
+public sealed record AlertingDefaultsDto(
+    Sensitivity Sensitivity, int QuietWindowMinutes, int ClaimLeaseHours);
 
 /// <summary>The webhook is a secret: after saving, only its host ever comes back.</summary>
 public sealed record ChatWebhookDto(string Domain);
@@ -20,11 +21,14 @@ public sealed record ApplicationAlertingDto(
     Guid ApplicationId,
     Sensitivity? Sensitivity,
     int? QuietWindowMinutes,
+    /// <summary>How long this Application's Machine Claims lease for; null inherits the default.</summary>
+    int? ClaimLeaseHours,
     ChatWebhookDto? ChatWebhook,
     IReadOnlyList<ServiceAlertingOverrideDto> ServiceOverrides,
     AlertingDefaultsDto Defaults);
 
-public sealed record SetApplicationAlertingRequest(Sensitivity? Sensitivity, int? QuietWindowMinutes);
+public sealed record SetApplicationAlertingRequest(
+    Sensitivity? Sensitivity, int? QuietWindowMinutes, int? ClaimLeaseHours);
 
 public sealed record SetChatWebhookRequest(string? Url);
 
@@ -55,9 +59,13 @@ internal static class AdminAlertingEndpoints
             applicationId,
             settings?.Sensitivity,
             settings?.QuietWindowMinutes,
+            settings?.ClaimLeaseHours,
             ToWebhookDto(settings?.ChatWebhookUrl),
             overrides,
-            new AlertingDefaultsDto(AlertingDefaults.Sensitivity, AlertingDefaults.QuietWindowMinutes));
+            new AlertingDefaultsDto(
+                AlertingDefaults.Sensitivity,
+                AlertingDefaults.QuietWindowMinutes,
+                AlertingDefaults.ClaimLeaseHours));
     }
 
     public static async Task<IResult> SetApplicationAlerting(
@@ -74,6 +82,12 @@ internal static class AdminAlertingEndpoints
             return Results.BadRequest(messages.QuietWindowAtLeastOneMinute);
         }
 
+        if (request.ClaimLeaseHours is < 1)
+        {
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.ClaimLeaseAtLeastOneHour);
+        }
+
         var id = new ApplicationId(applicationId);
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -88,6 +102,7 @@ internal static class AdminAlertingEndpoints
 
         settings.Sensitivity = request.Sensitivity;
         settings.QuietWindowMinutes = request.QuietWindowMinutes;
+        settings.ClaimLeaseHours = request.ClaimLeaseHours;
         settings.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 

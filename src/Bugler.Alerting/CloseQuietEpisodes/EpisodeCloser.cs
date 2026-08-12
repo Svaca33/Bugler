@@ -23,11 +23,16 @@ public sealed class EpisodeCloser(
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AlertingDbContext>();
 
+        var now = DateTimeOffset.UtcNow;
+        await LapseWiltedClaimsAsync(dbContext, now, cancellationToken);
+
         var openEpisodes = await dbContext.Episodes
             .Where(e => e.ClosedAt == null)
             .ToListAsync(cancellationToken);
         if (openEpisodes.Count == 0)
         {
+            // The lapses alone are still worth committing.
+            await dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
 
@@ -39,7 +44,6 @@ public sealed class EpisodeCloser(
             await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
             await dbContext.FingerprintQuietWindows.AsNoTracking().ToListAsync(cancellationToken));
 
-        var now = DateTimeOffset.UtcNow;
         var mutedByWatch = new Dictionary<Watch, List<ServiceId>>();
 
         foreach (var episode in openEpisodes)
@@ -47,6 +51,7 @@ public sealed class EpisodeCloser(
             var reason = CloseDecision.Decide(
                 IsWatchOff(episode, effective),
                 episode.AcknowledgedAt is not null,
+                episode.ClaimedByDelegationId is not null,
                 episode.LastMatchAt,
                 effective.QuietWindowOf(episode.ServiceId, episode.Fingerprint),
                 now);
@@ -76,6 +81,35 @@ public sealed class EpisodeCloser(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// The lease doing its work: claims whose time ran out fall off by themselves, each with its
+    /// Journal line, before this run measures any Quiet Window — a crashed agent leaves a wilted
+    /// mark, never a zombie Episode. Closed Episodes are swept too: a claim standing on a Muted
+    /// one holds nothing, and here is where it stops pretending to.
+    /// </summary>
+    private static async Task LapseWiltedClaimsAsync(
+        AlertingDbContext dbContext, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var wilted = await dbContext.Episodes
+            .Where(e => e.ClaimedByDelegationId != null && e.ClaimLeaseUntil < now)
+            .ToListAsync(cancellationToken);
+
+        foreach (var episode in wilted)
+        {
+            if (episode.ShedClaim() is { } shed)
+            {
+                dbContext.JournalEntries.Add(new JournalEntry
+                {
+                    EpisodeId = episode.Id,
+                    Kind = JournalEntryKind.ClaimLapsed,
+                    UserId = shed.UserId,
+                    DelegationId = shed.DelegationId,
+                    At = now,
+                });
+            }
+        }
     }
 
     /// <summary>Each Watch has its own switch: Sensitivity for the Logs Watch, an address for the Health Check Watch.</summary>

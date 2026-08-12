@@ -13,6 +13,7 @@ public static class CloseDecision
     public static EpisodeCloseReason? Decide(
         bool watchOff,
         bool acknowledged,
+        bool machineClaimed,
         DateTimeOffset lastMatchAt,
         TimeSpan quietWindow,
         DateTimeOffset now)
@@ -20,14 +21,16 @@ public static class CloseDecision
         if (watchOff)
         {
             // Off means "stop talking about this service now" — not an All Clear, a silence.
-            // It outranks an acknowledgement: with the watch off there is nothing to hold open.
+            // It outranks any hold: with the watch off there is nothing to hold open.
             return EpisodeCloseReason.WatchOff;
         }
 
-        if (acknowledged)
+        if (acknowledged || machineClaimed)
         {
             // An Acknowledged Episode never Quiets (ADR 0005): somebody is on it, so it stays
             // open absorbing matches — no new Episode, no new Alert — until Solved or withdrawn.
+            // A Machine Claim is the same hold on a lease: the sweep has already lapsed the
+            // expired ones this run, so a claim seen here is a live one.
             return null;
         }
 

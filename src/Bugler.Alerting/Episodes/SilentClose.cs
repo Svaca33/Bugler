@@ -38,6 +38,20 @@ internal static class SilentClose
         {
             episode.ClosedAt = now;
             episode.CloseReason = EpisodeCloseReason.WatchOff;
+
+            // A claim on an Episode the watching left behind holds nothing; it falls off with
+            // the close, and the Journal says so rather than letting the mark wilt in silence.
+            if (episode.ShedClaim() is { } shed)
+            {
+                dbContext.JournalEntries.Add(new JournalEntry
+                {
+                    EpisodeId = episode.Id,
+                    Kind = JournalEntryKind.ClaimLapsed,
+                    UserId = shed.UserId,
+                    DelegationId = shed.DelegationId,
+                    At = now,
+                });
+            }
         }
 
         var episodeIds = episodes.Select(e => e.Id).ToList();

@@ -16,8 +16,13 @@ public sealed record MailAlertDto(int SubscriberCount, DateTimeOffset? FirstDeli
 /// <summary>The Alert posted to the Application's Chat Webhook; DeliveredAt null while it has not landed.</summary>
 public sealed record ChatAlertDto(DateTimeOffset? DeliveredAt);
 
-/// <summary>One Journal line (see CONTEXT.md: Journal); By is null when the User is no longer here.</summary>
-public sealed record JournalEntryDto(JournalEntryKind Kind, DateTimeOffset At, string? By);
+/// <summary>
+/// One Journal line (see CONTEXT.md: Journal); By is null when the User is no longer here.
+/// Machine names the delegation where the hand was a machine's — and on the entries a person
+/// writes over a machine's mark, the delegation whose mark it was.
+/// </summary>
+public sealed record JournalEntryDto(
+    JournalEntryKind Kind, DateTimeOffset At, string? By, MachineHandByDto? Machine);
 
 /// <summary>
 /// The Episode's Reading (see CONTEXT.md: Reading) in every language Bugler speaks — the viewer's
@@ -66,6 +71,7 @@ internal static class EpisodeDetailEndpoint
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
         IUserNames userNames,
+        IMachineDelegationNames delegationNames,
         ICatalogReader catalogReader,
         CancellationToken cancellationToken)
     {
@@ -132,6 +138,18 @@ internal static class EpisodeDetailEndpoint
                 .Concat(journal.Select(j => j.UserId))
                 .ToHashSet(),
             cancellationToken);
+        var machines = await delegationNames.ResolveAsync(
+            MachineHandDtos.DelegationIds(episode)
+                .Concat(journal.Select(j => j.DelegationId).OfType<Guid>())
+                .ToHashSet(),
+            cancellationToken);
+
+        // Only a proposal or a Resignation ages into "overtaken", so the check is paid only then.
+        var newerExists = (episode.ProposedAt is not null || episode.ResignedAt is not null)
+            && await dbContext.Episodes.AnyAsync(p =>
+                p.ServiceId == episode.ServiceId
+                && p.Fingerprint == episode.Fingerprint
+                && p.Id.CompareTo(episode.Id) > 0, cancellationToken);
 
         var dto = new EpisodeDto(
             episode.Id, episode.ApplicationId.Value, episode.ServiceId.Value,
@@ -143,7 +161,11 @@ internal static class EpisodeDetailEndpoint
             episode.SolvedAt, EpisodesEndpoint.NameOf(names, episode.SolvedByUserId),
             earlierAck?.AcknowledgedAt,
             EpisodesEndpoint.NameOf(names, earlierAck?.AcknowledgedByUserId),
-            priorCount, own?.QuietWindowMinutes);
+            priorCount, own?.QuietWindowMinutes,
+            MachineHandDtos.Claim(episode, machines),
+            MachineHandDtos.Note(episode, machines),
+            MachineHandDtos.Proposal(episode, newerExists, machines),
+            MachineHandDtos.Resignation(episode, newerExists, machines));
 
         return Results.Ok(new EpisodeDetailDto(
             dto,
@@ -157,7 +179,12 @@ internal static class EpisodeDetailEndpoint
             effective.QuietWindowMinutesOf(episode.ServiceId, episode.Fingerprint),
             effective.InheritedQuietWindowMinutesOf(episode.ServiceId),
             journal.Select(j => new JournalEntryDto(
-                j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId))).ToList(),
+                j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId),
+                j.DelegationId is { } machine
+                    ? machines.TryGetValue(machine, out var name)
+                        ? new MachineHandByDto(name.Name, name.HolderEmail)
+                        : new MachineHandByDto(null, null)
+                    : null)).ToList(),
             reading is null
                 ? null
                 : new ReadingDto(

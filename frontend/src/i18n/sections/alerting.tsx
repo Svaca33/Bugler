@@ -134,7 +134,7 @@ export interface AlertingMessages {
     openIt: string;
   };
 
-  /** The human hands on the timeline, narrated from the Journal (ADR 0006). */
+  /** The hands on the timeline, narrated from the Journal (ADR 0006) — flesh and machine. */
   journal: {
     /** Stands in for a deleted account wherever a name would go, lowercase mid-sentence. */
     formerUser: string;
@@ -151,6 +151,59 @@ export interface AlertingMessages {
     withdrewOf(name: string, holder: string): string;
     solvedByYou: string;
     solvedBy(name: string): string;
+    /** Stands in for a machine delegation no longer here, where its name would go. */
+    formerMachine: string;
+    claimed(machine: string): string;
+    claimRenewed(machine: string): string;
+    claimReleased(machine: string): string;
+    claimLapsed(machine: string): string;
+    claimDisplaced(name: string, machine: string): string;
+    notePinned(machine: string): string;
+    proposalLaid(machine: string): string;
+    proposalRejected(name: string, machine: string): string;
+    resigned(machine: string): string;
+    resignationDismissed(name: string, machine: string): string;
+  };
+
+  /** The machine hand's live marks and the human answers to them (Alerting CONTEXT.md). */
+  machine: {
+    /** Compact badges on list rows, in the state badges' lowercase voice. */
+    badgeClaimed: string;
+    badgeClaimedTitle(machine: string): string;
+    badgeProposal: string;
+    badgeProposalTitle: string;
+    badgeResigned: string;
+    badgeResignedTitle: string;
+    /** The detail section. */
+    caption: string;
+    /** How a mark names its hand: the delegation, and its holder where known. */
+    hand(machine: string, holder: string | null): string;
+    /** Where the delegation is gone, the hand is named by this alone. */
+    formerHand: string;
+    claimHeld(hand: string): string;
+    leaseUntil(clockText: string): string;
+    withdrawClaim: string;
+    noteCaption: string;
+    openLink: string;
+    proposalHeading: string;
+    proposalLaidBy(hand: string): string;
+    openPr: string;
+    matchesSince(count: number): string;
+    /** Under an overtaken proposal: the fix did not hold, confirming is closed. */
+    overtakenNote: string;
+    /** Under an overtaken resignation: the statement is history. */
+    resignationOvertakenNote: string;
+    confirmSolved: string;
+    reject: string;
+    resignationHeading: string;
+    resignedBy(hand: string): string;
+    dismiss: string;
+    /** The open episode's tail note while a Machine Claim holds it (mirrors detail.heldOpenNote). */
+    heldOpenNote: string;
+    /** Client-side fallbacks; a 409's own sentence is shown verbatim. */
+    rejectFailed: string;
+    dismissFailed: string;
+    withdrawClaimFailed: string;
   };
 
   /** The machine's reading of the opening evidence (see Alerting CONTEXT.md: Reading). */

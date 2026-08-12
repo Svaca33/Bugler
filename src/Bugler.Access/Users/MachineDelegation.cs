@@ -30,6 +30,13 @@ public sealed class MachineDelegation
     /// </summary>
     public ApplicationId? ApplicationId { get; init; }
 
+    /// <summary>
+    /// What this Machine Delegation may do (see <see cref="MachineDelegationGrade"/>): reading alone, or
+    /// reading and the machine hand. Stamped in at issue like the narrowing above — a credential,
+    /// not a setting.
+    /// </summary>
+    public required MachineDelegationGrade Grade { get; init; }
+
     public required DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>

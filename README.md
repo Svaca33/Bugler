@@ -35,8 +35,10 @@ What you get:
 - **An AI reading of that trouble** — two or three sentences on what is likely going on, written as
   the Episode opens and carried in the alert. Off until you configure a provider *and* consent per
   application; your own Ollama counts as a provider.
-- **A door for your agent** — Bugler speaks MCP, read-only, so Claude Code or Cursor can read the
-  production logs while you debug instead of you pasting them in.
+- **A door for your agent** — Bugler speaks MCP, so Claude Code or Cursor can read the production
+  logs while you debug instead of you pasting them in. A delegation issued with the *machine hand*
+  grade lets an autonomous agent also claim an Episode, pin its findings, propose Solved, or
+  resign when the fix is not in the code — *Solved itself stays a human verdict*.
 - **Access granted per application** — local accounts, no identity provider; a member never learns
   the rest exist.
 - **One container** — no sidecar, no broker, no object storage.
@@ -123,10 +125,14 @@ Ask it what has been failing since the last release. See
   the Episode, in every language Bugler speaks, labelled as machine-written. Two switches gate it,
   both off by default: a provider on the server, and the Application's consent to have its telemetry
   shown to one. *Solved* stays a human verdict; nothing generated ever acts on an Episode.
-- **A read-only door for agents.** Bugler speaks **MCP** on a port of its own, with eight tools
-  designed for a model rather than mirrored off the REST API, so an agent can search the log records
-  and walk a trace itself. It is opened by an administrator and entered with a *machine delegation* —
-  your own reading, lent to a tool, narrowable, revocable, expiring.
+- **A door for agents.** Bugler speaks **MCP** on a port of its own, with tools designed for a
+  model rather than mirrored off the REST API, so an agent can search the log records and walk a
+  trace itself. It is opened by an administrator and entered with a *machine delegation* — your own
+  reading, lent to a tool, narrowable, revocable, expiring. Issued with the **machine hand** grade,
+  the delegation may also lay the machine's narrow marks on an Episode: an exclusive, leased claim,
+  a pinned note, a *Solved Proposal* a person confirms or rejects, and a *Resignation* — the
+  machine's statement that this trouble is not one it can fix, mailed to the Episode's audience so
+  a human hand takes over. *Solved* stays a human verdict by construction.
 - **Access granted per application.** Local accounts, no identity provider required; the first
   account created becomes the administrator. A member sees exactly the applications they were
   granted, and nothing tells them the rest exist.
@@ -410,8 +416,8 @@ such a page can make your browser send the cookie, but it cannot make it send a 
 ## Letting your editor read the telemetry
 
 Bugler speaks **MCP** on a port of its own, `:8081`, so an agent — Claude Code, Cursor — can read
-your production logs while you debug instead of you pasting them in. It is read-only, and nothing
-that can write exists on it at all.
+your production logs while you debug instead of you pasting them in. By default it is read-only:
+a delegation issued with the default *reading* grade can write nothing at all.
 
 Two things have to be true before it answers. An administrator opens the door on
 **Administration → Server** — it is shut on a fresh server — and you issue yourself a **machine delegation**
@@ -423,7 +429,7 @@ claude mcp add --transport http bugler https://bugler.example.com/mcp \
   --header "Authorization: Bearer blgrd_..."
 ```
 
-The eight tools are designed for a model rather than derived from the REST API the SPA uses
+The reading tools are designed for a model rather than derived from the REST API the SPA uses
 ([ADR 0031](docs/adr/0031-the-tool-set-is-a-shape-of-its-own-not-a-mirror.md)) — `browse_catalog`,
 `list_episodes`, `get_episode`, `search_log_records`, `get_log_record`, `list_observed_keys`,
 `list_releases`, `get_trace`. Their answers are budgeted in tokens rather than screenfuls, they are
@@ -432,6 +438,20 @@ truncate in silence**: every answer says how many records the filter matched, be
 fifty of four thousand errors and told nothing will conclude in writing that the problem is marginal.
 Registry and Access are not served — this door answers for telemetry, never for the administration of
 the server.
+
+A delegation issued with the **machine hand** grade adds five narrow verbs for an autonomous agent
+(the machine hand,
+[Alerting ADR 0010](src/Bugler.Alerting/docs/adr/0010-the-machine-hand-is-a-lease-and-the-verdict-stays-human.md)):
+`claim_episode` lays a visible, exclusive-among-machines claim that holds the Episode open exactly
+as a human acknowledgement would — a *lease* that wilts unless renewed, so a crashed agent never
+leaves a zombie; `annotate_episode` pins a note or a link; `propose_solved` states, with the PR,
+that the cause is fixed — a person confirms it (which *is* the Solve) or rejects it, with the
+matches that arrived since the proposal in view; `resign_episode` is the machine's statement that
+this trouble is not one it can fix — a certificate expired, a disk filled — which releases the
+claim, mails the Episode's subscribers that a human hand is needed, and bars machines from the
+Episode until a person sweeps it aside; `release_claim` simply gives the Episode back. The human
+hand always wins: acknowledging displaces the claim, and Solved stays a human verdict by
+construction — no verb that renders it exists behind the door.
 
 No AI call is ever made *by* Bugler here, and this door is deliberately **not** gated by the
 Application's AI consent

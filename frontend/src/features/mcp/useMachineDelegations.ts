@@ -7,6 +7,7 @@ export type MachineDelegation = components["schemas"]["MachineDelegationDto"];
 export type HeldMachineDelegation = components["schemas"]["HeldMachineDelegationDto"];
 export type IssuedMachineDelegation = components["schemas"]["IssuedMachineDelegationDto"];
 export type McpConnection = components["schemas"]["McpConnectionDto"];
+export type MachineDelegationGrade = components["schemas"]["MachineDelegationGrade"];
 
 export const DELEGATIONS_KEY = ["delegations"] as const;
 export const HELD_DELEGATIONS_KEY = ["admin", "delegations"] as const;
@@ -46,6 +47,7 @@ export function useIssueMachineDelegation() {
       name: string;
       applicationId: string | null;
       lifetimeDays: number;
+      grade: MachineDelegationGrade;
     }) => {
       const { data, error } = await api.POST("/api/machine-delegations", { body });
       if (error !== undefined || data === undefined) {

@@ -18,6 +18,9 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
     public override string QuietWindowAtLeastOneMinute =>
         "The quiet window must be at least 1 minute.";
 
+    public override string ClaimLeaseAtLeastOneHour =>
+        "The machine claim lease must be at least 1 hour.";
+
     public override string WebhookMustBeHttps => "The webhook must be an absolute https URL.";
 
     public override string HealthCheckMustBeUrl =>
@@ -44,6 +47,12 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
             "No answer from", "stopped answering its health check.", "Health check"),
         _ => new AlertWords("Trouble in", "started logging trouble.", "First log"),
     };
+
+    public override AlertWords ResignationWords => new(
+        "Machine resigned in",
+        "carries trouble a machine resigned: it looked and cannot fix this from the code. "
+        + "A human hand is needed.",
+        "The machine's reason");
 
     public override string NoBody => "(no body)";
 

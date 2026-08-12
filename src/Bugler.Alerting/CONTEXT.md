@@ -45,11 +45,27 @@ How an Episode ends when the Watch feeding it is turned off — Sensitivity set 
 _Avoid_: silenced, dismissed
 
 **Acknowledged**:
-The live mark that somebody has taken a kind of trouble on — who and when — placed only on its newest Episode. On an open Episode it also suppresses re-alerting: an Acknowledged Episode never Quiets, staying open and counting matches until Solved or withdrawn. On a closed one it is the visible mark alone. May be withdrawn or taken over by anyone who may see the Application; Solve removes the kind's every acknowledgement — a Solved Episode is never Acknowledged. The mark says only what holds now; what happened stays in the Journal.
+The live mark that somebody has taken a kind of trouble on — who and when — placed only on its newest Episode. On an open Episode it also suppresses re-alerting: an Acknowledged Episode never Quiets, staying open and counting matches until Solved or withdrawn. On a closed one it is the visible mark alone. May be withdrawn or taken over by anyone who may see the Application, and landing on a machine-claimed Episode displaces the Machine Claim — the human hand always wins. Solve removes the kind's every acknowledgement — a Solved Episode is never Acknowledged. The mark says only what holds now; what happened stays in the Journal.
 _Avoid_: assigned, claimed, owned, snoozed
 
+**Machine Claim**:
+A machine's visible, exclusive-among-machines hold on an Episode — a Machine Delegation saying "I am working on this" in its User's name. Laid only on an open Episode that is the newest of its kind and carries no Acknowledgement, no other machine's claim and no standing Resignation; while it stands the Episode never Quiets, the same hold an Acknowledgement exerts. A lease rather than a possession: it wilts unless a machine write renews it, and a lapsed claim falls off by itself with its Journal line — a crashed agent leaves a wilted mark, never a zombie Episode. The human hand always wins: an Acknowledgement displaces it, and anyone who may see the Application may withdraw it.
+_Avoid_: lock, machine acknowledgement, assignment, ownership
+
+**Machine Note**:
+The one annotation the claim-holder may pin on its Episode — free text, a link, or both; pinning again replaces it. What was found, where the work lives; never a verdict.
+_Avoid_: comment, machine comment, annotation thread
+
+**Solved Proposal**:
+The claim-holder's stated belief that the cause of an Episode's trouble is fixed, laid with the PR that fixes it. It ages visibly in Matches rather than minutes and never invalidates itself — a merged PR takes time to deploy, so the person renders the verdict with the count in view. Confirming it is the Solve itself, same verdict, same consequences; rejecting it removes the proposal and the claim with it. On an Episode no longer the newest of its kind it is overtaken — the trouble returned, the fix did not hold — and can no longer be confirmed.
+_Avoid_: auto-solve, machine solve, suggested resolution, fix candidate
+
+**Resignation**:
+The machine hand's finding about itself: this trouble is not one it can fix, said with the reason why — a certificate that expired, a disk that filled, a third party that fails. Laying it ends the claim, tells the Episode's audience that a human hand is needed, and bars Machine Claims while it stands — but it says nothing about who acts next; that conclusion is a person's to draw. Cleared by an Acknowledgement, by the verdict, or by being swept aside by any human hand; a newer Episode of its kind leaves it overtaken, readable as history.
+_Avoid_: handover, escalation, give-up, unsolvable flag, needs-human
+
 **Journal**:
-The append-only record of every human hand laid on an Episode — Acknowledged, Withdrawn, Solved — who and when. Entries are only ever added, never changed or removed; the live marks say what holds now, the Journal says what happened. When a Solve consumes an acknowledgement held by an earlier Episode of its kind, that Episode's Journal records the withdrawal by the solver's hand.
+The append-only record of every hand laid on an Episode, and whether it was flesh or machine — Acknowledged, Withdrawn, Solved, and the machine hand's claims, notes, proposals and Resignations, each machine entry naming the delegation and through it its User. Entries are only ever added, never changed or removed; the live marks say what holds now, the Journal says what happened. When a Solve consumes an acknowledgement held by an earlier Episode of its kind, that Episode's Journal records the withdrawal by the solver's hand.
 _Avoid_: audit log, history, event log, activity feed
 
 **Alert**:

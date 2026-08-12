@@ -44,6 +44,18 @@ export interface McpMessages {
     submitting: string;
   };
 
+  /** The grade stamped in at issue: reading alone, or reading and the machine hand. */
+  grade: {
+    /** Column header in both lists — the holder's and the Admin's. */
+    column: string;
+    /** The issue form's label. */
+    label: string;
+    reading: string;
+    machineHand: string;
+    /** Under the select: what the machine hand is, and that Solved stays a human verdict. */
+    hint: string;
+  };
+
   issued: {
     title: string;
     /** Said once, plainly: this is the only time the Secret exists anywhere Bugler can show it. */

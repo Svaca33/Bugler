@@ -36,10 +36,11 @@ public sealed class DeliveryRunner(
 
         await LapseExpiredAsync(dbContext, now, cancellationToken);
 
-        // Alerts are the only messages Bugler sends (ADR 0003). Historical AllClear rows are
-        // lapsed or delivered; the filter is belt and braces against composing one anyway.
+        // Alerts and Resignation messages are what Bugler sends (ADR 0003 retired the All
+        // Clear). Historical AllClear rows are lapsed or delivered; the filter is belt and
+        // braces against composing one anyway.
         var due = await dbContext.Deliveries
-            .Where(d => d.Kind == DeliveryKind.Alert
+            .Where(d => (d.Kind == DeliveryKind.Alert || d.Kind == DeliveryKind.Resignation)
                 && d.DeliveredAt == null && d.LapsedAt == null && d.NextAttemptAt <= now)
             .OrderBy(d => d.CreatedAt)
             .Take(BatchSize)
@@ -85,8 +86,10 @@ public sealed class DeliveryRunner(
 
             // The Alert holds the door for the Reading, bounded by the operator's patience
             // (Alerting ADR 0009). A skipped Delivery just stays due — nothing is written, and
-            // the writer's terminal states (written, failed) release it on their own.
-            if (reading is { IsPending: true } && HoldsTheDoor(patienceSeconds, episode.OpenedAt))
+            // the writer's terminal states (written, failed) release it on their own. A
+            // Resignation message never waits: it carries no Reading, only the machine's reason.
+            if (delivery.Kind == DeliveryKind.Alert
+                && reading is { IsPending: true } && HoldsTheDoor(patienceSeconds, episode.OpenedAt))
             {
                 continue;
             }
@@ -148,9 +151,7 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var alert = MessageComposer.ComposeAlert(
-            episode, identity, options.Value.PublicBaseUrl, recipient.Language,
-            ReadingIn(reading, recipient.Language));
+        var alert = Compose(delivery, episode, identity, recipient.Language, reading);
         await AttemptAsync(
             delivery,
             () => mailSender.SendAsync(
@@ -175,13 +176,21 @@ public sealed class DeliveryRunner(
             return;
         }
 
-        var alert = MessageComposer.ComposeAlert(
-            episode, identity, options.Value.PublicBaseUrl, chatLanguage,
-            ReadingIn(reading, chatLanguage));
+        var alert = Compose(delivery, episode, identity, chatLanguage, reading);
         await AttemptAsync(
             delivery,
             () => chatSender.SendAsync(webhookUrl, alert, cancellationToken));
     }
+
+    /// <summary>The words a Delivery leaves in, by its Kind — the one place that decides.</summary>
+    private ComposedAlert Compose(
+        Delivery delivery, Episode episode, CatalogService identity, Language language, Reading? reading) =>
+        delivery.Kind == DeliveryKind.Resignation
+            ? MessageComposer.ComposeResignation(
+                episode, identity, options.Value.PublicBaseUrl, language)
+            : MessageComposer.ComposeAlert(
+                episode, identity, options.Value.PublicBaseUrl, language,
+                ReadingIn(reading, language));
 
     private async Task AttemptAsync(Delivery delivery, Func<Task> send)
     {

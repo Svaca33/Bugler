@@ -61,6 +61,11 @@ export const registry: RegistryMessages = {
       "How an episode ends: once the service logs nothing the sensitivity matches for "
       + "this many minutes, the episode closes and the all clear goes out. Every new "
       + "matching log restarts the countdown. Leave empty to use the default.",
+    claimLeaseLabel: "Machine claim lease (h)",
+    claimLeaseHelp:
+      "How long a machine's claim on an episode holds before it wilts unless the agent renews "
+      + "it — a crashed agent gives the episode back within this many hours. Leave empty to "
+      + "use the default.",
     explainer:
       "Off closes open episodes immediately and silently. Who gets mailed is each person's own "
       + "choice under Episodes → Subscriptions; the webhook posts every episode of this application "

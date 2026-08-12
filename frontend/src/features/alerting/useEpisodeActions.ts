@@ -52,8 +52,52 @@ export function useEpisodeActions(episodeId: string) {
     onSettled: refresh,
   });
 
-  const failure = acknowledge.error ?? withdraw.error ?? solve.error;
-  return { acknowledge, withdraw, solve, failure };
+  // The human answers to the machine hand (Alerting CONTEXT.md): reject its proposal, sweep
+  // its resignation aside, withdraw its claim. Confirming a proposal is `solve` above.
+  const rejectProposal = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await api.POST("/api/alerting/episodes/{id}/proposal/reject", {
+        params: { path: { id: episodeId } },
+      });
+      const words = getMessages().alerting.machine;
+      if (response.status === 409) throw new Error(refusal(error, words.rejectFailed));
+      if (!response.ok) throw new Error(words.rejectFailed);
+    },
+    onSettled: refresh,
+  });
+
+  const dismissResignation = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await api.DELETE("/api/alerting/episodes/{id}/resignation", {
+        params: { path: { id: episodeId } },
+      });
+      const words = getMessages().alerting.machine;
+      if (response.status === 409) throw new Error(refusal(error, words.dismissFailed));
+      if (!response.ok) throw new Error(words.dismissFailed);
+    },
+    onSettled: refresh,
+  });
+
+  const withdrawClaim = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await api.DELETE("/api/alerting/episodes/{id}/claim", {
+        params: { path: { id: episodeId } },
+      });
+      const words = getMessages().alerting.machine;
+      if (response.status === 409) throw new Error(refusal(error, words.withdrawClaimFailed));
+      if (!response.ok) throw new Error(words.withdrawClaimFailed);
+    },
+    onSettled: refresh,
+  });
+
+  const failure =
+    acknowledge.error
+    ?? withdraw.error
+    ?? solve.error
+    ?? rejectProposal.error
+    ?? dismissResignation.error
+    ?? withdrawClaim.error;
+  return { acknowledge, withdraw, solve, rejectProposal, dismissResignation, withdrawClaim, failure };
 }
 
 /** A 409 carries the model's own sentence (e.g. "The action belongs to the newest Episode of its
