@@ -63,6 +63,26 @@ export interface AccessMessages {
     description: string;
   };
 
+  /**
+   * The Focus: which Applications a person attends to. A Focus is otherwise silent, so these are
+   * the only two places it speaks — the card where it is chosen, and the canvas of every reading
+   * page while it holds nothing at all.
+   */
+  focus: {
+    caption: string;
+    description: string;
+    /** Nothing ticked, said where the ticking happens rather than in a banner over the app. */
+    attendingToNothing: string;
+    /** No Application is registered yet, so there is nothing to attend to either way. */
+    nothingToAttendTo: string;
+    saveFailed: string;
+    empty: {
+      title: string;
+      description: string;
+      action: string;
+    };
+  };
+
   changePassword: {
     title: string;
     description: string;

@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 
+import { FocusEmptyState, useIsWatchingNothing } from "@/features/access/FocusEmptyState";
 import { asFilters } from "@/features/explore/attributeFilters";
 import { LogsPage, type LogFilters } from "@/features/explore/LogsPage";
 import { asInstant, asRange, DEFAULT_RANGE } from "@/features/explore/timeFilter";
@@ -39,6 +40,13 @@ function LogsRoute() {
   // must not invalidate the list, count, or volume queries keyed on the Filter.
   const { log, ...filters } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+
+  // The route decides, not the page: Access owns the Focus and Exploration owns the log list, and
+  // a route is where two contexts are allowed to meet (as on the Admin page).
+  if (useIsWatchingNothing() === true) {
+    return <FocusEmptyState />;
+  }
+
   return (
     <LogsPage
       filters={filters}

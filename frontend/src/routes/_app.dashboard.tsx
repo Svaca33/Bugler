@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 
+import { FocusEmptyState, useIsWatchingNothing } from "@/features/access/FocusEmptyState";
 import {
   isDefaultBoard,
   readDashboardSearch,
@@ -28,6 +29,11 @@ export const Route = createFileRoute("/_app/dashboard")({
 function DashboardRoute() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+
+  if (useIsWatchingNothing() === true) {
+    return <FocusEmptyState />;
+  }
+
   return (
     <DashboardPage
       search={search}

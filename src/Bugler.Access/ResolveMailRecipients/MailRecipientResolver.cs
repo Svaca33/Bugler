@@ -13,7 +13,7 @@ internal sealed class MailRecipientResolver(
     {
         if (userIds.Count == 0)
         {
-            return new MailRecipientsResult([], []);
+            return new MailRecipientsResult([], [], []);
         }
 
         var ids = userIds.ToArray();
@@ -28,16 +28,34 @@ internal sealed class MailRecipientResolver(
             .ToListAsync(cancellationToken);
         var grantedSet = granted.ToHashSet();
 
-        // Admins read everything without grants, so they are deliverable by role alone.
+        // Attending to the Application is asked separately from being allowed to read it, because
+        // the two undeliverables are answered differently: a missing grant may arrive, a Focus that
+        // leaves this Application out is a decision (ADR 0004).
+        var attending = await dbContext.ApplicationFocuses
+            .Where(f => ids.Contains(f.UserId) && f.ApplicationId == applicationId)
+            .Select(f => f.UserId)
+            .ToListAsync(cancellationToken);
+        var attendingSet = attending.ToHashSet();
+
+        // Admins read everything without grants, so they are readable by role alone.
         var fallback = await serverLanguage.GetAsync(cancellationToken);
-        var deliverable = users
+        var readable = users
             .Where(u => u.DeactivatedAt == null && (u.IsAdmin || grantedSet.Contains(u.Id)))
+            .ToList();
+
+        var deliverable = readable
+            .Where(u => attendingSet.Contains(u.Id))
             .Select(u => new MailRecipient(u.Id, u.Email, u.Language ?? fallback))
+            .ToList();
+
+        var outsideFocus = readable
+            .Where(u => !attendingSet.Contains(u.Id))
+            .Select(u => u.Id)
             .ToList();
 
         var known = users.Select(u => u.Id).ToHashSet();
         var unknown = ids.Where(id => !known.Contains(id)).ToList();
 
-        return new MailRecipientsResult(deliverable, unknown);
+        return new MailRecipientsResult(deliverable, unknown, outsideFocus);
     }
 }

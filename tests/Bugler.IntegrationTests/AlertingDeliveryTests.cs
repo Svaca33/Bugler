@@ -112,6 +112,29 @@ public sealed class AlertingDeliveryTests : IAsyncLifetime
             "SELECT COUNT(*) FROM alerting.deliveries WHERE lapsed_at IS NOT NULL", 1));
     }
 
+    /// <summary>
+    /// The difference between the two undeliverables (Access ADR 0004). A withdrawn grant leaves
+    /// the row dormant, as the test above shows; a Focus that leaves the Application out ends it
+    /// on the spot, because the recipient has not lost the right to be told — they have said they
+    /// do not want to be, and holding the mail would only deliver it about trouble long solved.
+    /// The Google Chat card is untouched: no one person's lens may quiet an Application's webhook.
+    /// </summary>
+    [Fact]
+    public async Task A_recipient_not_attending_to_the_application_ends_the_delivery_at_once()
+    {
+        await SubscribeAdminAndSetWebhookAsync();
+        var adminId = await _harness.FindUserIdAsync(BuglerHarness.AdminEmail);
+        await _harness.StopAttendingAsync(adminId, _harness.ApplicationId);
+
+        await OpenEpisodeAsync();
+        await _runner.DeliverOnceAsync(CancellationToken.None);
+
+        Assert.Empty(_mail.Sent);
+        Assert.Single(_chat.Sent);
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.deliveries WHERE channel = 1 AND lapsed_at IS NOT NULL", 1));
+    }
+
     [Fact]
     public async Task A_removed_webhook_lapses_the_chat_delivery()
     {

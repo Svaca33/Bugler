@@ -1,11 +1,14 @@
 using System.Net.Http.Json;
+using Bugler.Access;
 using Bugler.Access.ManageUsers;
+using Bugler.Access.Users;
 using Bugler.Host;
 using Bugler.Registry;
 using Bugler.Registry.Catalog;
 using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -114,7 +117,55 @@ public sealed class BuglerHarness : IAsyncDisposable
         registry.Applications.Add(application);
         var (serviceId, apiKey) = AddService(registry, application.Id, serviceNamespace, environment, serviceName);
         await registry.SaveChangesAsync();
+        await AttendToEverythingAsync();
         return (application.Id.Value, serviceId, apiKey);
+    }
+
+    /// <summary>
+    /// Puts every User's Focus on every Application (see Access CONTEXT.md). A Focus is nobody's
+    /// default — a person sets one before Bugler shows them anything — so a harness that skipped
+    /// this would answer every suite with empty lists. Called wherever either set grows, which is
+    /// seeding an Application and creating a User; a suite about the Focus itself narrows it back.
+    /// </summary>
+    public async Task AttendToEverythingAsync()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var access = scope.ServiceProvider.GetRequiredService<AccessDbContext>();
+        var registry = scope.ServiceProvider.GetRequiredService<RegistryDbContext>();
+
+        var applications = await registry.Applications.Select(a => a.Id).ToListAsync();
+        var users = await access.Users.Select(u => u.Id).ToListAsync();
+        var already = await access.ApplicationFocuses
+            .Select(f => new { f.UserId, f.ApplicationId })
+            .ToListAsync();
+        var held = already.Select(f => (f.UserId, f.ApplicationId)).ToHashSet();
+
+        foreach (var userId in users)
+        {
+            foreach (var applicationId in applications.Where(a => !held.Contains((userId, a))))
+            {
+                access.ApplicationFocuses.Add(new ApplicationFocus
+                {
+                    Id = Guid.CreateVersion7(),
+                    UserId = userId,
+                    ApplicationId = applicationId,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+        }
+
+        await access.SaveChangesAsync();
+    }
+
+    /// <summary>Takes one Application out of one User's Focus — what unticking the box does.</summary>
+    public async Task StopAttendingAsync(Guid userId, Guid applicationId)
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var access = scope.ServiceProvider.GetRequiredService<AccessDbContext>();
+        var application = new SharedKernel.ApplicationId(applicationId);
+        await access.ApplicationFocuses
+            .Where(f => f.UserId == userId && f.ApplicationId == application)
+            .ExecuteDeleteAsync();
     }
 
     /// <summary>Seeds one more Service under an existing Application — a second sender of the same deployment.</summary>
@@ -188,6 +239,8 @@ public sealed class BuglerHarness : IAsyncDisposable
             var grant = await Client.PostAsJsonAsync($"/api/users/{user!.Id}/grants", new { applicationId });
             grant.EnsureSuccessStatusCode();
         }
+
+        await AttendToEverythingAsync();
 
         var client = CreateAnonymousClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password });

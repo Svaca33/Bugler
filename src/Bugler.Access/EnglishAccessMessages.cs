@@ -44,6 +44,9 @@ internal sealed class EnglishAccessMessages : AccessMessages
     public override string MachineDelegationApplicationNotReadable =>
         "You can only narrow a delegation to an application you may read yourself.";
 
+    public override string FocusApplicationNotReadable =>
+        "You can only focus on an application you may read yourself.";
+
     public override string ResetMailSubject => "[Bugler] Set a new password";
 
     public override string ResetMailBody(string link) =>

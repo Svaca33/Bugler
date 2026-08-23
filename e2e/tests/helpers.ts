@@ -50,5 +50,20 @@ export async function registerApplication(page: Page, appName: string) {
   await page.getByRole("button", { name: "Issue key" }).click();
   const apiKey = (await page.getByTestId("issued-key").textContent())?.trim();
   expect(apiKey).toMatch(/^blgr_/);
+
+  // A newly registered application is inside nobody's Focus, so nothing it sends would show up
+  // anywhere until somebody says they are watching it — which is what a person does next too.
+  await watchApplication(page, appName);
   return apiKey!;
+}
+
+/** Ticks one application in the signed-in account's Focus, through the card a person uses. */
+export async function watchApplication(page: Page, appName: string) {
+  await page.getByRole("link", { name: ADMIN_EMAIL }).click();
+  const box = page.getByLabel(appName, { exact: true });
+  await expect(box).toBeVisible();
+  if (!(await box.isChecked())) {
+    await box.click();
+    await expect(box).toBeChecked();
+  }
 }

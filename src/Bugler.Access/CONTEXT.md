@@ -9,7 +9,7 @@ A person with a local Bugler account (e-mail + password).
 _Avoid_: member, account, login
 
 **Admin**:
-A User who manages the server — users, grants, and the Registry — and reads all telemetry without needing grants. The first User of a server becomes Admin. An Admin may not deactivate or delete their own account, so a server never runs out of Admins.
+A User who manages the server — users, grants, and the Registry — and reads all telemetry without needing grants. The first User of a server becomes Admin. An Admin may not deactivate or delete their own account, so a server never runs out of Admins. Reading everything is the role; being shown everything is not — an Admin narrows their own view with a Focus, which is their doing and nobody else's.
 _Avoid_: superuser, owner, root
 
 **Deactivation**:
@@ -30,6 +30,17 @@ _Avoid_: locale, culture, region, i18n setting
 **Application Grant**:
 The permission for one User to read the telemetry of one Application. References the Application by id only, outlives the User's Deactivation, and dies with their Deletion.
 _Avoid_: permission, role assignment, ACL entry
+
+**Focus**:
+The Applications a User has chosen to attend to — the set their reading and their mail are answered
+from. Resolved against their Visibility Scope, so it can only subtract from what they may read,
+never add; while they hold no Focus they are shown nothing, because attending to nothing is a
+choice a person makes rather than a state Bugler assumes for them. Not a permission: an Application
+outside a Focus is hidden, never refused — a query that names it is answered, and what a person
+administers is not hidden from them at all. It narrows neither a Machine Delegation, which lends
+the Visibility Scope itself, nor the Google Chat messages an Application posts, which belong to no
+one person.
+_Avoid_: scope, filter, view, watchlist, preference
 
 **Session**:
 An authenticated sign-in of a User, lasting until they sign out, until it expires, or — unless the

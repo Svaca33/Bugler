@@ -259,6 +259,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/focus/{applicationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    applicationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    applicationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/password/forgot": {
         parameters: {
             query?: never;
@@ -1318,7 +1372,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    scope?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -3028,6 +3084,7 @@ export interface components {
             displayName: null | string;
             isAdmin: boolean;
             grantedApplicationIds: string[];
+            focusedApplicationIds: string[];
             language: null | string;
         };
         EpisodeCountsResponse: {

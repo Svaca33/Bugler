@@ -24,7 +24,9 @@ const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 export function CatalogAdminPage() {
   const t = useT();
   const queryClient = useQueryClient();
-  const catalog = useCatalog();
+  // Registering and deleting is configuring the server, not reading it: an Admin who narrowed
+  // their own view must not watch an application they just created vanish from this list.
+  const catalog = useCatalog({ scope: "all" });
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
   const [newAppName, setNewAppName] = useState("");
 

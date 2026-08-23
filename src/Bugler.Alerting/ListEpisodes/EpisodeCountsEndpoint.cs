@@ -32,6 +32,7 @@ internal static class EpisodeCountsEndpoint
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IReadApplicationFocus readFocus,
         CancellationToken cancellationToken)
     {
         if (GetUserId(principal) is not { } callerId)
@@ -44,7 +45,10 @@ internal static class EpisodeCountsEndpoint
             return Results.BadRequest("acknowledged must be \"none\" or \"me\".");
         }
 
-        var visible = await readVisibility.GetVisibleApplicationsAsync(cancellationToken);
+        // The badge counts the same server the list shows, so it starts from the same set
+        // (Access ADR 0004).
+        var visible = await EpisodeFilter.ApplicationsForAsync(
+            readVisibility, readFocus, applicationId, serviceId, cancellationToken);
         if (visible is { Count: 0 })
         {
             return Results.Ok(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0));

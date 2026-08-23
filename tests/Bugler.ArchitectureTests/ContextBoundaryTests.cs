@@ -130,6 +130,21 @@ public class ContextBoundaryTests
             .AndShould().NotDependOnAny(AnythingIn("Host"))
             .Check(Architecture);
 
+    /// <summary>
+    /// The machine door reads through the Visibility Scope and never through its holder's Focus:
+    /// a Machine Delegation lends the reading, not the lens its issuer happens to hold this week
+    /// (ADR 0029, and Access ADR 0004). Every context owns the tools it answers with, so this is
+    /// stated once over every `Mcp` namespace rather than trusted to each of them — the whole
+    /// reason a Focus is a contract of its own is that a rule like this can be checked.
+    /// </summary>
+    [Fact]
+    public void NoMachineTool_DependsOnTheFocus() =>
+        Types().That().ResideInNamespaceMatching(@"^Bugler\..*\.Mcp(\..*)?$")
+            .Should().NotDependOnAny(
+                Types().That().HaveFullName("Bugler.Access.Contracts.IReadApplicationFocus")
+                    .As("the Focus"))
+            .Check(Architecture);
+
     [Fact]
     public void NoContext_DependsOnHost() =>
         Types().That().ResideInNamespaceMatching(@"^Bugler(\..*)?$")

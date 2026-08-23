@@ -19,6 +19,7 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
 
     public DbSet<User> Users => Set<User>();
     public DbSet<ApplicationGrant> ApplicationGrants => Set<ApplicationGrant>();
+    public DbSet<ApplicationFocus> ApplicationFocuses => Set<ApplicationFocus>();
     public DbSet<ResetTicket> ResetTickets => Set<ResetTicket>();
     public DbSet<MachineDelegation> MachineDelegations => Set<MachineDelegation>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
@@ -44,6 +45,17 @@ public sealed class AccessDbContext(DbContextOptions<AccessDbContext> options)
             grant.HasIndex(g => new { g.UserId, g.ApplicationId }).IsUnique();
             grant.HasOne<User>().WithMany()
                 .HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Mapped exactly as a grant, and deliberately so: the two are swept by the same
+        // ApplicationDeleted handler and die with the same User.
+        modelBuilder.Entity<ApplicationFocus>(focus =>
+        {
+            focus.Property(f => f.ApplicationId)
+                .HasConversion(id => id.Value, value => new ApplicationId(value));
+            focus.HasIndex(f => new { f.UserId, f.ApplicationId }).IsUnique();
+            focus.HasOne<User>().WithMany()
+                .HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ResetTicket>(ticket =>

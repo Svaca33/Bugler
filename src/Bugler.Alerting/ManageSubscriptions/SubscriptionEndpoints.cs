@@ -42,6 +42,7 @@ internal static class SubscriptionEndpoints
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IReadApplicationFocus readFocus,
         ICatalogReader catalogReader,
         IRequestLanguage requestLanguage,
         CancellationToken cancellationToken)
@@ -88,15 +89,24 @@ internal static class SubscriptionEndpoints
         var wantedApplications = applicationIds.ToHashSet();
         var wantedServices = serviceIds.ToHashSet();
 
+        // "The next full picture" is only ever a picture of what the sender could see. The panel
+        // is drawn from the focused catalog, so a Subscription outside the caller's Focus is
+        // missing from this request because it was never offered — not because it was unticked.
+        // Silence about it must therefore mean nothing at all: it is kept, and speaks again when
+        // the Focus widens (Access ADR 0004).
+        var focused = await readFocus.GetFocusedApplicationsAsync(cancellationToken);
+
         foreach (var subscription in existing)
         {
             var stillWanted = subscription.ApplicationId is { } app
                 ? wantedApplications.Remove(app)
                 : subscription.ServiceId is { } service && wantedServices.Remove(service);
-            if (!stillWanted)
+            if (stillWanted || !WasOnOffer(subscription, focused, applicationOf))
             {
-                dbContext.Subscriptions.Remove(subscription);
+                continue;
             }
+
+            dbContext.Subscriptions.Remove(subscription);
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -124,6 +134,31 @@ internal static class SubscriptionEndpoints
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Whether this Subscription's Application stood among the ones the caller was shown, and so
+    /// whether its absence from their request is a decision. A Subscription pointing at a Service
+    /// that is no longer registered was on no offer either, and is left for the Deletion handlers.
+    /// </summary>
+    private static bool WasOnOffer(
+        Subscription subscription,
+        IReadOnlyCollection<ApplicationId>? focused,
+        IReadOnlyDictionary<ServiceId, ApplicationId> applicationOf)
+    {
+        if (focused is null)
+        {
+            return true;
+        }
+
+        if (subscription.ApplicationId is { } application)
+        {
+            return focused.Contains(application);
+        }
+
+        return subscription.ServiceId is { } service
+            && applicationOf.TryGetValue(service, out var owner)
+            && focused.Contains(owner);
     }
 
     // Access's claim helper is internal to Access; the two lines are cheaper than a contract.

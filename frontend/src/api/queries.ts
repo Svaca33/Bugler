@@ -76,12 +76,22 @@ export function useReleases(
   });
 }
 
-/** The caller's visible applications and services — feeds Source Filters and admin pickers. */
-export function useCatalog(options?: { refetchInterval?: number }) {
+/**
+ * The caller's applications and services — feeds Source Filters and admin pickers.
+ *
+ * By default it answers through the reader's Focus, which is what keeps an application they are
+ * not watching out of every dropdown at once. `scope: "all"` asks for everything they may read
+ * instead, and only settings screens may: the Focus card, which would otherwise be unable to offer
+ * what is not already chosen, and the People tab, whose grant columns are somebody else's reading.
+ */
+export function useCatalog(options?: { refetchInterval?: number; scope?: "all" }) {
+  const scope = options?.scope;
   return useQuery({
-    queryKey: ["catalog"],
+    queryKey: ["catalog", scope ?? "focus"],
     queryFn: async () => {
-      const { data, error } = await api.GET("/api/catalog");
+      const { data, error } = await api.GET("/api/catalog", {
+        params: { query: scope === undefined ? {} : { scope } },
+      });
       if (error !== undefined) throw new Error("Failed to load catalog");
       return data;
     },

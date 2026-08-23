@@ -48,7 +48,11 @@ public sealed class ExplorationTools
         IReadVisibility visibility,
         ICatalogReader catalog,
         CancellationToken cancellationToken) =>
-        await CatalogEndpoint.Handle(visibility, catalog, cancellationToken);
+        // The Visibility Scope itself, never its holder's Focus: a delegation lends the reading,
+        // not the lens (ADR 0029, Access ADR 0004).
+        CatalogEndpoint.Compose(
+            await visibility.GetVisibleApplicationsAsync(cancellationToken),
+            await catalog.GetServicesAsync(cancellationToken));
 
     [McpServerTool(Name = "search_log_records", ReadOnly = true)]
     [Description(

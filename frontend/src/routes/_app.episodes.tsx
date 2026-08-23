@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
+import { FocusEmptyState, useIsWatchingNothing } from "@/features/access/FocusEmptyState";
 import {
   asAck,
   asLifecycle,
@@ -41,6 +42,7 @@ function EpisodesRoute() {
   const { section, episode, ...filters } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const t = useT();
+  const watchingNothing = useIsWatchingNothing();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -72,7 +74,13 @@ function EpisodesRoute() {
       </div>
 
       <div className="min-h-0 flex-1">
-        {section === "episodes" ? (
+        {/*
+          Both tabs at once: the list is focused, and so is the panel that offers subscriptions —
+          there is nothing to tick for an application nobody here is watching.
+        */}
+        {watchingNothing === true ? (
+          <FocusEmptyState />
+        ) : section === "episodes" ? (
           <EpisodesPage
             filters={filters}
             onChange={next =>

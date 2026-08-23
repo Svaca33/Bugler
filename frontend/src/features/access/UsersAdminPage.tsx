@@ -25,7 +25,9 @@ const CAPTION = "font-mono text-[10px] tracking-[0.12em] text-[#5F7590]";
 export function UsersAdminPage() {
   const t = useT();
   const queryClient = useQueryClient();
-  const catalog = useCatalog();
+  // Every application on the server, not the ones this Admin is watching: a grant column is
+  // somebody else's reading, and a lens over your own view must not decide what you may hand out.
+  const catalog = useCatalog({ scope: "all" });
   const me = useCurrentUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

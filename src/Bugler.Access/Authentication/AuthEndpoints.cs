@@ -1,6 +1,7 @@
 using System.Data;
 using System.Diagnostics;
 using System.Security.Claims;
+using Bugler.Access.ReadApplicationFocus;
 using Bugler.Access.ResetPassword;
 using Bugler.Access.Users;
 using Bugler.Mail;
@@ -30,6 +31,13 @@ public sealed record CurrentUserDto(
     string? DisplayName,
     bool IsAdmin,
     IReadOnlyList<Guid> GrantedApplicationIds,
+    /// <summary>
+    /// The Applications they are attending to, already resolved against their Visibility Scope
+    /// (see CONTEXT.md: Focus). Empty means they are shown no telemetry at all — which the pages
+    /// say on their own canvas, because it is the one thing a silent Focus must not stay silent
+    /// about (ADR 0004).
+    /// </summary>
+    IReadOnlyList<Guid> FocusedApplicationIds,
     /// <summary>The Language they chose, or null while they follow the server's.</summary>
     string? Language);
 
@@ -377,8 +385,17 @@ internal static class AuthEndpoints
                 .Select(g => g.ApplicationId.Value)
                 .ToListAsync(cancellationToken);
 
+        // The Focus as it resolves, not as it is stored: a member whose grant was withdrawn from
+        // under it is attending to nothing, exactly like somebody who chose nothing, and the
+        // browser must be able to tell them the same thing (ADR 0004).
+        var focus = await FocusedApplications.ReadFocusAsync(dbContext, user.Id, cancellationToken);
+        var focused = focus
+            .Select(id => id.Value)
+            .Where(id => user.IsAdmin || grants.Contains(id))
+            .ToList();
+
         return new CurrentUserDto(
-            user.Id, user.Email, user.DisplayName, user.IsAdmin, grants, user.Language?.Code);
+            user.Id, user.Email, user.DisplayName, user.IsAdmin, grants, focused, user.Language?.Code);
     }
 
     private static bool IsValidEmail(string email) =>

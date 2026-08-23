@@ -181,6 +181,15 @@ public sealed class DeliveryRunner(
             return;
         }
 
+        if (recipients.OutsideFocus.Contains((delivery.UserId!.Value, episode.ApplicationId)))
+        {
+            // They may read this Application and have said they are not attending to it (Access
+            // ADR 0004). Ended rather than held: waiting would be waiting for somebody to change
+            // their mind, and delivering it then would mail them about trouble already solved.
+            Lapse(delivery, "The user is not focused on this application.");
+            return;
+        }
+
         if (!recipients.ByUser.TryGetValue(delivery.UserId!.Value, out var recipient))
         {
             // Deactivated or ungranted right now. Dormant, not dead: they may be let back in
@@ -279,6 +288,9 @@ public sealed class DeliveryRunner(
     {
         var byUser = new Dictionary<Guid, MailRecipient>();
         var unknown = new HashSet<Guid>();
+        // Keyed by the pair, unlike the other two: whether somebody is attending is a fact about
+        // one Application, so the same person may be owed mail about another in the same batch.
+        var outsideFocus = new HashSet<(Guid, ApplicationId)>();
 
         var byApplication = due
             .Where(d => d.UserId is not null)
@@ -293,9 +305,10 @@ public sealed class DeliveryRunner(
             }
 
             unknown.UnionWith(result.UnknownUserIds);
+            outsideFocus.UnionWith(result.OutsideFocus.Select(id => (id, group.Key)));
         }
 
-        return new RecipientDirectory(byUser, unknown);
+        return new RecipientDirectory(byUser, unknown, outsideFocus);
     }
 
     private static async Task<Dictionary<ApplicationId, string>> LoadWebhooksAsync(
@@ -320,5 +333,7 @@ public sealed class DeliveryRunner(
         error.Length <= 2000 ? error : error[..2000];
 
     private sealed record RecipientDirectory(
-        Dictionary<Guid, MailRecipient> ByUser, HashSet<Guid> Unknown);
+        Dictionary<Guid, MailRecipient> ByUser,
+        HashSet<Guid> Unknown,
+        HashSet<(Guid UserId, ApplicationId Application)> OutsideFocus);
 }

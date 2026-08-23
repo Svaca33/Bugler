@@ -38,7 +38,9 @@ export function MachineDelegationsCard() {
   const locale = getFormatLocale();
   const connection = useMcpConnection();
   const delegations = useOwnMachineDelegations();
-  const catalog = useCatalog();
+  // A delegation lends the Visibility Scope, never the Focus (ADR 0029), so the application it
+  // may be narrowed to is picked from everything its issuer may read — Focus or no Focus.
+  const catalog = useCatalog({ scope: "all" });
   const issue = useIssueMachineDelegation();
   const revoke = useRevokeMachineDelegation();
 

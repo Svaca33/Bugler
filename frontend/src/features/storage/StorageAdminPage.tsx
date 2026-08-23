@@ -37,7 +37,9 @@ import {
 export function StorageAdminPage() {
   const t = useT();
   const report = useStorageReport();
-  const catalog = useCatalog();
+  // Storage speaks of disk rather than of anybody's reading (ADR 0017), so a lens over one
+  // person's view has no business narrowing it.
+  const catalog = useCatalog({ scope: "all" });
   const [unit, setUnit] = useState<RateUnit>("day");
 
   const names = useMemo(() => {

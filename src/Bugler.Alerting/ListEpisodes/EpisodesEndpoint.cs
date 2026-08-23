@@ -91,6 +91,7 @@ internal static class EpisodesEndpoint
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IReadApplicationFocus readFocus,
         IUserNames userNames,
         IMachineDelegationNames delegationNames,
         CancellationToken cancellationToken)
@@ -105,7 +106,10 @@ internal static class EpisodesEndpoint
             return Results.BadRequest("acknowledged must be \"none\" or \"me\".");
         }
 
-        var visible = await readVisibility.GetVisibleApplicationsAsync(cancellationToken);
+        // Through the Focus while nothing names a source, from the Visibility Scope once something
+        // does (Access ADR 0004). The rule lives in EpisodeFilter so every listing shares one.
+        var visible = await EpisodeFilter.ApplicationsForAsync(
+            readVisibility, readFocus, applicationId, serviceId, cancellationToken);
         if (visible is { Count: 0 })
         {
             return Results.Ok(new ListEpisodesResponse([]));

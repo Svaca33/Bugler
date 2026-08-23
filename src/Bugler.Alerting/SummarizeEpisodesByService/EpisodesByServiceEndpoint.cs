@@ -53,6 +53,7 @@ internal static class EpisodesByServiceEndpoint
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
+        IReadApplicationFocus readFocus,
         CancellationToken cancellationToken)
     {
         if (GetUserId(principal) is not { } callerId)
@@ -65,7 +66,10 @@ internal static class EpisodesByServiceEndpoint
             return Results.BadRequest("acknowledged must be \"none\" or \"me\".");
         }
 
-        var visible = await readVisibility.GetVisibleApplicationsAsync(cancellationToken);
+        // The board is half the Dashboard, and the other half is Exploration's — both start from
+        // the same set or the two would disagree about which Services exist (Access ADR 0004).
+        var visible = await EpisodeFilter.ApplicationsForAsync(
+            readVisibility, readFocus, applicationId, serviceId, cancellationToken);
         if (visible is { Count: 0 })
         {
             return Results.Ok(new EpisodesByServiceResponse([]));

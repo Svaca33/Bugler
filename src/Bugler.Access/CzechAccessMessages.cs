@@ -44,6 +44,9 @@ internal sealed class CzechAccessMessages : AccessMessages
     public override string MachineDelegationApplicationNotReadable =>
         "Delegaci lze zúžit jen na aplikaci, kterou sami smíte číst.";
 
+    public override string FocusApplicationNotReadable =>
+        "Focus lze nastavit jen na aplikaci, kterou sami smíte číst.";
+
     public override string ResetMailSubject => "[Bugler] Nastavte si nové heslo";
 
     public override string ResetMailBody(string link) =>

@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 
+import { FocusEmptyState, useIsWatchingNothing } from "@/features/access/FocusEmptyState";
 import { asFilters } from "@/features/explore/attributeFilters";
 import { asInstant, asRange, DEFAULT_RANGE } from "@/features/explore/timeFilter";
 import { TracesPage, type TraceFilters } from "@/features/explore/TracesPage";
@@ -28,6 +29,11 @@ export const Route = createFileRoute("/_app/traces/")({
 function TracesRoute() {
   const filters = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+
+  if (useIsWatchingNothing() === true) {
+    return <FocusEmptyState />;
+  }
+
   return (
     <TracesPage filters={filters} onChange={next => navigate({ search: next, replace: true })} />
   );

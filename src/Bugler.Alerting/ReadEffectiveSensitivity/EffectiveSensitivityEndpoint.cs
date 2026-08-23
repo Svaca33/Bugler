@@ -19,15 +19,17 @@ internal static class EffectiveSensitivityEndpoint
     /// </summary>
     public static async Task<IResult> Handle(
         AlertingDbContext dbContext,
-        IReadVisibility readVisibility,
+        IReadApplicationFocus readFocus,
         ICatalogReader catalogReader,
         CancellationToken cancellationToken)
     {
-        var visible = await readVisibility.GetVisibleApplicationsAsync(cancellationToken);
+        // Through the Focus, because this answers the Subscriptions panel and the panel is drawn
+        // from the focused catalog — a bit about a Service nobody is being offered is noise.
+        var shown = await readFocus.GetFocusedApplicationsAsync(cancellationToken);
         var catalog = await catalogReader.GetServicesAsync(cancellationToken);
-        var services = visible is null
+        var services = shown is null
             ? catalog
-            : catalog.Where(s => visible.Contains(s.ApplicationId)).ToList();
+            : catalog.Where(s => shown.Contains(s.ApplicationId)).ToList();
         if (services.Count == 0)
         {
             return Results.Ok(new ListSensitivityResponse([]));

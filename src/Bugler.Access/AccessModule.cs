@@ -1,8 +1,10 @@
 using Bugler.Access.Authentication;
 using Bugler.Access.Contracts;
+using Bugler.Access.ManageApplicationFocus;
 using Bugler.Access.ManageMachineDelegations;
 using Bugler.Access.ManageUsers;
 using Bugler.Access.Outbox;
+using Bugler.Access.ReadApplicationFocus;
 using Bugler.Access.ReadVisibility;
 using Bugler.Access.ResetPassword;
 using Bugler.Access.ResolveMachineActor;
@@ -57,6 +59,7 @@ public static class AccessModule
         services.AddSingleton<AttemptBudgets>();
         services.AddHttpContextAccessor();
         services.AddScoped<IReadVisibility, GrantedVisibility>();
+        services.AddScoped<IReadApplicationFocus, FocusedApplications>();
         services.AddScoped<IMailRecipients, MailRecipientResolver>();
         services.AddScoped<IUserNames, UserNameResolver>();
         services.AddScoped<IMachineActor, MachineActorResolver>();
@@ -136,6 +139,12 @@ public static class AccessModule
             .Produces<CurrentUserDto>();
         endpoints.MapPost("/api/auth/password/change", AuthEndpoints.ChangePassword).RequireAuthorization();
         endpoints.MapPost("/api/auth/language", AuthEndpoints.SetLanguage).RequireAuthorization();
+
+        // A person's own Focus, a row per click. Not under /api/users: nobody sets anybody else's.
+        endpoints.MapPut("/api/auth/focus/{applicationId:guid}", ApplicationFocusEndpoints.Attend)
+            .RequireAuthorization();
+        endpoints.MapDelete("/api/auth/focus/{applicationId:guid}", ApplicationFocusEndpoints.Ignore)
+            .RequireAuthorization();
         endpoints.MapPost("/api/auth/password/forgot", ResetPasswordEndpoints.Forgot).AllowAnonymous();
         endpoints.MapPost("/api/auth/password/reset", ResetPasswordEndpoints.Reset).AllowAnonymous();
         endpoints.MapPost("/api/auth/logout", AuthEndpoints.Logout).RequireAuthorization();

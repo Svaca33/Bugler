@@ -61,8 +61,28 @@ export const access: AccessMessages = {
   account: {
     title: "Účet",
     description:
-      "Jazyk, kterým na vás Bugler mluví, vaše heslo a strojové delegace, které jste vydali, aby " +
-      "nástroje mohly číst telemetrii vaším jménem.",
+      "Jazyk, kterým na vás Bugler mluví, vaše heslo, aplikace, které sledujete, a strojové " +
+      "delegace, které jste vydali, aby nástroje mohly číst telemetrii vaším jménem.",
+  },
+
+  focus: {
+    caption: "Focus",
+    description:
+      "Aplikace, které sledujete. Ostatní se neobjeví na přehledu, v logech, traces ani " +
+      "epizodách a jejich upozornění vám přestanou chodit mailem. Ostatním se nezmění nic a vy " +
+      "o nic nepřicházíte — vynechaná aplikace je skrytá, ne zavřená.",
+    attendingToNothing:
+      "Nesledujete nic, takže vám Bugler neukazuje žádnou telemetrii. Začněte zaškrtnutím " +
+      "aplikace.",
+    nothingToAttendTo: "Na tomto serveru zatím není zaregistrovaná žádná aplikace.",
+    saveFailed: "Nepodařilo se uložit. Zkuste to znovu.",
+    empty: {
+      title: "Nesledujete žádnou aplikaci",
+      description:
+        "Bugler telemetrii má, ale žádná není z aplikace, kterou sledujete. Vyberte si ty, " +
+        "které chcete vidět.",
+      action: "Vybrat aplikace",
+    },
   },
 
   changePassword: {

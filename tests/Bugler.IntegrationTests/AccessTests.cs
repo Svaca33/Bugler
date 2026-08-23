@@ -324,6 +324,93 @@ public sealed class AccessTests : IAsyncLifetime
         setCookie.Contains("expires=", StringComparison.OrdinalIgnoreCase)
         || setCookie.Contains("max-age=", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The whole of what a Focus is (ADR 0004): it empties the view without closing the door.
+    /// The Admin here still reads everything — the Visibility Scope has not moved — so a request
+    /// that names the Application is answered in full while an open one comes back with nothing,
+    /// and neither is a refusal.
+    /// </summary>
+    [Fact]
+    public async Task A_focus_empties_the_open_view_and_still_answers_a_named_application()
+    {
+        var (crmAppId, _, crmKey) = await _harness.SeedApplicationAsync("CRM", "acme", "prod", "backend");
+        await IngestLogAsync(_harness.ApiKey, "eshop log line");
+        await IngestLogAsync(crmKey, "crm log line");
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 2);
+        var adminId = await _harness.FindUserIdAsync(BuglerHarness.AdminEmail);
+
+        await _harness.StopAttendingAsync(adminId, crmAppId);
+
+        var focused = await _harness.Client.GetFromJsonAsync<SearchLogsResponse>("/api/logs");
+        Assert.Equal("eshop log line", Assert.Single(focused!.Items).Body);
+
+        var named = await _harness.Client.GetAsync($"/api/logs?applicationId={crmAppId}");
+        named.EnsureSuccessStatusCode();
+        var hidden = await named.Content.ReadFromJsonAsync<SearchLogsResponse>();
+        Assert.Equal("crm log line", Assert.Single(hidden!.Items).Body);
+    }
+
+    /// <summary>
+    /// Attending to nothing is a state a person can reach, and Bugler answers it plainly rather
+    /// than as an error — the browser is what turns the empty answer into a sentence.
+    /// </summary>
+    [Fact]
+    public async Task An_empty_focus_answers_nothing_rather_than_refusing()
+    {
+        await IngestLogAsync(_harness.ApiKey, "eshop log line");
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 1);
+        var adminId = await _harness.FindUserIdAsync(BuglerHarness.AdminEmail);
+
+        await _harness.StopAttendingAsync(adminId, _harness.ApplicationId);
+
+        var logs = await _harness.Client.GetAsync("/api/logs");
+        logs.EnsureSuccessStatusCode();
+        Assert.Empty((await logs.Content.ReadFromJsonAsync<SearchLogsResponse>())!.Items);
+
+        var me = await _harness.Client.GetFromJsonAsync<CurrentUserDto>("/api/auth/me");
+        Assert.Empty(me!.FocusedApplicationIds);
+    }
+
+    /// <summary>
+    /// A Focus subtracts and only subtracts. The member is attending to both Applications, and
+    /// holds a grant on one; what they read is still the one.
+    /// </summary>
+    [Fact]
+    public async Task A_focus_cannot_widen_what_a_member_may_read()
+    {
+        var (crmAppId, _, crmKey) = await _harness.SeedApplicationAsync("CRM", "acme", "prod", "backend");
+        await IngestLogAsync(_harness.ApiKey, "eshop log line");
+        await IngestLogAsync(crmKey, "crm log line");
+        await _harness.WaitForRowsAsync("SELECT body FROM telemetry.log_records", expectedCount: 2);
+
+        var member = await _harness.CreateUserClientAsync("focused@bugler.test", "FocusPass123!", crmAppId);
+
+        var logs = await member.GetFromJsonAsync<SearchLogsResponse>("/api/logs");
+        Assert.Equal("crm log line", Assert.Single(logs!.Items).Body);
+
+        // Even named outright, the Application they hold no grant on stays theirs to not read.
+        var named = await member.GetAsync($"/api/logs?applicationId={_harness.ApplicationId}");
+        named.EnsureSuccessStatusCode();
+        Assert.Empty((await named.Content.ReadFromJsonAsync<SearchLogsResponse>())!.Items);
+
+        var me = await member.GetFromJsonAsync<CurrentUserDto>("/api/auth/me");
+        Assert.Equal(crmAppId, Assert.Single(me!.FocusedApplicationIds));
+    }
+
+    /// <summary>A Focus on nothing is what an Application's Deletion leaves behind, not a dead row.</summary>
+    [Fact]
+    public async Task Deleting_an_application_takes_it_out_of_every_focus()
+    {
+        var (crmAppId, _, _) = await _harness.SeedApplicationAsync("CRM", "acme", "prod", "backend");
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            $"SELECT count(*) FROM access.application_focuses WHERE application_id = '{crmAppId}'", expected: 1));
+
+        (await _harness.Client.DeleteAsync($"/api/admin/applications/{crmAppId}")).EnsureSuccessStatusCode();
+
+        Assert.Equal(0, await _harness.WaitForCountAsync(
+            $"SELECT count(*) FROM access.application_focuses WHERE application_id = '{crmAppId}'", expected: 0));
+    }
+
     private async Task IngestLogAsync(string apiKey, string body)
     {
         var request = new ExportLogsServiceRequest();

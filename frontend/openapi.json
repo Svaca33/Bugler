@@ -162,6 +162,50 @@
         }
       }
     },
+    "/api/auth/focus/{applicationId}": {
+      "put": {
+        "tags": [
+          "ApplicationFocusEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ApplicationFocusEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/auth/password/forgot": {
       "post": {
         "tags": [
@@ -1486,6 +1530,15 @@
       "get": {
         "tags": [
           "CatalogEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -3254,6 +3307,7 @@
           "displayName",
           "isAdmin",
           "grantedApplicationIds",
+          "focusedApplicationIds",
           "language"
         ],
         "type": "object",
@@ -3275,6 +3329,13 @@
             "type": "boolean"
           },
           "grantedApplicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "focusedApplicationIds": {
             "type": "array",
             "items": {
               "type": "string",
@@ -6007,6 +6068,9 @@
       "name": "AuthEndpoints"
     },
     {
+      "name": "ApplicationFocusEndpoints"
+    },
+    {
       "name": "ResetPasswordEndpoints"
     },
     {
@@ -6097,4 +6161,4 @@
       "name": "IngestTracesHttpEndpoint"
     }
   ]
-}
+}

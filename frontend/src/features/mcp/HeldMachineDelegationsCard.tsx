@@ -14,7 +14,9 @@ export function HeldMachineDelegationsCard() {
   const t = useT();
   const locale = getFormatLocale();
   const held = useHeldMachineDelegations();
-  const catalog = useCatalog();
+  // Every delegation held on this server, named in full: a delegation binds to its holder's
+  // Visibility Scope, so the Admin reviewing them must see past their own Focus (ADR 0029).
+  const catalog = useCatalog({ scope: "all" });
   const revoke = useRevokeHeldMachineDelegation();
 
   const date = (value: string | null | undefined) =>

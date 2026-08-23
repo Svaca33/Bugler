@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { SettingsPage } from "@/components/ui/settings-layout";
+import { ApplicationFocusCard } from "@/features/access/ApplicationFocusCard";
 import { LanguageCard } from "@/features/access/LanguageCard";
 import { PasswordCard } from "@/features/access/PasswordCard";
 import { MachineDelegationsCard } from "@/features/mcp/MachineDelegationsCard";
@@ -19,10 +20,25 @@ export const Route = createFileRoute("/_app/account")({
 function AccountRoute() {
   const t = useT();
   return (
-    <SettingsPage title={t.access.account.title} description={t.access.account.description}>
-      <LanguageCard />
-      <PasswordCard />
-      <MachineDelegationsCard />
-    </SettingsPage>
+    <SettingsPage
+      title={t.access.account.title}
+      description={t.access.account.description}
+      // Assigned rather than balanced: the Focus card is as tall as the server has applications,
+      // so a balanced flow would shuffle the other three whenever somebody registered one.
+      split={{
+        left: (
+          <>
+            <LanguageCard />
+            <PasswordCard />
+          </>
+        ),
+        right: (
+          <>
+            <ApplicationFocusCard />
+            <MachineDelegationsCard />
+          </>
+        ),
+      }}
+    />
   );
 }

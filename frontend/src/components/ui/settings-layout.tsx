@@ -15,7 +15,14 @@ export function SettingsPage(props: {
   description?: string;
   /** A page inside a shell that already carries the h1 says so; the size follows the level. */
   headingLevel?: 1 | 2;
-  children: ReactNode;
+  /**
+   * Two columns the page assigns itself, instead of letting the browser balance one flow. Worth
+   * asking for when a card's height is the reader's own doing — a Focus card grows with the number
+   * of applications on the server — because a balanced flow would then move the other cards about
+   * whenever somebody registered one. Below the split it is a single column, left cards first.
+   */
+  split?: { left: ReactNode; right: ReactNode };
+  children?: ReactNode;
 }) {
   const Heading = props.headingLevel === 2 ? "h2" : "h1";
   const hasHeader = props.title !== undefined || props.description !== undefined;
@@ -52,9 +59,20 @@ export function SettingsPage(props: {
           The step is the card's own bottom margin (a column flow has no row gap to set), and the
           trailing one below the last card is taken back off the flow's own box.
         */}
-        <div className="-mb-[18px] gap-x-[18px] @min-[1400px]/settings:columns-2">
-          {props.children}
-        </div>
+        {props.split === undefined ? (
+          <div className="-mb-[18px] gap-x-[18px] @min-[1400px]/settings:columns-2">
+            {props.children}
+          </div>
+        ) : (
+          /*
+            The same step and the same breakpoint, but the columns are the page's to fill. `items-start`
+            keeps each one packing from the top rather than stretching to the taller one's height.
+          */
+          <div className="-mb-[18px] flex flex-col @min-[1400px]/settings:grid @min-[1400px]/settings:grid-cols-2 @min-[1400px]/settings:items-start @min-[1400px]/settings:gap-x-[18px]">
+            <div>{props.split.left}</div>
+            <div>{props.split.right}</div>
+          </div>
+        )}
       </div>
     </div>
   );

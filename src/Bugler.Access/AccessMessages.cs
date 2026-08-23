@@ -35,6 +35,9 @@ internal abstract class AccessMessages
     public abstract string MachineDelegationLifetimeRange(int minimumDays, int maximumDays);
     public abstract string MachineDelegationApplicationNotReadable { get; }
 
+    // Focus. The one refusal it has: naming an Application its holder may not read anyway.
+    public abstract string FocusApplicationNotReadable { get; }
+
     // Password reset.
     public abstract string ServerCannotSendMail { get; }
     public abstract string ResetLinkOnItsWay { get; }

@@ -24,16 +24,19 @@ public class ScopeResolverTests
         new(CrmBackend, Crm, "CRM", "acme", "prod", "backend"),
     ];
 
-    private static ScopeResolver Resolver(IReadOnlyCollection<ApplicationId>? visible) =>
-        new(new FakeVisibility(visible), new FakeCatalog(Catalog));
+    /// <summary>Focus defaults to the Visibility Scope — the caller is attending to all of it.</summary>
+    private static ScopeResolver Resolver(
+        IReadOnlyCollection<ApplicationId>? visible, IReadOnlyCollection<ApplicationId>? focused) =>
+        new(new FakeVisibility(visible), new FakeFocus(focused ?? visible), new FakeCatalog(Catalog));
 
     private static Task<Guid[]?> ResolveAsync(
         IReadOnlyCollection<ApplicationId>? visible,
+        IReadOnlyCollection<ApplicationId>? focused = null,
         ApplicationId? application = null,
         string? serviceNamespace = null,
         string? environment = null,
         string? service = null) =>
-        Resolver(visible).ResolveServiceIdsAsync(
+        Resolver(visible, focused).ResolveServiceIdsAsync(
             new SourceFilter(application, serviceNamespace, environment, service),
             CancellationToken.None);
 
@@ -108,10 +111,49 @@ public class ScopeResolverTests
         Assert.Empty(result);
     }
 
+    [Fact]
+    public async Task An_open_filter_is_answered_through_the_focus()
+    {
+        var result = await ResolveAsync(visible: null, focused: [Crm]);
+
+        Assert.Equal([CrmBackend.Value], result);
+    }
+
+    [Fact]
+    public async Task Naming_an_application_outside_the_focus_still_answers()
+    {
+        // A Focus hides, it never refuses (Access ADR 0004): the UI would not offer Profilog, but
+        // a pasted link or a hand-written call that names it is answered rather than emptied.
+        var result = await ResolveAsync(visible: null, focused: [Crm], application: Profilog);
+
+        Assert.NotNull(result);
+        Assert.Equal(4, result.Length);
+        Assert.DoesNotContain(CrmBackend.Value, result);
+    }
+
+    [Fact]
+    public async Task An_empty_focus_shows_nothing()
+    {
+        var result = await ResolveAsync(visible: null, focused: []);
+
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
+
     private sealed class FakeVisibility(IReadOnlyCollection<ApplicationId>? visible) : IReadVisibility
     {
         public ValueTask<IReadOnlyCollection<ApplicationId>?> GetVisibleApplicationsAsync(
             CancellationToken cancellationToken) => ValueTask.FromResult(visible);
+    }
+
+    /// <summary>
+    /// Answers what it is given, as the real one does once it has intersected — this suite is
+    /// about what ScopeResolver does with the two answers, not about how the second is reached.
+    /// </summary>
+    private sealed class FakeFocus(IReadOnlyCollection<ApplicationId>? focused) : IReadApplicationFocus
+    {
+        public ValueTask<IReadOnlyCollection<ApplicationId>?> GetFocusedApplicationsAsync(
+            CancellationToken cancellationToken) => ValueTask.FromResult(focused);
     }
 
     private sealed class FakeCatalog(IReadOnlyList<CatalogService> services) : ICatalogReader

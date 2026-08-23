@@ -60,8 +60,28 @@ export const access: AccessMessages = {
   account: {
     title: "Account",
     description:
-      "The language Bugler speaks to you, your password, and the machine delegations you have " +
-      "issued to let tools read telemetry in your name.",
+      "The language Bugler speaks to you, your password, the applications you are watching, and " +
+      "the machine delegations you have issued to let tools read telemetry in your name.",
+  },
+
+  focus: {
+    caption: "Focus",
+    description:
+      "The applications you are watching. Everything else is left out of your dashboard, logs, " +
+      "traces and episodes, and its alerts stop mailing you. Nobody else's view changes, and " +
+      "nothing is taken away from you — an application you leave out is hidden, not closed.",
+    attendingToNothing:
+      "You are watching nothing, so Bugler is showing you no telemetry at all. Tick an " +
+      "application to start.",
+    nothingToAttendTo: "No application is registered on this server yet.",
+    saveFailed: "That did not save. Try again.",
+    empty: {
+      title: "You are watching nothing",
+      description:
+        "Bugler has telemetry, but none of it is from an application you are watching. Choose " +
+        "the ones you want to see.",
+      action: "Choose applications",
+    },
   },
 
   changePassword: {

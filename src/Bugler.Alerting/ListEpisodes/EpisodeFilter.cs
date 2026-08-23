@@ -1,3 +1,4 @@
+using Bugler.Access.Contracts;
 using Bugler.Alerting.Episodes;
 using Bugler.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,22 @@ internal static class EpisodeFilter
     /// <summary>"none" (nobody holds the mark) or "me" (the caller does); anything else is a caller error.</summary>
     public static bool IsValidAcknowledged(string? acknowledged) =>
         acknowledged is null or "none" or "me";
+
+    /// <summary>
+    /// Which of the caller's two sets a listing starts from. A request that names its own source —
+    /// an Application, or Services within one — is answered from the Visibility Scope; anything
+    /// wider is answered through the Focus (Access ADR 0004). Kept here beside the filter it feeds
+    /// so the list, its counts and the per-service board cannot each decide it differently.
+    /// </summary>
+    public static ValueTask<IReadOnlyCollection<ApplicationId>?> ApplicationsForAsync(
+        IReadVisibility visibility,
+        IReadApplicationFocus focus,
+        Guid? applicationId,
+        Guid[]? serviceId,
+        CancellationToken cancellationToken) =>
+        applicationId is null && serviceId is not { Length: > 0 }
+            ? focus.GetFocusedApplicationsAsync(cancellationToken)
+            : visibility.GetVisibleApplicationsAsync(cancellationToken);
 
     public static IQueryable<Episode> Apply(
         this IQueryable<Episode> query,
