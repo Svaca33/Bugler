@@ -59,7 +59,8 @@ public sealed class ReadingWriter(
         foreach (var reading in due)
         {
             if (!episodes.TryGetValue(reading.EpisodeId, out var episode)
-                || !identityByService.TryGetValue(episode.ServiceId, out var identity))
+                || episode.OpenedByServiceId is not { } opener
+                || !identityByService.TryGetValue(opener, out var identity))
             {
                 // The Service is gone; the cascade will collect this row shortly.
                 Fail(reading, "The service is no longer registered.");
@@ -178,7 +179,7 @@ public sealed class ReadingWriter(
                 ORDER BY timestamp DESC
                 LIMIT @limit
                 """);
-        command.Parameters.AddWithValue("serviceId", episode.ServiceId.Value);
+        command.Parameters.AddWithValue("serviceId", episode.OpenedByServiceId!.Value.Value);
         if (episode.FirstMatchLogId is { } id)
         {
             command.Parameters.AddWithValue("beforeId", id);
@@ -215,7 +216,7 @@ public sealed class ReadingWriter(
             ORDER BY observed_at DESC, id DESC
             LIMIT 1
             """);
-        command.Parameters.AddWithValue("serviceId", episode.ServiceId.Value);
+        command.Parameters.AddWithValue("serviceId", episode.OpenedByServiceId!.Value.Value);
         command.Parameters.AddWithValue("before", episode.OpenedAt.UtcDateTime);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

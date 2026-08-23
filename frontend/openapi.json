@@ -1935,6 +1935,46 @@
         }
       }
     },
+    "/api/admin/applications/{applicationId}/alerting/grouping": {
+      "put": {
+        "tags": [
+          "AdminAlertingEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFingerprintRuleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegroupedDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/services/{serviceId}/alerting": {
       "put": {
         "tags": [
@@ -2083,6 +2123,13 @@
             }
           },
           {
+            "name": "scopeKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "fingerprint",
             "in": "query",
             "schema": {
@@ -2179,6 +2226,13 @@
             }
           },
           {
+            "name": "scopeKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "fingerprint",
             "in": "query",
             "schema": {
@@ -2252,6 +2306,13 @@
                 "type": "string",
                 "format": "uuid"
               }
+            }
+          },
+          {
+            "name": "scopeKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -2873,7 +2934,9 @@
         "required": [
           "sensitivity",
           "quietWindowMinutes",
-          "claimLeaseHours"
+          "claimLeaseHours",
+          "fingerprintRule",
+          "scope"
         ],
         "type": "object",
         "properties": {
@@ -2895,6 +2958,12 @@
               "string"
             ],
             "format": "int32"
+          },
+          "fingerprintRule": {
+            "$ref": "#/components/schemas/FingerprintRule"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/EpisodeScopeDto"
           }
         }
       },
@@ -2930,6 +2999,7 @@
           "quietWindowMinutes",
           "claimLeaseHours",
           "chatWebhook",
+          "grouping",
           "serviceOverrides",
           "defaults"
         ],
@@ -2976,6 +3046,9 @@
                 "$ref": "#/components/schemas/ChatWebhookDto"
               }
             ]
+          },
+          "grouping": {
+            "$ref": "#/components/schemas/FingerprintRuleDto"
           },
           "serviceOverrides": {
             "type": "array",
@@ -3354,9 +3427,16 @@
         "required": [
           "id",
           "applicationId",
-          "serviceId",
+          "openedByServiceId",
+          "scopeKey",
           "watch",
           "fingerprint",
+          "title",
+          "fingerprintRung",
+          "recipeVersion",
+          "stackTruncated",
+          "alertFoldedIntoStorm",
+          "participations",
           "state",
           "openedAt",
           "closedAt",
@@ -3390,15 +3470,47 @@
             "type": "string",
             "format": "uuid"
           },
-          "serviceId": {
-            "type": "string",
+          "openedByServiceId": {
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
+          },
+          "scopeKey": {
+            "type": "string"
           },
           "watch": {
             "$ref": "#/components/schemas/Watch"
           },
           "fingerprint": {
             "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "fingerprintRung": {
+            "$ref": "#/components/schemas/FingerprintRung"
+          },
+          "recipeVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "stackTruncated": {
+            "type": "boolean"
+          },
+          "alertFoldedIntoStorm": {
+            "type": "boolean"
+          },
+          "participations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipationDto"
+            }
           },
           "state": {
             "$ref": "#/components/schemas/EpisodeState"
@@ -3574,6 +3686,25 @@
           }
         }
       },
+      "EpisodeScopeDto": {
+        "required": [
+          "byNamespace",
+          "byEnvironment",
+          "byServiceName"
+        ],
+        "type": "object",
+        "properties": {
+          "byNamespace": {
+            "type": "boolean"
+          },
+          "byEnvironment": {
+            "type": "boolean"
+          },
+          "byServiceName": {
+            "type": "boolean"
+          }
+        }
+      },
       "EpisodeState": {
         "enum": [
           "Open",
@@ -3654,6 +3785,58 @@
             ]
           }
         }
+      },
+      "FingerprintRule": {
+        "enum": [
+          "ThrowingCode",
+          "KindOfFailure",
+          "WhatWasSaid",
+          null
+        ]
+      },
+      "FingerprintRuleDto": {
+        "required": [
+          "rule",
+          "attributeKey",
+          "scope"
+        ],
+        "type": "object",
+        "properties": {
+          "rule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FingerprintRule"
+              }
+            ]
+          },
+          "attributeKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EpisodeScopeDto"
+              }
+            ]
+          }
+        }
+      },
+      "FingerprintRung": {
+        "enum": [
+          "NamedAttribute",
+          "Stack",
+          "Failure",
+          "Message"
+        ]
       },
       "ForgotPasswordRequest": {
         "required": [
@@ -4426,6 +4609,53 @@
           }
         }
       },
+      "ParticipationDto": {
+        "required": [
+          "serviceId",
+          "version",
+          "firstAt",
+          "lastAt",
+          "errorCount",
+          "warnCount"
+        ],
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "firstAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errorCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "warnCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -4510,6 +4740,31 @@
           "Written",
           "Failed"
         ]
+      },
+      "RegroupedDto": {
+        "required": [
+          "mutedEpisodes",
+          "droppedQuietWindows"
+        ],
+        "type": "object",
+        "properties": {
+          "mutedEpisodes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "droppedQuietWindows": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
       },
       "ReleaseDto": {
         "required": [
@@ -5120,6 +5375,42 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "SetFingerprintRuleRequest": {
+        "required": [
+          "rule",
+          "attributeKey",
+          "scope"
+        ],
+        "type": "object",
+        "properties": {
+          "rule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FingerprintRule"
+              }
+            ]
+          },
+          "attributeKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EpisodeScopeDto"
+              }
+            ]
           }
         }
       },
@@ -5806,4 +6097,4 @@
       "name": "IngestTracesHttpEndpoint"
     }
   ]
-}
+}

@@ -41,9 +41,10 @@ public sealed class AlertingTools
 
     [McpServerTool(Name = "list_episodes", ReadOnly = true)]
     [Description(
-        "The Episodes in view: one per kind of trouble in one Service, opened when a Service "
-        + "started logging that trouble or stopped answering that it is alive, and closed by a "
-        + "Quiet Window of silence. Start here — this is what Bugler noticed without being asked. "
+        "The Episodes in view: one per kind of trouble in one episode scope, opened when a "
+        + "service started logging that trouble or stopped answering that it is alive, and closed "
+        + "by a Quiet Window of silence. One episode may be fed by several services and versions "
+        + "— its participations say which. Start here: this is what Bugler noticed unasked. "
         + "States: Open (still happening), Quieted (went quiet on its own), Solved (a person said "
         + "so), Muted. Defaults to the Episodes that are still open. Answers carry any machine "
         + "hand marks — claims, notes, proposals, resignations — so agents see each other's "
@@ -61,8 +62,10 @@ public sealed class AlertingTools
         string[]? states = null,
         [Description(
             "Only Episodes of this kind of trouble — the fingerprint exactly as an earlier "
-            + "answer carried it. Combine with serviceId: a fingerprint tells kinds apart "
-            + "within one Service, not across Services.")]
+            + "answer carried it. It is an opaque token, not a sentence: it stands for the "
+            + "trouble rather than describing it, and the title is what it stands for. It tells "
+            + "kinds apart within one episode scope, so episodes of two applications never share "
+            + "one.")]
         string? fingerprint = null,
         [Description("Only Episodes whose last match is at or after this ISO-8601 instant.")]
         string? since = null,
@@ -86,7 +89,11 @@ public sealed class AlertingTools
 
         if (serviceId is { } service)
         {
-            query = query.Where(e => e.ServiceId == new SharedKernel.ServiceId(service));
+            // An Episode has no single Service: it belongs to everything that fed it, so
+            // "this Service's episodes" are the ones it put something into.
+            var id = new SharedKernel.ServiceId(service);
+            query = query.Where(e => dbContext.Participations.Any(
+                p => p.EpisodeId == e.Id && p.ServiceId == id));
         }
 
         if (fingerprint is not null)
@@ -118,8 +125,11 @@ public sealed class AlertingTools
         var names = await NamesFor(shown, delegationNames, cancellationToken);
         var overtaken = await OvertakenOf(dbContext, shown, cancellationToken);
 
+        var participations = await ParticipationsOfAsync(dbContext, shown, cancellationToken);
+
         return new EpisodeListAnswer(
-            shown.Select(e => Summarize(e, names, overtaken.Contains(e.Id))).ToList(),
+            shown.Select(e => Summarize(e, names, overtaken.Contains(e.Id), participations))
+                .ToList(),
             more
                 ? $"Returned the {take} most recent matching episodes; there are older ones."
                 : null);
@@ -166,8 +176,10 @@ public sealed class AlertingTools
         var names = await NamesFor([episode], delegationNames, cancellationToken);
         var overtaken = await OvertakenOf(dbContext, [episode], cancellationToken);
 
+        var participations = await ParticipationsOfAsync(dbContext, [episode], cancellationToken);
+
         return new EpisodeDetailAnswer(
-            Summarize(episode, names, overtaken.Contains(episode.Id)),
+            Summarize(episode, names, overtaken.Contains(episode.Id), participations),
             journal,
             reading is { English: not null, WrittenAt: not null }
                 ? new MachineReading(reading.English, reading.Model, reading.WrittenAt.Value, ReadingCaveat)
@@ -396,7 +408,7 @@ public sealed class AlertingTools
         AlertingDbContext dbContext, Episode episode, CancellationToken cancellationToken)
     {
         var newerExists = await dbContext.Episodes.AnyAsync(n =>
-            n.ServiceId == episode.ServiceId
+            n.ScopeKey == episode.ScopeKey
             && n.Fingerprint == episode.Fingerprint
             && n.Id.CompareTo(episode.Id) > 0, cancellationToken);
         if (newerExists)
@@ -488,7 +500,38 @@ public sealed class AlertingTools
     {
         var names = await NamesFor([episode], delegationNames, cancellationToken);
         var overtaken = await OvertakenOf(dbContext, [episode], cancellationToken);
-        return Summarize(episode, names, overtaken.Contains(episode.Id));
+        var participations = await ParticipationsOfAsync(dbContext, [episode], cancellationToken);
+        return Summarize(episode, names, overtaken.Contains(episode.Id), participations);
+    }
+
+    /// <summary>Which Services and versions fed each of these Episodes — one query for the page.</summary>
+    private static async Task<Dictionary<Guid, IReadOnlyList<ParticipationMark>>> ParticipationsOfAsync(
+        AlertingDbContext dbContext,
+        IReadOnlyList<Episode> episodes,
+        CancellationToken cancellationToken)
+    {
+        var ids = episodes.Select(e => e.Id).ToList();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var rows = await dbContext.Participations.AsNoTracking()
+            .Where(p => ids.Contains(p.EpisodeId))
+            .OrderBy(p => p.FirstAt)
+            .Select(p => new
+            {
+                p.EpisodeId,
+                Mark = new ParticipationMark(
+                    p.ServiceId.Value, p.Version, p.FirstAt, p.LastAt, p.ErrorCount, p.WarnCount),
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(row => row.EpisodeId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<ParticipationMark>)group.Select(row => row.Mark).ToList());
     }
 
     private static string? Trimmed(string? value) =>
@@ -558,7 +601,7 @@ public sealed class AlertingTools
 
         var ids = await dbContext.Episodes.AsNoTracking()
             .Where(e => marked.Contains(e.Id) && dbContext.Episodes.Any(p =>
-                p.ServiceId == e.ServiceId
+                p.ScopeKey == e.ScopeKey
                 && p.Fingerprint == e.Fingerprint
                 && p.Id.CompareTo(e.Id) > 0))
             .Select(e => e.Id)
@@ -569,13 +612,16 @@ public sealed class AlertingTools
     private static EpisodeSummary Summarize(
         Episode episode,
         IReadOnlyDictionary<Guid, MachineDelegationName> names,
-        bool overtaken) => new(
+        bool overtaken,
+        IReadOnlyDictionary<Guid, IReadOnlyList<ParticipationMark>> participations) => new(
         episode.Id,
         episode.ApplicationId.Value,
-        episode.ServiceId.Value,
+        episode.OpenedByServiceId?.Value,
         episode.Watch.ToString(),
         episode.State.ToString(),
         episode.Fingerprint,
+        episode.Title,
+        participations.GetValueOrDefault(episode.Id, []),
         episode.OpenedAt,
         episode.LastMatchAt,
         episode.ClosedAt,

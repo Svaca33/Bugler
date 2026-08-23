@@ -1,3 +1,4 @@
+using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.Episodes;
 using Bugler.SharedKernel;
 
@@ -21,10 +22,14 @@ public class MachineHandTests
     private static Episode Episode() => new()
     {
         Id = Guid.CreateVersion7(),
-        ServiceId = ServiceId.New(),
+        OpenedByServiceId = ServiceId.New(),
         ApplicationId = ApplicationId.New(),
+        ScopeKey = "app=test|env=prod",
         Watch = Watch.Logs,
-        Fingerprint = "Payment gateway timed out",
+        Fingerprint = "9f2c1b7a4d6e8051",
+        Title = "Payment gateway timed out",
+        RecipeVersion = Fingerprint.RecipeVersion,
+        FingerprintRung = FingerprintRung.Stack,
         OpenedAt = Now.AddHours(-1),
         FirstMatchLogId = 42,
         FirstMatchAt = Now.AddHours(-1),

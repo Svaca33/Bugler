@@ -5,6 +5,7 @@ using Bugler.Alerting.Episodes;
 using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.Settings;
 using Bugler.Registry.Contracts;
+using Bugler.SharedKernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -89,14 +90,14 @@ internal static class EpisodeDetailEndpoint
         }
 
         var priorCount = await dbContext.Episodes.CountAsync(p =>
-            p.ServiceId == episode.ServiceId
+            p.ScopeKey == episode.ScopeKey
             && p.Fingerprint == episode.Fingerprint
             && p.Id.CompareTo(episode.Id) < 0, cancellationToken);
 
         // Actions land only on the newest Episode of a kind, so the newest earlier Episode
         // holding an acknowledgement also holds the kind's newest one.
         var earlierAck = await dbContext.Episodes.AsNoTracking()
-            .Where(p => p.ServiceId == episode.ServiceId
+            .Where(p => p.ScopeKey == episode.ScopeKey
                 && p.Fingerprint == episode.Fingerprint
                 && p.Id.CompareTo(episode.Id) < 0
                 && p.AcknowledgedByUserId != null)
@@ -112,7 +113,8 @@ internal static class EpisodeDetailEndpoint
             .ToListAsync(cancellationToken);
 
         var alerts = await dbContext.Deliveries.AsNoTracking()
-            .Where(d => d.EpisodeId == id && d.Kind == DeliveryKind.Alert)
+            .Where(d => d.EpisodeId == id
+                && (d.Kind == DeliveryKind.Alert || d.Kind == DeliveryKind.Joined))
             .ToListAsync(cancellationToken);
         var reading = await dbContext.Readings.AsNoTracking()
             .FirstOrDefaultAsync(r => r.EpisodeId == id, cancellationToken);
@@ -130,7 +132,16 @@ internal static class EpisodeDetailEndpoint
             await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
             fingerprintWindows);
         var own = fingerprintWindows.FirstOrDefault(
-            w => w.ServiceId == episode.ServiceId && w.Fingerprint == episode.Fingerprint);
+            w => w.ScopeKey == episode.ScopeKey && w.Fingerprint == episode.Fingerprint);
+        var participations = await EpisodesEndpoint.ParticipationsOfAsync(
+            dbContext, [episode.Id], cancellationToken);
+        // Sensitivity and the Quiet Window's fallback stay per Service; the panel names them for
+        // the Service that opened the Episode, or for whoever is still in it once that one is gone.
+        var speakingFor = episode.OpenedByServiceId
+            ?? participations.GetValueOrDefault(episode.Id, [])
+                .Select(p => (ServiceId?)new ServiceId(p.ServiceId))
+                .FirstOrDefault()
+            ?? default;
 
         var names = await userNames.ResolveAsync(
             new[] { episode.AcknowledgedByUserId, episode.SolvedByUserId, earlierAck?.AcknowledgedByUserId }
@@ -147,13 +158,17 @@ internal static class EpisodeDetailEndpoint
         // Only a proposal or a Resignation ages into "overtaken", so the check is paid only then.
         var newerExists = (episode.ProposedAt is not null || episode.ResignedAt is not null)
             && await dbContext.Episodes.AnyAsync(p =>
-                p.ServiceId == episode.ServiceId
+                p.ScopeKey == episode.ScopeKey
                 && p.Fingerprint == episode.Fingerprint
                 && p.Id.CompareTo(episode.Id) > 0, cancellationToken);
 
         var dto = new EpisodeDto(
-            episode.Id, episode.ApplicationId.Value, episode.ServiceId.Value,
-            episode.Watch, episode.Fingerprint, episode.State, episode.OpenedAt, episode.ClosedAt,
+            episode.Id, episode.ApplicationId.Value, episode.OpenedByServiceId?.Value,
+            episode.ScopeKey, episode.Watch, episode.Fingerprint, episode.Title,
+            episode.FingerprintRung, episode.RecipeVersion, episode.StackTruncated,
+            episode.AlertFoldedIntoStorm,
+            participations.GetValueOrDefault(episode.Id, []),
+            episode.State, episode.OpenedAt, episode.ClosedAt,
             episode.LastMatchAt, episode.ErrorCount, episode.WarnCount,
             episode.FirstMatchLogId, episode.FirstMatchAt, episode.FirstMatchSeverity,
             episode.FirstMatchDetail,
@@ -175,9 +190,9 @@ internal static class EpisodeDetailEndpoint
                     mail.Where(d => d.DeliveredAt is not null).Min(d => d.DeliveredAt))
                 : null,
             chat is null ? null : new ChatAlertDto(chat.DeliveredAt),
-            effective.SensitivityOf(episode.ServiceId),
-            effective.QuietWindowMinutesOf(episode.ServiceId, episode.Fingerprint),
-            effective.InheritedQuietWindowMinutesOf(episode.ServiceId),
+            effective.SensitivityOf(speakingFor),
+            effective.QuietWindowMinutesOf(speakingFor, episode.ScopeKey, episode.Fingerprint),
+            effective.InheritedQuietWindowMinutesOf(speakingFor),
             journal.Select(j => new JournalEntryDto(
                 j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId),
                 j.DelegationId is { } machine

@@ -42,12 +42,14 @@ describe("describeQuietWindow", () => {
       .toBe("Inherited from the service: 15 min.");
   });
 
-  test("credits the kind of trouble, not the episode, and names what it replaces", () => {
+  test("credits the kind of trouble, not one episode, and names what it replaces", () => {
     const line = describeQuietWindow({ own: 120, inherited: 15 });
 
-    expect(line).toContain("2 h for this kind of trouble in this service");
+    // What is tuned is the kind of trouble across its Episode Scope (ADR 0034), so the sentence
+    // reaches as far as the episode does — and still never says one episode owns the window.
+    expect(line).toContain("2 h for this kind of trouble wherever its episode reaches");
     expect(line).toContain("inherit 15 min");
-    expect(line).not.toContain("episode");
+    expect(line).not.toContain("this episode");
   });
 });
 

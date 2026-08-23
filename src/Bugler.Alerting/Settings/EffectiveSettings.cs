@@ -9,15 +9,20 @@ namespace Bugler.Alerting.Settings;
 /// tier deeper still (`kind of trouble ?? that`, ADR 0004) — all snapshotted at one instant.
 /// Rebuilt each run, because detection always evaluates the current effective Sensitivity.
 /// Always built whole: one shared path, no second opinion.
+///
+/// The Fingerprint Rule and the Episode Scope have no Service tier under them (ADR 0033, 0034):
+/// an Episode reaches across Services, so the two ends must agree on what "the same trouble" is
+/// and how far it reaches. Both resolve per Application and are read here as the Service's own
+/// answer, because that is where detection asks the question.
 /// </summary>
 public sealed class EffectiveSettings
 {
     private readonly Dictionary<ServiceId, ResolvedService> _services;
-    private readonly Dictionary<(ServiceId, string), int> _fingerprintWindows;
+    private readonly Dictionary<(string ScopeKey, string Fingerprint), int> _fingerprintWindows;
 
     private EffectiveSettings(
         Dictionary<ServiceId, ResolvedService> services,
-        Dictionary<(ServiceId, string), int> fingerprintWindows)
+        Dictionary<(string, string), int> fingerprintWindows)
     {
         _services = services;
         _fingerprintWindows = fingerprintWindows;
@@ -37,34 +42,75 @@ public sealed class EffectiveSettings
         {
             var application = byApplication.GetValueOrDefault(service.ApplicationId);
             var overrides = byService.GetValueOrDefault(service.Id);
+            var scope = ScopeOf(application);
             services[service.Id] = new ResolvedService(
                 service.ApplicationId,
                 overrides?.Sensitivity ?? application?.Sensitivity ?? AlertingDefaults.Sensitivity,
                 overrides?.QuietWindowMinutes ?? application?.QuietWindowMinutes
                     ?? AlertingDefaults.QuietWindowMinutes,
                 // The one setting with no tier above it: an address cannot be inherited.
-                overrides?.HealthCheckUrl);
+                overrides?.HealthCheckUrl,
+                scope.KeyOf(service),
+                application?.FingerprintRule ?? AlertingDefaults.FingerprintRule,
+                string.IsNullOrWhiteSpace(application?.FingerprintAttributeKey)
+                    ? null
+                    : application.FingerprintAttributeKey.Trim());
         }
 
         return new EffectiveSettings(
             services,
             fingerprintWindows.ToDictionary(
-                w => (w.ServiceId, w.Fingerprint), w => w.QuietWindowMinutes));
+                w => (w.ScopeKey, w.Fingerprint), w => w.QuietWindowMinutes));
     }
+
+    /// <summary>An Application with no row, or nulls in it, scopes the way ADR 0034 says by default.</summary>
+    public static EpisodeScope ScopeOf(ApplicationAlertingSettings? settings) =>
+        settings is null
+            ? EpisodeScope.Default
+            : new EpisodeScope(
+                settings.ScopeByNamespace ?? EpisodeScope.Default.ByNamespace,
+                settings.ScopeByEnvironment ?? EpisodeScope.Default.ByEnvironment,
+                settings.ScopeByServiceName ?? EpisodeScope.Default.ByServiceName);
 
     /// <summary>Unknown Services do not alert: telemetry without a registration is an orphan, not an outage.</summary>
     public Sensitivity SensitivityOf(ServiceId serviceId) =>
         _services.GetValueOrDefault(serviceId)?.Sensitivity ?? Sensitivity.Off;
 
     /// <summary>
-    /// How long this kind of trouble in this Service must stay silent. The Fingerprint's own
-    /// window wins where one is set; otherwise the Service's resolved value applies.
+    /// How far an Episode this Service's Log Records fall into reaches (see CONTEXT.md: Episode
+    /// Scope). Null for a Service nothing knows — orphan telemetry is bound by nothing.
     /// </summary>
-    public TimeSpan QuietWindowOf(ServiceId serviceId, string fingerprint) =>
-        TimeSpan.FromMinutes(QuietWindowMinutesOf(serviceId, fingerprint));
+    public string? ScopeKeyOf(ServiceId serviceId) =>
+        _services.GetValueOrDefault(serviceId)?.ScopeKey;
 
-    public int QuietWindowMinutesOf(ServiceId serviceId, string fingerprint) =>
-        _fingerprintWindows.TryGetValue((serviceId, fingerprint), out var own)
+    /// <summary>How this Service's Application distills its Fingerprints (see CONTEXT.md: Fingerprint Rule).</summary>
+    public FingerprintRule FingerprintRuleOf(ServiceId serviceId) =>
+        _services.GetValueOrDefault(serviceId)?.FingerprintRule ?? AlertingDefaults.FingerprintRule;
+
+    /// <summary>The attribute that outranks the Rule for this Service's Application; null where none is named.</summary>
+    public string? FingerprintAttributeKeyOf(ServiceId serviceId) =>
+        _services.GetValueOrDefault(serviceId)?.FingerprintAttributeKey;
+
+    /// <summary>Every attribute key any Application names — the extra columns one poll page has to read.</summary>
+    public IReadOnlyList<string> NamedAttributeKeys() =>
+        _services.Values
+            .Select(s => s.FingerprintAttributeKey)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// How long this kind of trouble in this Episode Scope must stay silent. The Fingerprint's own
+    /// window wins where one is set; otherwise the Service's resolved value applies — Sensitivity
+    /// and the Quiet Window stay per Service even where the Episode does not, and that is correct:
+    /// an Episode may be fed by Services configured differently.
+    /// </summary>
+    public TimeSpan QuietWindowOf(ServiceId serviceId, string scopeKey, string fingerprint) =>
+        TimeSpan.FromMinutes(QuietWindowMinutesOf(serviceId, scopeKey, fingerprint));
+
+    public int QuietWindowMinutesOf(ServiceId serviceId, string scopeKey, string fingerprint) =>
+        _fingerprintWindows.TryGetValue((scopeKey, fingerprint), out var own)
             ? own
             : _services.GetValueOrDefault(serviceId)?.QuietWindowMinutes
                 ?? AlertingDefaults.QuietWindowMinutes;
@@ -105,5 +151,8 @@ public sealed class EffectiveSettings
         ApplicationId ApplicationId,
         Sensitivity Sensitivity,
         int QuietWindowMinutes,
-        string? HealthCheckUrl);
+        string? HealthCheckUrl,
+        string ScopeKey,
+        FingerprintRule FingerprintRule,
+        string? FingerprintAttributeKey);
 }

@@ -1,17 +1,43 @@
 using System.Security.Claims;
 using Bugler.Access.Contracts;
+using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.Episodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bugler.Alerting.ListEpisodes;
 
+/// <summary>What one Service running one version put into an Episode (see CONTEXT.md: Participation).</summary>
+public sealed record ParticipationDto(
+    Guid ServiceId,
+    string? Version,
+    DateTimeOffset FirstAt,
+    DateTimeOffset LastAt,
+    int ErrorCount,
+    int WarnCount);
+
 public sealed record EpisodeDto(
     Guid Id,
     Guid ApplicationId,
-    Guid ServiceId,
+    /// <summary>The Service whose Match opened it — evidence, not an owner; null once that Service is Deleted.</summary>
+    Guid? OpenedByServiceId,
+    /// <summary>How far this Episode reaches (see CONTEXT.md: Episode Scope) — the grouping key, opaque to the reader.</summary>
+    string ScopeKey,
     Watch Watch,
+    /// <summary>Opaque since ADR 0033: what tells kinds apart, never what a person reads.</summary>
     string Fingerprint,
+    /// <summary>The readable name of the trouble (see CONTEXT.md: Title).</summary>
+    string Title,
+    /// <summary>Which rung of the ladder produced the Fingerprint — the visible degradation.</summary>
+    FingerprintRung FingerprintRung,
+    /// <summary>Which recipe distilled it; 0 is a row from before the recipe existed, and never re-read.</summary>
+    int RecipeVersion,
+    /// <summary>Whether the opening stack was too long to read whole, so the grouping may be coarser than it could.</summary>
+    bool StackTruncated,
+    /// <summary>Whether this Episode's Alerts were folded into a Storm digest (see CONTEXT.md: Storm).</summary>
+    bool AlertFoldedIntoStorm,
+    /// <summary>Which Services and versions are in it (see CONTEXT.md: Participation).</summary>
+    IReadOnlyList<ParticipationDto> Participations,
     EpisodeState State,
     DateTimeOffset OpenedAt,
     DateTimeOffset? ClosedAt,
@@ -54,6 +80,7 @@ internal static class EpisodesEndpoint
         Guid? applicationId,
         Guid[]? serviceId,
         EpisodeState[]? state,
+        string? scopeKey,
         string? fingerprint,
         DateTimeOffset? from,
         string? q,
@@ -85,7 +112,8 @@ internal static class EpisodesEndpoint
         }
 
         var query = dbContext.Episodes.AsNoTracking()
-            .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId);
+            .Apply(dbContext, visible, applicationId, serviceId, scopeKey, fingerprint, from, q,
+                acknowledged, callerId);
 
         if (latestPerFingerprint == true)
         {
@@ -107,8 +135,8 @@ internal static class EpisodesEndpoint
                 || (wantQuieted && e.SolvedAt == null
                     && e.CloseReason == EpisodeCloseReason.QuietWindow)
                 || (wantSolved && e.SolvedAt != null)
-                || (wantMuted && e.SolvedAt == null
-                    && e.CloseReason == EpisodeCloseReason.WatchOff));
+                || (wantMuted && e.SolvedAt == null && e.ClosedAt != null
+                    && e.CloseReason != EpisodeCloseReason.QuietWindow));
         }
 
         // Episode ids are UUIDv7 and PostgreSQL compares uuids bytewise, so id order is open
@@ -126,13 +154,13 @@ internal static class EpisodesEndpoint
             {
                 Episode = e,
                 PriorCount = dbContext.Episodes.Count(p =>
-                    p.ServiceId == e.ServiceId
+                    p.ScopeKey == e.ScopeKey
                     && p.Fingerprint == e.Fingerprint
                     && p.Id.CompareTo(e.Id) < 0),
                 // Actions land only on the newest Episode of a kind, so the newest earlier
                 // Episode holding an acknowledgement also holds the kind's newest one.
                 EarlierAck = dbContext.Episodes
-                    .Where(p => p.ServiceId == e.ServiceId
+                    .Where(p => p.ScopeKey == e.ScopeKey
                         && p.Fingerprint == e.Fingerprint
                         && p.Id.CompareTo(e.Id) < 0
                         && p.AcknowledgedByUserId != null)
@@ -141,18 +169,23 @@ internal static class EpisodesEndpoint
                     .FirstOrDefault(),
                 // Keyed on the new table's primary key, so this is a lookup, not a scan.
                 FingerprintQuietWindowMinutes = dbContext.FingerprintQuietWindows
-                    .Where(w => w.ServiceId == e.ServiceId && w.Fingerprint == e.Fingerprint)
+                    .Where(w => w.ScopeKey == e.ScopeKey && w.Fingerprint == e.Fingerprint)
                     .Select(w => (int?)w.QuietWindowMinutes)
                     .FirstOrDefault(),
                 // Only a proposal or a Resignation ages into "overtaken", so the sibling check
                 // is paid only where one stands.
                 NewerExists = (e.ProposedAt != null || e.ResignedAt != null)
                     && dbContext.Episodes.Any(p =>
-                        p.ServiceId == e.ServiceId
+                        p.ScopeKey == e.ScopeKey
                         && p.Fingerprint == e.Fingerprint
                         && p.Id.CompareTo(e.Id) > 0),
             })
             .ToListAsync(cancellationToken);
+
+        // One query for the whole page: which Services and versions are in each row's Episode —
+        // the "does the new version still do it" read the list leads with.
+        var participations = await ParticipationsOfAsync(
+            dbContext, rows.Select(r => r.Episode.Id).ToList(), cancellationToken);
 
         var names = await userNames.ResolveAsync(
             rows.SelectMany(r => new[]
@@ -168,8 +201,12 @@ internal static class EpisodesEndpoint
             cancellationToken);
 
         var items = rows.Select(r => new EpisodeDto(
-            r.Episode.Id, r.Episode.ApplicationId.Value, r.Episode.ServiceId.Value,
-            r.Episode.Watch, r.Episode.Fingerprint, r.Episode.State, r.Episode.OpenedAt,
+            r.Episode.Id, r.Episode.ApplicationId.Value, r.Episode.OpenedByServiceId?.Value,
+            r.Episode.ScopeKey, r.Episode.Watch, r.Episode.Fingerprint, r.Episode.Title,
+            r.Episode.FingerprintRung, r.Episode.RecipeVersion, r.Episode.StackTruncated,
+            r.Episode.AlertFoldedIntoStorm,
+            participations.GetValueOrDefault(r.Episode.Id, []),
+            r.Episode.State, r.Episode.OpenedAt,
             r.Episode.ClosedAt, r.Episode.LastMatchAt, r.Episode.ErrorCount, r.Episode.WarnCount,
             r.Episode.FirstMatchLogId, r.Episode.FirstMatchAt, r.Episode.FirstMatchSeverity,
             r.Episode.FirstMatchDetail,
@@ -183,6 +220,35 @@ internal static class EpisodesEndpoint
             MachineHandDtos.Resignation(r.Episode, r.NewerExists, machines))).ToList();
 
         return Results.Ok(new ListEpisodesResponse(items));
+    }
+
+    /// <summary>Which Services and versions are in each of these Episodes, oldest sighting first.</summary>
+    internal static async Task<Dictionary<Guid, IReadOnlyList<ParticipationDto>>> ParticipationsOfAsync(
+        AlertingDbContext dbContext,
+        IReadOnlyList<Guid> episodeIds,
+        CancellationToken cancellationToken)
+    {
+        if (episodeIds.Count == 0)
+        {
+            return [];
+        }
+
+        var rows = await dbContext.Participations.AsNoTracking()
+            .Where(p => episodeIds.Contains(p.EpisodeId))
+            .OrderBy(p => p.FirstAt)
+            .Select(p => new
+            {
+                p.EpisodeId,
+                Dto = new ParticipationDto(
+                    p.ServiceId.Value, p.Version, p.FirstAt, p.LastAt, p.ErrorCount, p.WarnCount),
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(row => row.EpisodeId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<ParticipationDto>)group.Select(row => row.Dto).ToList());
     }
 
     /// <summary>Null when nobody holds the mark; a deleted User leaves the timestamp with no name.</summary>

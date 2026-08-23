@@ -45,6 +45,119 @@ export const registry: RegistryMessages = {
     noKeyYet: "No API key yet — this service cannot send telemetry until you issue one.",
   },
 
+  groupingCard: {
+    caption: "WHAT COUNTS AS THE SAME TROUBLE",
+    ruleLabel: "Group by",
+    rule: {
+      ThrowingCode: "The code that threw",
+      KindOfFailure: "The kind of failure",
+      WhatWasSaid: "What was said",
+    },
+    attributeLabel: "Or by this attribute",
+    attributePlaceholder: "acme.error_code",
+    scopeCaption: "HOW FAR ONE EPISODE REACHES",
+    byEnvironment: "Environment must match",
+    byNamespace: "Namespace must match",
+    byServiceName: "Service name must match",
+    confirmTitle: "Regroup this application?",
+    confirmIntro:
+      "You are changing what counts as the same trouble here — either what a fingerprint is "
+      + "distilled from, or how far one episode reaches.",
+    warningCounting: "Working out what this change will cost…",
+    warning: (openEpisodes, capped) =>
+      openEpisodes === 0
+        ? "Saving re-partitions this application's kinds of trouble. Nothing is open right now, "
+          + "but every tuned quiet window will be dropped. This cannot be undone."
+        : `Saving mutes ${capped ? "at least " : ""}${openEpisodes} open `
+          + `${openEpisodes === 1 ? "episode" : "episodes"} and drops every tuned quiet window: `
+          + "their kinds of trouble land in a partition nothing will report again. "
+          + "Acknowledgements and machine claims on them fall with them. This cannot be undone.",
+    confirmButton: "Regroup",
+    done: (mutedEpisodes, droppedQuietWindows) =>
+      `Regrouped: ${mutedEpisodes} ${mutedEpisodes === 1 ? "episode" : "episodes"} muted, `
+      + `${droppedQuietWindows} tuned quiet ${droppedQuietWindows === 1 ? "window" : "windows"} dropped.`,
+    explainer:
+      "An episode reaches across services, so both settings are the application's and no service "
+      + "overrides them. Where the throwing code cannot be read — an unknown runtime, no stack — "
+      + "the grouping coarsens by itself and says so on the episode.",
+    saveFailed: "Failed to save the grouping settings",
+    countFailed: "Failed to count the open episodes",
+  },
+
+  groupingHelp: {
+    title: "How grouping works",
+    description:
+      "Two settings decide it: what a kind of trouble is distilled from, and how far one episode "
+      + "reaches. Both are the application's — an episode crosses services, so the ends must agree.",
+    ladderLabel: "THE LADDER — WHAT A FINGERPRINT IS DISTILLED FROM",
+    finer: "SEPARATES MOST",
+    coarser: "SEPARATES LEAST",
+    rungAboveTheRule: "above the rule",
+    rungDefault: "default",
+    rungAttributeTitle: "A named attribute",
+    rungAttributeBody:
+      "Name one and its value is the whole answer wherever a log carries it — a sender that "
+      + "already knows how its troubles group beats anything Bugler can distil. Where a log does "
+      + "not carry it, the rule below decides. Leave it empty to use the rule alone.",
+    rungStackTitle: "The code that threw",
+    rungStackBody:
+      "The frames of exception.stacktrace, hashed with exception.type. Two call sites that log "
+      + "the same sentence stay two kinds of trouble; one bug reached twice stays one.",
+    rungFailureTitle: "The kind of failure",
+    rungFailureBody:
+      "exception.type and the message template, ignoring the stack. Every timeout in the "
+      + "application meets in one episode, wherever it was thrown.",
+    rungMessageTitle: "What was said",
+    rungMessageBody:
+      "The message template (Serilog's and the .NET logger's alike), the event name, or the body "
+      + "with its ids and numbers blanked. Groups by the sender's choice of words, so one careless "
+      + "generic sentence merges unrelated failures.",
+    ruleNote:
+      "“Group by” picks which rung the ladder starts on. Nothing above the chosen rung is "
+      + "consulted except the named attribute, which always outranks it.",
+    degradeNote:
+      "What cannot be read falls one rung and says so: an unknown runtime, a stack Bugler's recipe "
+      + "finds no frames in, a log with no stack at all — the episode is marked “coarser”, and "
+      + "a stack too long to read whole is marked “stack cut”. Nobody ends up worse off than "
+      + "before; a parser written wrong shows as visible coarseness, never as a plausible answer.",
+    framesLabel: "WHAT A FRAME IS, ONCE THE NOISE IS GONE",
+    framesRawCaption: "AS IT ARRIVES",
+    framesKeptCaption: "WHAT IS HASHED",
+    framesNote:
+      "The header goes because it carries the exception's own message — here a hostname and a "
+      + "transaction number, which would mint a new kind of trouble per occurrence. So do "
+      + "Caused by:, “… 12 more”, Python's echoed source lines, file paths and line numbers. "
+      + "Every run of digits is blanked, so a deploy that shifted a line does not split one trouble "
+      + "in two, and runs of identical frames collapse, so recursion of any depth is one bug.",
+    runtimesNote:
+      "How a stack trace is written is each runtime's own affair, so the recipe is chosen by the "
+      + "telemetry.sdk.language your SDK already sends: dotnet, java, kotlin, nodejs, webjs, "
+      + "python, go, php and ruby have one. Anything else falls a rung rather than guessing.",
+    scopeLabel: "HOW FAR ONE EPISODE REACHES",
+    scopeAlways:
+      "The application always bounds an episode. On top of it, tick the facets of the sender that "
+      + "must match before two logs of one kind share an episode.",
+    byEnvironment: "Environment",
+    byNamespace: "Namespace",
+    byServiceName: "Service name",
+    scopeEnvNote:
+      "Recommended. Staging and production share their code and their fingerprints; merged, a "
+      + "failing test run feeds the episode forever and the production trouble never falls quiet.",
+    scopeNsNote:
+      "Tick it to keep tenants — or whatever your namespace names — in episodes of their own.",
+    scopeNameNote:
+      "Tick it to keep each role apart: the api and the worker of one deployment then never share "
+      + "an episode, even on the same bug in shared code.",
+    scopeExample:
+      "With environment alone ticked, one bug in ten customer deployments of production is one "
+      + "episode with ten participations — one alert, one acknowledgement, one verdict — while "
+      + "staging keeps its own.",
+    repartitionNote:
+      "Changing either re-partitions what is already open: those episodes are muted and the tuned "
+      + "quiet windows dropped. The card asks before it saves.",
+    gotIt: "Got it",
+  },
+
   alertingCard: {
     caption: (sensitivity, quietWindowMinutes) =>
       `ALERTING · defaults ${sensitivity} · ${quietWindowMinutes} min quiet window`,

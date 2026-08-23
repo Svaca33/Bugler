@@ -16,9 +16,11 @@ internal static class EpisodeFilter
 
     public static IQueryable<Episode> Apply(
         this IQueryable<Episode> query,
+        AlertingDbContext dbContext,
         IReadOnlyCollection<ApplicationId>? visible,
         Guid? applicationId,
         Guid[]? serviceId,
+        string? scopeKey,
         string? fingerprint,
         DateTimeOffset? from,
         string? q,
@@ -39,8 +41,18 @@ internal static class EpisodeFilter
 
         if (serviceId is { Length: > 0 })
         {
+            // An Episode has no single Service (ADR 0034): "in this Service" means the Service
+            // put something into it, which is what a Participation records.
             var ids = serviceId.Select(id => new ServiceId(id)).ToList();
-            query = query.Where(e => ids.Contains(e.ServiceId));
+            query = query.Where(e => dbContext.Participations.Any(
+                p => p.EpisodeId == e.Id && ids.Contains(p.ServiceId)));
+        }
+
+        if (scopeKey is not null)
+        {
+            // Opaque to whoever passes it, exactly as the Fingerprint is: the client echoes back
+            // what an earlier answer carried, and the pair is what a kind of trouble is told by.
+            query = query.Where(e => e.ScopeKey == scopeKey);
         }
 
         if (fingerprint is not null)
@@ -56,7 +68,10 @@ internal static class EpisodeFilter
         if (!string.IsNullOrEmpty(q))
         {
             var pattern = "%" + q.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_") + "%";
-            query = query.Where(e => EF.Functions.ILike(e.FirstMatchDetail!, pattern, @"\"));
+            // The Title is what a person reads (ADR 0033), so it is what a person searches.
+            query = query.Where(e =>
+                EF.Functions.ILike(e.FirstMatchDetail!, pattern, @"\")
+                || EF.Functions.ILike(e.Title, pattern, @"\"));
         }
 
         return acknowledged switch
@@ -69,14 +84,15 @@ internal static class EpisodeFilter
 
     /// <summary>
     /// Keeps only each kind of trouble's latest Episode — the face the grouped list shows. The
-    /// face is absolute: newest of its (Service, Fingerprint) over <paramref name="everything"/>,
-    /// regardless of any narrowing already applied, so this composes with Apply in either order.
-    /// UUIDv7 ids compare bytewise in PostgreSQL, so "newer" is one id comparison.
+    /// face is absolute: newest of its (Episode Scope, Fingerprint) over
+    /// <paramref name="everything"/>, regardless of any narrowing already applied, so this
+    /// composes with Apply in either order. UUIDv7 ids compare bytewise in PostgreSQL, so "newer"
+    /// is one id comparison.
     /// </summary>
     public static IQueryable<Episode> WhereLatestPerFingerprint(
         this IQueryable<Episode> query, IQueryable<Episode> everything) =>
         query.Where(e => !everything.Any(n =>
-            n.ServiceId == e.ServiceId
+            n.ScopeKey == e.ScopeKey
             && n.Fingerprint == e.Fingerprint
             && n.Id.CompareTo(e.Id) > 0));
 }

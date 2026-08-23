@@ -165,8 +165,11 @@ The waterfall, the failing span, its attributes and the exception event exactly 
 
 ![The Episodes page, with one open episode and its detail](docs/images/episodes.png)
 
-An Episode is one kind of trouble in one Service — not one log line. It records what opened it, at
-which release, how loud it has been since, and who acknowledged it.
+An Episode is one kind of trouble in one Episode Scope — not one log line, and not one Service.
+The kind is distilled from the code that threw, read per runtime from the stack trace; the Scope is
+the Application plus whichever facets of the sender an admin says must match, so the same bug in two
+deployments meets in one Episode while production and staging never do. It records what opened it,
+which Services and versions are in it, how loud it has been since, and who acknowledged it.
 
 ### Administration
 

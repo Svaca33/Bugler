@@ -52,6 +52,86 @@ export interface RegistryMessages {
     noKeyYet: string;
   };
 
+  /**
+   * What "the same trouble" means for an Application: the Fingerprint Rule (ADR 0033) and the
+   * Episode Scope (ADR 0034). The only settings whose change re-partitions what is already open,
+   * so the only ones that ask first and report afterwards.
+   */
+  groupingCard: {
+    caption: string;
+    ruleLabel: string;
+    /**
+     * Labels of the Fingerprint Rule options, keyed by their API value. There is no separate
+     * "default" entry: it would name the same rung twice, so the default is simply the one an
+     * untouched Application shows selected.
+     */
+    rule: { ThrowingCode: string; KindOfFailure: string; WhatWasSaid: string };
+    attributeLabel: string;
+    attributePlaceholder: string;
+    scopeCaption: string;
+    byEnvironment: string;
+    byNamespace: string;
+    byServiceName: string;
+    /** The confirmation the change asks for before it saves — it is irreversible. */
+    confirmTitle: string;
+    confirmIntro: string;
+    /** While the cost is still being counted. */
+    warningCounting: string;
+    /** What the change will cost: how many open episodes it Mutes. */
+    warning(openEpisodes: number, capped: boolean): string;
+    confirmButton: string;
+    /** What it did cost, once it is done. */
+    done(mutedEpisodes: number, droppedQuietWindows: number): string;
+    explainer: string;
+    saveFailed: string;
+    countFailed: string;
+  };
+
+  /**
+   * The explainer behind the `?` on the grouping card: the ladder, what a frame is once the noise
+   * is stripped, and how far one episode reaches. The reader is a developer, so it goes into
+   * detail the dropdown cannot.
+   */
+  groupingHelp: {
+    title: string;
+    description: string;
+    ladderLabel: string;
+    /** The axis beside the ladder: the top rung separates most, the bottom least. */
+    finer: string;
+    coarser: string;
+    /** The chip on the rung that outranks the Rule, and the one on what stands by default. */
+    rungAboveTheRule: string;
+    rungDefault: string;
+    rungAttributeTitle: string;
+    rungAttributeBody: string;
+    rungStackTitle: string;
+    rungStackBody: string;
+    rungFailureTitle: string;
+    rungFailureBody: string;
+    rungMessageTitle: string;
+    rungMessageBody: string;
+    /** Where the dropdown lands on the ladder. */
+    ruleNote: string;
+    /** What happens where the chosen rung cannot answer. */
+    degradeNote: string;
+    framesLabel: string;
+    framesRawCaption: string;
+    framesKeptCaption: string;
+    framesNote: string;
+    runtimesNote: string;
+    scopeLabel: string;
+    scopeAlways: string;
+    byEnvironment: string;
+    byNamespace: string;
+    byServiceName: string;
+    scopeEnvNote: string;
+    scopeNsNote: string;
+    scopeNameNote: string;
+    scopeExample: string;
+    repartitionNote: string;
+    gotIt: string;
+  };
+
   alertingCard: {
     /** The card caption naming the deployment defaults. */
     caption(sensitivity: string, quietWindowMinutes: number | string): string;

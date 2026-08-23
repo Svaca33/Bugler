@@ -23,6 +23,7 @@ internal static class EpisodeCountsEndpoint
     public static async Task<IResult> Handle(
         Guid? applicationId,
         Guid[]? serviceId,
+        string? scopeKey,
         string? fingerprint,
         DateTimeOffset? from,
         string? q,
@@ -52,7 +53,8 @@ internal static class EpisodeCountsEndpoint
         // One pass over the filtered set: each state as its defining predicate (ADR 0003 — the
         // state is derived, never stored), folded into COUNT FILTER by the provider.
         var filtered = dbContext.Episodes.AsNoTracking()
-            .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId);
+            .Apply(dbContext, visible, applicationId, serviceId, scopeKey, fingerprint, from, q,
+                acknowledged, callerId);
 
         if (latestPerFingerprint == true)
         {
@@ -69,8 +71,10 @@ internal static class EpisodeCountsEndpoint
                 Quieted = g.Count(e =>
                     e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.QuietWindow),
                 Solved = g.Count(e => e.SolvedAt != null),
-                Muted = g.Count(e =>
-                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.WatchOff),
+                // Muted covers every close that is neither Quieted nor Solved: the Watch turned
+                // off, and the Fingerprint Rule or Episode Scope changed under it (Regrouped).
+                Muted = g.Count(e => e.SolvedAt == null && e.ClosedAt != null
+                    && e.CloseReason != EpisodeCloseReason.QuietWindow),
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -78,12 +82,12 @@ internal static class EpisodeCountsEndpoint
         // is a sibling question the state axis never asks.
         var proposals = await filtered.CountAsync(e =>
             e.ProposedAt != null && !dbContext.Episodes.Any(p =>
-                p.ServiceId == e.ServiceId
+                p.ScopeKey == e.ScopeKey
                 && p.Fingerprint == e.Fingerprint
                 && p.Id.CompareTo(e.Id) > 0), cancellationToken);
         var resignations = await filtered.CountAsync(e =>
             e.ResignedAt != null && !dbContext.Episodes.Any(p =>
-                p.ServiceId == e.ServiceId
+                p.ScopeKey == e.ScopeKey
                 && p.Fingerprint == e.Fingerprint
                 && p.Id.CompareTo(e.Id) > 0), cancellationToken);
 

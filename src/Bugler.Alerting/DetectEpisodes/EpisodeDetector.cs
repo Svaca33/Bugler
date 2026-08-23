@@ -27,7 +27,19 @@ public sealed class EpisodeDetector(
     IAiSettingsSource aiSettings,
     ILogger<EpisodeDetector> logger)
 {
-    private const int PageSize = 5000;
+    /// <summary>
+    /// A page now carries stack traces rather than 500 bytes of body (ADR 0033), so it is a fifth
+    /// of what it was: 1000 rows × 32 kB is the worst case, and the worst case is real.
+    /// </summary>
+    private const int PageSize = 1000;
+
+    /// <summary>
+    /// How much of a stack trace one row may carry. Past it the head and the tail are read and the
+    /// middle is dropped: taking only the head would be wrong in both directions at once, because
+    /// .NET puts the throw site first while Python puts the innermost frame last and Java appends
+    /// the root cause at the end.
+    /// </summary>
+    private const int StackReadCap = 32 * 1024;
 
     /// <summary>
     /// The poll always reads at the lowest floor any Sensitivity can want (Warn, 13) and records
@@ -95,10 +107,12 @@ public sealed class EpisodeDetector(
         var readFrom = Math.Max(
             Math.Max(0, snapshot.CursorLastLogId - overlap), snapshot.WatchFloor);
         var highestProcessed = snapshot.CursorLastLogId;
+        // Resolved once per run, exactly as the Sensitivity snapshot is.
+        var attributeKeys = snapshot.Effective.NamedAttributeKeys();
 
         while (true)
         {
-            var rows = await ReadMatchingPageAsync(readFrom, cancellationToken);
+            var rows = await ReadMatchingPageAsync(readFrom, attributeKeys, cancellationToken);
             if (rows.Count == 0)
             {
                 break;
@@ -132,10 +146,10 @@ public sealed class EpisodeDetector(
                 .ToListAsync(cancellationToken))
             .ToHashSet();
         // This Watch's own Episodes only: another Watch's open Episode is neither one to feed
-        // nor one that counts against the per-Service cap on kinds of trouble.
+        // nor one whose kind of trouble means the same thing.
         var openEpisodes = await dbContext.Episodes
             .Where(e => e.ClosedAt == null && e.Watch == Watch.Logs)
-            .ToDictionaryAsync(e => (e.ServiceId, e.Fingerprint), cancellationToken);
+            .ToDictionaryAsync(e => (e.ScopeKey, e.Fingerprint), cancellationToken);
 
         var decisions = DetectionBatch.Decide(
             rows, snapshot.Effective, openEpisodes.Keys.ToHashSet(), seenIds);
@@ -143,7 +157,7 @@ public sealed class EpisodeDetector(
         // Every row read gets remembered, matched or not: what was observed under one
         // Sensitivity is never re-judged under a later one.
         var newlySeen = rows.Where(r => !seenIds.Contains(r.Id)).Select(r => r.Id).ToList();
-        if (decisions.Services.Count == 0 && newlySeen.Count == 0)
+        if (decisions.Scopes.Count == 0 && newlySeen.Count == 0)
         {
             return true;
         }
@@ -154,18 +168,27 @@ public sealed class EpisodeDetector(
         var aiConsent = scope.ServiceProvider.GetRequiredService<IAiConsentReader>();
         // One ask per Application per page; the writer asks again at the moment of disclosure.
         var consentByApplication = new Dictionary<ApplicationId, bool>();
+        var storm = await StormWatch.OpenAsync(dbContext, decisions, options.Value, now, cancellationToken);
+        var participations = await ParticipationsOfAsync(
+            dbContext, decisions, openEpisodes, cancellationToken);
 
-        foreach (var detection in decisions.Services)
+        foreach (var detection in decisions.Scopes)
         {
+            var chatConfigured = snapshot.ApplicationsWithWebhook.Contains(detection.ApplicationId);
             if (detection.OpensWith is { } first)
             {
                 var episode = new Episode
                 {
                     Id = Guid.CreateVersion7(),
-                    ServiceId = detection.ServiceId,
+                    OpenedByServiceId = new ServiceId(first.ServiceId),
                     ApplicationId = detection.ApplicationId,
+                    ScopeKey = detection.ScopeKey,
                     Watch = Watch.Logs,
                     Fingerprint = detection.Fingerprint,
+                    Title = detection.Title,
+                    RecipeVersion = Fingerprint.RecipeVersion,
+                    FingerprintRung = detection.Rung,
+                    StackTruncated = detection.StackTruncated,
                     OpenedAt = now,
                     FirstMatchLogId = first.Id,
                     FirstMatchAt = new DateTimeOffset(first.Timestamp, TimeSpan.Zero),
@@ -174,12 +197,30 @@ public sealed class EpisodeDetector(
                     ErrorCount = detection.ErrorCount,
                     WarnCount = detection.WarnCount,
                     LastMatchAt = now,
+                    AlertFoldedIntoStorm = storm.FoldsAlertsOf(detection.ScopeKey),
                 };
                 dbContext.Episodes.Add(episode);
-                await AlertsOwed.EnqueueAsync(
-                    dbContext, episode, mailEnabled,
-                    snapshot.ApplicationsWithWebhook.Contains(episode.ApplicationId),
-                    now, cancellationToken);
+
+                foreach (var tally in detection.Participants.Take(Participation.MaxPerEpisode))
+                {
+                    dbContext.Participations.Add(NewParticipation(episode.Id, tally, now));
+                }
+
+                if (episode.AlertFoldedIntoStorm)
+                {
+                    storm.Fold(episode);
+                }
+                else
+                {
+                    await AlertsOwed.EnqueueOpeningAsync(
+                        dbContext, episode, mailEnabled, chatConfigured, now, cancellationToken);
+                    // A page can open an Episode and drop other Services into it at once; their
+                    // own followers are owed the joining message the opening one does not carry.
+                    await OweJoiningAsync(
+                        dbContext, episode, detection.Participants, episode.OpenedByServiceId,
+                        mailEnabled, now, cancellationToken);
+                }
+
                 var consented = false;
                 if (aiEnabled && !consentByApplication.TryGetValue(episode.ApplicationId, out consented))
                 {
@@ -198,19 +239,29 @@ public sealed class EpisodeDetector(
                         NextAttemptAt = now,
                     });
                 }
+
                 logger.LogInformation(
-                    "Episode opened for service {ServiceId} by log {LogId} (severity {Severity}): {Fingerprint}",
-                    detection.ServiceId, first.Id, first.Severity, detection.Fingerprint);
+                    "Episode opened in scope {ScopeKey} by log {LogId} (severity {Severity}) "
+                    + "on rung {Rung}: {Title}",
+                    detection.ScopeKey, first.Id, first.Severity, detection.Rung, detection.Title);
             }
             else
             {
-                var episode = openEpisodes[(detection.ServiceId, detection.Fingerprint)];
+                var episode = openEpisodes[(detection.ScopeKey, detection.Fingerprint)];
                 episode.ErrorCount += detection.ErrorCount;
                 episode.WarnCount += detection.WarnCount;
                 episode.LastMatchAt = now;
+
+                var joined = FeedParticipations(
+                    dbContext, episode, detection.Participants,
+                    participations.GetValueOrDefault(episode.Id, []), now);
+                await OweJoiningAsync(
+                    dbContext, episode, joined, openedBy: null, mailEnabled, now, cancellationToken);
             }
         }
 
+        await storm.OweDigestsAsync(
+            dbContext, mailEnabled, snapshot.ApplicationsWithWebhook, now, cancellationToken);
         dbContext.SeenLogIds.AddRange(newlySeen.Select(id => new SeenLogId { LogId = id }));
 
         try
@@ -225,6 +276,99 @@ public sealed class EpisodeDetector(
             logger.LogWarning(exception, "Detection page conflicted and will be retried");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Feeds a running Episode's Participations and answers which tallies were new to it. A pair
+    /// already there touches its last sighting and its counts; a pair past the ceiling counts on
+    /// the Episode alone, because a sender putting a build id in `service.version` would
+    /// otherwise open one Participation per process.
+    /// </summary>
+    private static List<ParticipantTally> FeedParticipations(
+        AlertingDbContext dbContext,
+        Episode episode,
+        IReadOnlyList<ParticipantTally> tallies,
+        List<Participation> existing,
+        DateTimeOffset now)
+    {
+        var joined = new List<ParticipantTally>();
+        foreach (var tally in tallies)
+        {
+            var held = existing.FirstOrDefault(
+                p => p.ServiceId == tally.ServiceId && p.Version == tally.Version);
+            if (held is not null)
+            {
+                held.LastAt = now;
+                held.ErrorCount += tally.ErrorCount;
+                held.WarnCount += tally.WarnCount;
+                continue;
+            }
+
+            if (existing.Count >= Participation.MaxPerEpisode)
+            {
+                continue;
+            }
+
+            var opened = NewParticipation(episode.Id, tally, now);
+            dbContext.Participations.Add(opened);
+            existing.Add(opened);
+            joined.Add(tally);
+        }
+
+        return joined;
+    }
+
+    private static Participation NewParticipation(
+        Guid episodeId, ParticipantTally tally, DateTimeOffset now) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        EpisodeId = episodeId,
+        ServiceId = tally.ServiceId,
+        Version = tally.Version,
+        FirstAt = now,
+        LastAt = now,
+        ErrorCount = tally.ErrorCount,
+        WarnCount = tally.WarnCount,
+    };
+
+    /// <summary>Once per joining Service, not once per version: the message is about the Episode, not the build.</summary>
+    private static async Task OweJoiningAsync(
+        AlertingDbContext dbContext,
+        Episode episode,
+        IReadOnlyList<ParticipantTally> joined,
+        ServiceId? openedBy,
+        bool mailEnabled,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        foreach (var serviceId in joined.Select(t => t.ServiceId).Distinct()
+                     .Where(id => id != openedBy))
+        {
+            await AlertsOwed.EnqueueJoiningAsync(
+                dbContext, episode, serviceId, mailEnabled, now, cancellationToken);
+        }
+    }
+
+    /// <summary>The Participations of every running Episode this page feeds — one query, not one per Episode.</summary>
+    private static async Task<Dictionary<Guid, List<Participation>>> ParticipationsOfAsync(
+        AlertingDbContext dbContext,
+        DetectionDecisions decisions,
+        IReadOnlyDictionary<(string, string), Episode> openEpisodes,
+        CancellationToken cancellationToken)
+    {
+        var fed = decisions.Scopes
+            .Where(d => d.OpensWith is null)
+            .Select(d => openEpisodes[(d.ScopeKey, d.Fingerprint)].Id)
+            .ToList();
+        if (fed.Count == 0)
+        {
+            return [];
+        }
+
+        var rows = await dbContext.Participations
+            .Where(p => fed.Contains(p.EpisodeId))
+            .ToListAsync(cancellationToken);
+        return rows.GroupBy(p => p.EpisodeId).ToDictionary(g => g.Key, g => g.ToList());
     }
 
     /// <summary>Advances the cursor (never backwards) and prunes seen ids the overlap can no longer reach.</summary>
@@ -256,14 +400,31 @@ public sealed class EpisodeDetector(
     }
 
     private async Task<IReadOnlyList<MatchingLog>> ReadMatchingPageAsync(
-        long readFrom, CancellationToken cancellationToken)
+        long readFrom, IReadOnlyList<string> attributeKeys, CancellationToken cancellationToken)
     {
-        // The two attributes a Fingerprint prefers over the body: the sender's message template
-        // (`{OriginalFormat}`, as .NET loggers ship it) and the semantic event name.
+        // Everything a Fingerprint may be distilled from (ADR 0033): the sender's message template
+        // — Serilog's `message_template.text` and MEL's `{OriginalFormat}` alike — the semantic
+        // event name, the exception and its stack, and the Runtime that says how to read it. The
+        // stack past the cap is read head and tail with a marker between; the severed lines at the
+        // seam are dropped when it is parsed.
         await using var command = dataSource.CreateCommand(
             """
             SELECT id, service_id, timestamp, severity_number, left(body, 500),
-                   attributes->>'{OriginalFormat}', attributes->>'event.name'
+                   COALESCE(attributes->>'message_template.text',
+                            attributes->>'{OriginalFormat}'),
+                   attributes->>'event.name',
+                   attributes->>'exception.type',
+                   CASE
+                     WHEN attributes->>'exception.stacktrace' IS NULL THEN NULL
+                     WHEN length(attributes->>'exception.stacktrace') <= @stackCap
+                       THEN attributes->>'exception.stacktrace'
+                     ELSE left(attributes->>'exception.stacktrace', @stackHalf) || @marker
+                          || right(attributes->>'exception.stacktrace', @stackHalf)
+                   END,
+                   resource_attributes->>'telemetry.sdk.language',
+                   resource_attributes->>'service.version',
+                   (SELECT array_agg(attributes->>k ORDER BY ord)
+                    FROM unnest(@attributeKeys) WITH ORDINALITY AS named(k, ord))
             FROM telemetry.log_records
             WHERE id > @readFrom AND severity_number >= @floor
             ORDER BY id
@@ -272,6 +433,11 @@ public sealed class EpisodeDetector(
         command.Parameters.AddWithValue("readFrom", readFrom);
         command.Parameters.AddWithValue("floor", PolledSeverityFloor);
         command.Parameters.AddWithValue("limit", PageSize);
+        command.Parameters.AddWithValue("stackCap", StackReadCap);
+        command.Parameters.AddWithValue("stackHalf", StackReadCap / 2);
+        command.Parameters.AddWithValue("marker", StackFrames.TruncationMarker);
+        command.Parameters.Add(new NpgsqlParameter<string[]>(
+            "attributeKeys", attributeKeys.ToArray()));
 
         var rows = new List<MatchingLog>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -282,12 +448,47 @@ public sealed class EpisodeDetector(
                 reader.GetGuid(1),
                 reader.GetDateTime(2),
                 reader.GetInt16(3),
-                await reader.IsDBNullAsync(4, cancellationToken) ? null : reader.GetString(4),
-                await reader.IsDBNullAsync(5, cancellationToken) ? null : reader.GetString(5),
-                await reader.IsDBNullAsync(6, cancellationToken) ? null : reader.GetString(6)));
+                await Text(reader, 4, cancellationToken),
+                await Text(reader, 5, cancellationToken),
+                await Text(reader, 6, cancellationToken),
+                await Text(reader, 7, cancellationToken),
+                await Text(reader, 8, cancellationToken),
+                await Text(reader, 9, cancellationToken),
+                await Text(reader, 10, cancellationToken),
+                await NamedAttributesAsync(reader, attributeKeys, cancellationToken)));
         }
 
         return rows;
+    }
+
+    private static async Task<string?> Text(
+        NpgsqlDataReader reader, int ordinal, CancellationToken cancellationToken) =>
+        await reader.IsDBNullAsync(ordinal, cancellationToken) ? null : reader.GetString(ordinal);
+
+    /// <summary>
+    /// The named attributes come back as one array in the keys' own order — the alternative was a
+    /// column per key, which the poll cannot shape because the keys are settings, not schema.
+    /// </summary>
+    private static async Task<IReadOnlyDictionary<string, string>?> NamedAttributesAsync(
+        NpgsqlDataReader reader, IReadOnlyList<string> keys, CancellationToken cancellationToken)
+    {
+        if (keys.Count == 0 || await reader.IsDBNullAsync(11, cancellationToken))
+        {
+            return null;
+        }
+
+        var values = reader.GetFieldValue<string?[]>(11);
+        Dictionary<string, string>? named = null;
+        for (var i = 0; i < keys.Count && i < values.Length; i++)
+        {
+            if (values[i] is { } value)
+            {
+                named ??= [];
+                named[keys[i]] = value;
+            }
+        }
+
+        return named;
     }
 
     private sealed record Snapshot(

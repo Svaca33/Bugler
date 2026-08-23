@@ -14,8 +14,9 @@ import { useT } from "@/i18n";
 import { StateBadge } from "./StateBadge";
 
 /**
- * The first-read explainer behind the `?` next to the page title: the three rules the list
- * cannot show — grouping by fingerprint, the quiet window, and what Acknowledge suppresses.
+ * The first-read explainer behind the `?` next to the page title: the rules the list cannot
+ * show — how a kind of trouble is distilled and how far one episode reaches (ADR 0033, 0034),
+ * the quiet window, and what Acknowledge suppresses.
  * Static content only; Radix owns the open/close state through the trigger. The prose — with
  * its inline emphasis — lives in the catalog; only the diagram scaffolding is drawn here.
  */

@@ -1890,6 +1890,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/{applicationId}/alerting/grouping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    applicationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetFingerprintRuleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RegroupedDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/services/{serviceId}/alerting": {
         parameters: {
             query?: never;
@@ -2039,6 +2080,7 @@ export interface paths {
                     applicationId?: string;
                     serviceId?: string[];
                     state?: components["schemas"]["EpisodeState"][];
+                    scopeKey?: string;
                     fingerprint?: string;
                     from?: string;
                     q?: string;
@@ -2084,6 +2126,7 @@ export interface paths {
                 query?: {
                     applicationId?: string;
                     serviceId?: string[];
+                    scopeKey?: string;
                     fingerprint?: string;
                     from?: string;
                     q?: string;
@@ -2127,6 +2170,7 @@ export interface paths {
                 query?: {
                     applicationId?: string;
                     serviceId?: string[];
+                    scopeKey?: string;
                     fingerprint?: string;
                     from?: string;
                     q?: string;
@@ -2904,6 +2948,8 @@ export interface components {
             quietWindowMinutes: number | string;
             /** Format: int32 */
             claimLeaseHours: number | string;
+            fingerprintRule: components["schemas"]["FingerprintRule"];
+            scope: components["schemas"]["EpisodeScopeDto"];
         };
         ApiKeyDto: {
             /** Format: uuid */
@@ -2922,6 +2968,7 @@ export interface components {
             /** Format: int32 */
             claimLeaseHours: null | number | string;
             chatWebhook: null | components["schemas"]["ChatWebhookDto"];
+            grouping: components["schemas"]["FingerprintRuleDto"];
             serviceOverrides: components["schemas"]["ServiceAlertingOverrideDto"][];
             defaults: components["schemas"]["AlertingDefaultsDto"];
         };
@@ -3015,9 +3062,17 @@ export interface components {
             /** Format: uuid */
             applicationId: string;
             /** Format: uuid */
-            serviceId: string;
+            openedByServiceId: null | string;
+            scopeKey: string;
             watch: components["schemas"]["Watch"];
             fingerprint: string;
+            title: string;
+            fingerprintRung: components["schemas"]["FingerprintRung"];
+            /** Format: int32 */
+            recipeVersion: number | string;
+            stackTruncated: boolean;
+            alertFoldedIntoStorm: boolean;
+            participations: components["schemas"]["ParticipationDto"][];
             state: components["schemas"]["EpisodeState"];
             /** Format: date-time */
             openedAt: string;
@@ -3057,6 +3112,11 @@ export interface components {
         EpisodesByServiceResponse: {
             services: components["schemas"]["ServiceEpisodesDto"][];
         };
+        EpisodeScopeDto: {
+            byNamespace: boolean;
+            byEnvironment: boolean;
+            byServiceName: boolean;
+        };
         /** @enum {unknown} */
         EpisodeState: "Open" | "Quieted" | "Solved" | "Muted";
         EpisodeSummaryDto: {
@@ -3078,6 +3138,15 @@ export interface components {
             firstMatchSeverity: null | number | string;
             firstMatchDetail: null | string;
         };
+        /** @enum {unknown} */
+        FingerprintRule: "ThrowingCode" | "KindOfFailure" | "WhatWasSaid" | null;
+        FingerprintRuleDto: {
+            rule: null | components["schemas"]["FingerprintRule"];
+            attributeKey: null | string;
+            scope: null | components["schemas"]["EpisodeScopeDto"];
+        };
+        /** @enum {unknown} */
+        FingerprintRung: "NamedAttribute" | "Stack" | "Failure" | "Message";
         ForgotPasswordRequest: {
             email: string;
         };
@@ -3277,6 +3346,19 @@ export interface components {
         ObservedKeysResponse: {
             items: components["schemas"]["ObservedKeyDto"][];
         };
+        ParticipationDto: {
+            /** Format: uuid */
+            serviceId: string;
+            version: null | string;
+            /** Format: date-time */
+            firstAt: string;
+            /** Format: date-time */
+            lastAt: string;
+            /** Format: int32 */
+            errorCount: number | string;
+            /** Format: int32 */
+            warnCount: number | string;
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -3295,6 +3377,12 @@ export interface components {
         };
         /** @enum {unknown} */
         ReadingStateDto: "Pending" | "Written" | "Failed";
+        RegroupedDto: {
+            /** Format: int32 */
+            mutedEpisodes: number | string;
+            /** Format: int32 */
+            droppedQuietWindows: number | string;
+        };
         ReleaseDto: {
             /** Format: uuid */
             serviceId: string;
@@ -3443,6 +3531,11 @@ export interface components {
         SetFingerprintQuietWindowRequest: {
             /** Format: int32 */
             quietWindowMinutes: null | number | string;
+        };
+        SetFingerprintRuleRequest: {
+            rule: null | components["schemas"]["FingerprintRule"];
+            attributeKey: null | string;
+            scope: null | components["schemas"]["EpisodeScopeDto"];
         };
         SetChatWebhookRequest: {
             url: null | string;

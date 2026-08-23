@@ -33,6 +33,13 @@ public sealed class HealthCheckWatcher(
     /// <summary>Enough to keep one unresponsive Service from holding up the loop; low enough not to look like a flood.</summary>
     private const int MaxConcurrentProbes = 8;
 
+    /// <summary>
+    /// The readable name of the one kind of trouble this Watch knows (see CONTEXT.md: Title).
+    /// English like the Severity Band names, and for the same reason: it is the domain's own
+    /// vocabulary rather than a sentence spoken to somebody, and the UI names the Watch itself.
+    /// </summary>
+    private const string HealthCheckTitle = "Health check failing";
+
     private readonly ConcurrentDictionary<ServiceId, int> _consecutiveFailures = new();
 
     public async Task WatchOnceAsync(CancellationToken cancellationToken)
@@ -86,7 +93,7 @@ public sealed class HealthCheckWatcher(
         // say "one open health check Episode per Service" without a second index.
         var openEpisodes = await dbContext.Episodes
             .Where(e => e.ClosedAt == null && e.Watch == Watch.HealthCheck)
-            .ToDictionaryAsync(e => e.ServiceId, cancellationToken);
+            .ToDictionaryAsync(e => e.ScopeKey, cancellationToken);
         var chatApplications = applicationSettings
             .Where(s => s.ChatWebhookUrl is not null)
             .Select(s => s.ApplicationId)
@@ -105,7 +112,11 @@ public sealed class HealthCheckWatcher(
             }
 
             var failures = Tally(service.ServiceId, outcome.Alive);
-            var open = openEpisodes.GetValueOrDefault(service.ServiceId);
+            // A Health Check Episode is always its own Service's (ADR 0034): here a Service is
+            // what is being watched rather than where the trouble happened, and the reserved
+            // Fingerprint discriminates nothing, so there is nothing to fold.
+            var scopeKey = EpisodeScope.KeyOfService(service.ServiceId);
+            var open = openEpisodes.GetValueOrDefault(scopeKey);
 
             switch (HealthWatchDecision.Decide(outcome.Alive, failures, open is not null))
             {
@@ -113,10 +124,15 @@ public sealed class HealthCheckWatcher(
                     var episode = new Episode
                     {
                         Id = Guid.CreateVersion7(),
-                        ServiceId = service.ServiceId,
+                        OpenedByServiceId = service.ServiceId,
                         ApplicationId = service.ApplicationId,
+                        ScopeKey = scopeKey,
                         Watch = Watch.HealthCheck,
                         Fingerprint = Fingerprint.HealthCheckFailing,
+                        Title = HealthCheckTitle,
+                        RecipeVersion = Fingerprint.RecipeVersion,
+                        // Nothing was distilled: the kind of trouble is reserved, not read.
+                        FingerprintRung = FingerprintRung.NamedAttribute,
                         OpenedAt = now,
                         // No Log Record to point at and no Severity Band to speak of: this Watch
                         // deals in neither. What it saw is the detail.
@@ -125,7 +141,19 @@ public sealed class HealthCheckWatcher(
                         LastMatchAt = now,
                     };
                     dbContext.Episodes.Add(episode);
-                    await AlertsOwed.EnqueueAsync(
+                    // Uniform with the Logs Watch: every Episode says which Services fed it, and
+                    // this one's answer is the single Service being asked. No version — the probe
+                    // gets a status code back, not a build.
+                    dbContext.Participations.Add(new Participation
+                    {
+                        Id = Guid.CreateVersion7(),
+                        EpisodeId = episode.Id,
+                        ServiceId = service.ServiceId,
+                        Version = null,
+                        FirstAt = now,
+                        LastAt = now,
+                    });
+                    await AlertsOwed.EnqueueOpeningAsync(
                         dbContext, episode, mailEnabled,
                         chatApplications.Contains(service.ApplicationId), now, cancellationToken);
                     // Owed only where both gates stand open now (ADR 0028); generation asks again.
@@ -146,6 +174,8 @@ public sealed class HealthCheckWatcher(
 
                 case HealthAction.Feed:
                     open!.LastMatchAt = now;
+                    await FeedParticipationAsync(
+                        dbContext, open, service.ServiceId, now, cancellationToken);
                     changed = true;
                     break;
             }
@@ -166,6 +196,39 @@ public sealed class HealthCheckWatcher(
             // won. Nothing committed; the next sweep sees the Episode and feeds it instead.
             logger.LogWarning(exception, "Health check sweep conflicted and will be retried");
         }
+    }
+
+    /// <summary>
+    /// The one Participation a Health Check Episode holds, kept as current as the Episode: the
+    /// Service being asked, with no version, because a probe gets a status code back rather than
+    /// a build. Missing on Episodes older than Participations — the sweep opens one rather than
+    /// leaving the Episode without an answer to "who is in this".
+    /// </summary>
+    private static async Task FeedParticipationAsync(
+        AlertingDbContext dbContext,
+        Episode episode,
+        ServiceId serviceId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var held = await dbContext.Participations
+            .FirstOrDefaultAsync(
+                p => p.EpisodeId == episode.Id && p.ServiceId == serviceId, cancellationToken);
+        if (held is null)
+        {
+            dbContext.Participations.Add(new Participation
+            {
+                Id = Guid.CreateVersion7(),
+                EpisodeId = episode.Id,
+                ServiceId = serviceId,
+                Version = null,
+                FirstAt = episode.OpenedAt,
+                LastAt = now,
+            });
+            return;
+        }
+
+        held.LastAt = now;
     }
 
     /// <summary>A success wipes the tally; a failure adds to it. Only the run of failures matters.</summary>

@@ -12,6 +12,7 @@ import { serviceLabel } from "@/lib/serviceLabel";
 
 import { ApplicationAiCard } from "./ApplicationAiCard";
 import { ApplicationAlertingCard } from "./ApplicationAlertingCard";
+import { ApplicationGroupingCard } from "./ApplicationGroupingCard";
 import { DeleteConfirmation } from "./DeleteConfirmation";
 import { serviceConfirmationPhrase } from "./deletionConfirmation";
 import { ServiceAlertingOverride } from "./ServiceAlertingOverride";
@@ -218,6 +219,8 @@ function TopologyDetail(props: {
       />
 
       <ApplicationAlertingCard applicationId={props.applicationId} />
+
+      <ApplicationGroupingCard applicationId={props.applicationId} />
 
       <ApplicationAiCard applicationId={props.applicationId} />
 

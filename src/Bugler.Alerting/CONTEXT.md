@@ -17,7 +17,7 @@ Which Severity Bands of a Service's Log Records may open or sustain an Episode �
 _Avoid_: alert level, threshold, trigger filter
 
 **Quiet Window**:
-The stretch of time an open Episode must go without a match before it closes. An Application-wide duration a Service may override, and one kind of trouble in a Service may override again — a Service's Episodes therefore fall quiet independently of one another.
+The stretch of time an open Episode must go without a match before it closes. An Application-wide duration a Service may override, and one kind of trouble may override again — Episodes therefore fall quiet independently of one another.
 _Avoid_: cooldown, resolve timeout, silence period
 
 **Match**:
@@ -25,12 +25,32 @@ One observation of a kind of trouble: a Log Record at or above the Service's Sen
 _Avoid_: hit, occurrence, sample
 
 **Fingerprint**:
-The kind of trouble a Match announces — under the Logs Watch, the sender's message template when it travels along, otherwise the body with its variable parts blanked; under the Health Check Watch, the single reserved kind that is not answering. What tells one Episode of a Service apart from another, read together with the Watch it belongs to.
+The kind of trouble a Match announces, distilled by the Application's Fingerprint Rule — under the Health Check Watch, the single reserved kind that is not answering. Opaque by design: it stands for the trouble rather than describing it, and the Title is what a person reads. What tells one Episode apart from another inside one Episode Scope, read together with the Watch it belongs to.
 _Avoid_: error type, issue, grouping key
 
+**Fingerprint Rule**:
+How an Application's Fingerprints are distilled: by the throwing code, by the kind of failure, or by what was said — coarsening in that order — and optionally by one named attribute whose value, where a Match carries it, is the whole answer. An Application-wide setting no Service may override, because an Episode reaches across Services and they must agree on what "the same trouble" means. Versioned: the rule and the recipe behind it are stamped on every Episode, so a changed answer is legible rather than silent.
+_Avoid_: grouping strategy, fingerprint config, matcher
+
+**Title**:
+The readable name of an Episode's trouble, taken once from its opening Match. Never an identity — two Episodes may share a Title and still be different troubles — so it may be as human as it likes.
+_Avoid_: label, summary, name, description
+
+**Runtime**:
+Which language runtime a Match came from, as its sender declares it (OTel `telemetry.sdk.language`). Read, never registered — the only thing that says how a stack trace should be read, since the shape of one is each runtime's own affair. A Runtime Bugler cannot read leaves the Fingerprint Rule to coarsen one step, visibly.
+_Avoid_: platform, language, environment, SDK
+
+**Episode Scope**:
+How far one Episode reaches: which facets of a sender — Service Namespace, Environment, Service Name — must match before two Matches of one kind share an Episode. An Application-wide setting; Environment stands by default, so the same trouble in two deployments of one Application meets in one Episode while production and staging never do. The Logs Watch's alone — a Health Check Episode is always its own Service's, because there the Service is what is being watched rather than where the trouble happened.
+_Avoid_: grouping key, boundary, dimension
+
 **Episode**:
-One bounded stretch of one kind of trouble in one Service: opened by the first Match of a kind with no open Episode, counting every Match of that kind since. It ends by Quieting, by being Solved, or by being Muted — and never reopens: a later Match of the same kind starts a new Episode. Never spans Services, never spans Watches, never merges, and outlives the evidence that drove it.
+One bounded stretch of one kind of trouble in one Episode Scope: opened by the first Match of a kind with no open Episode, counting every Match of that kind since. It ends by Quieting, by being Solved, or by being Muted — and never reopens: a later Match of the same kind starts a new Episode. Never spans Watches, never merges, and outlives the evidence that drove it.
 _Avoid_: incident, outage, alert group, error burst
+
+**Participation**:
+What one Service running one version contributed to an Episode — when it first and last fell in, and how much. The answer to "is it still happening on the version we just shipped, and is it every deployment or only one". Held to a ceiling: past it the Matches are still counted, but no further Participation is opened.
+_Avoid_: contributor, occurrence, source, involvement
 
 **Quieted**:
 How an unacknowledged Episode ends on its own: its Quiet Window passed without a Match. The trouble stopped; nothing is claimed to be fixed. Only the passage of time does this — no hand can, and an Acknowledged open Episode never does.
@@ -41,7 +61,7 @@ The one human verdict on a kind of trouble: the cause was fixed. Rendered only o
 _Avoid_: resolved, fixed, closed
 
 **Muted**:
-How an Episode ends when the Watch feeding it is turned off — Sensitivity set to Off, or a Health Check address cleared: the watching stopped, nothing is claimed about the problem. Reaches only that Watch's Episodes; the other watch's carry on. May still be Solved later.
+How an Episode ends when what fed it is taken away — the Watch turned off (Sensitivity set to Off, a Health Check address cleared), or the Fingerprint Rule or Episode Scope changed under it, which leaves its kind of trouble in a partition nothing will report again. Either way the watching stopped and nothing is claimed about the problem. Reaches only that Watch's Episodes; the other watch's carry on. May still be Solved later.
 _Avoid_: silenced, dismissed
 
 **Acknowledged**:
@@ -69,8 +89,12 @@ The append-only record of every hand laid on an Episode, and whether it was fles
 _Avoid_: audit log, history, event log, activity feed
 
 **Alert**:
-The message announcing that an Episode opened: which Service, when, and the opening Match itself — the Log Record, or what the probe got back. Exactly one per Episode per channel.
+The message announcing that an Episode has begun to concern someone: that it opened — which Service, when, and the opening Match itself, the Log Record or what the probe got back — or that a Service they follow has just fallen into one already running, which says since when instead. Exactly one per Episode per recipient, so following both an Application and one of its Services is told once.
 _Avoid_: notification, alarm
+
+**Storm**:
+More kinds of trouble opening in one Episode Scope at once than anybody can read. The Episodes open unhindered and every one of them is there to be seen — it is the Alerts that fold into a single message naming how many, because a hundred mails bury the one that mattered. A Storm is a sender's grouping gone wrong as often as it is a real outage, and saying so is what lets somebody go and coarsen the Fingerprint Rule.
+_Avoid_: flood, burst, rate limit, throttle
 
 **Reading**:
 The machine's reading of an Episode's opening evidence — two or three sentences on what is likely going on, written once as the Episode opens, in every language Bugler speaks. It stands beside the evidence and never above it: visibly machine-made, and no verdict rests on it — Solved stays a human's alone. An Episode has at most one, and only when the server has an AI provider and the Application has consented; trouble that returns gets a fresh one with its new Episode.

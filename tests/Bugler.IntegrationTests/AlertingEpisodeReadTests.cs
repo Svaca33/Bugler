@@ -244,17 +244,31 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
         Guid serviceId, Guid applicationId, string body,
         bool quieted = false, bool muted = false, int daysAgo = 0) =>
         // Version-7 id from the client — the ordering the endpoint's keyset rides on. The body
-        // doubles as the Fingerprint, as it does for template-less logs in detection.
+        // doubles as the Fingerprint, as it does for template-less logs in detection. The Scope
+        // carries the Service, which is what these read-path tests were written against and what
+        // an Application that scopes by Service Name still gets (ADR 0034).
+        SeedEpisodeAsync(
+            NextId(), serviceId, applicationId, body, quieted, muted, daysAgo);
+
+    private Task SeedEpisodeAsync(
+        Guid id, Guid serviceId, Guid applicationId, string body,
+        bool quieted, bool muted, int daysAgo) =>
         _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
-                 first_match_at, first_match_severity, first_match_detail, error_count,
-                 warn_count, last_match_at, closed_at, close_reason)
+                (id, opened_by_service_id, application_id, scope_key, watch, fingerprint, title,
+                 recipe_version, fingerprint_rung, stack_truncated, alert_folded_into_storm,
+                 opened_at, first_match_log_id, first_match_at, first_match_severity,
+                 first_match_detail, error_count, warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{NextId()}', '{serviceId}', '{applicationId}', 1, '{body}',
-                 now() - interval '{daysAgo} days', 1, now(), 17, '{body}', 1, 0, now(),
-                 {(quieted || muted ? "now()" : "NULL")}, {(quieted ? "1" : muted ? "2" : "NULL")})
+                ('{id}', '{serviceId}', '{applicationId}',
+                 'app={applicationId}|env=prod|name={serviceId}', 1, '{body}', '{body}',
+                 1, 2, false, false, now() - interval '{daysAgo} days', 1, now(), 17,
+                 '{body}', 1, 0, now(),
+                 {(quieted || muted ? "now()" : "NULL")}, {(quieted ? "1" : muted ? "2" : "NULL")});
+            INSERT INTO alerting.participations
+                (id, episode_id, service_id, version, first_at, last_at, error_count, warn_count)
+            VALUES (gen_random_uuid(), '{id}', '{serviceId}', NULL, now(), now(), 1, 0);
             """);
 
     private Task SeedAlertDeliveryAsync(

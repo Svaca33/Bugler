@@ -25,6 +25,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
     public DbSet<FingerprintQuietWindow> FingerprintQuietWindows => Set<FingerprintQuietWindow>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Episode> Episodes => Set<Episode>();
+    public DbSet<Participation> Participations => Set<Participation>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<Reading> Readings => Set<Reading>();
@@ -40,6 +41,8 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             settings.HasKey(s => s.ApplicationId);
             settings.Property(s => s.ApplicationId).HasConversion(ApplicationIdConverter);
             settings.Property(s => s.ChatWebhookUrl).HasMaxLength(1000);
+            settings.Property(s => s.FingerprintAttributeKey)
+                .HasMaxLength(ApplicationAlertingSettings.MaxAttributeKeyLength);
             settings.ToTable(table =>
             {
                 table.HasCheckConstraint(
@@ -63,10 +66,10 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
         modelBuilder.Entity<FingerprintQuietWindow>(window =>
         {
             // The key is the pair an Episode is told apart by — the same one detection groups on.
-            window.HasKey(w => new { w.ServiceId, w.Fingerprint });
-            window.Property(w => w.ServiceId).HasConversion(ServiceIdConverter);
+            window.HasKey(w => new { w.ScopeKey, w.Fingerprint });
+            window.Property(w => w.ScopeKey).HasMaxLength(EpisodeScope.MaxKeyLength);
             window.Property(w => w.ApplicationId).HasConversion(ApplicationIdConverter);
-            window.Property(w => w.Fingerprint).HasMaxLength(300);
+            window.Property(w => w.Fingerprint).HasMaxLength(Fingerprint.MaxLength);
             window.HasIndex(w => w.ApplicationId);
             window.ToTable(table => table.HasCheckConstraint(
                 "ck_fingerprint_quiet_windows_bounds",
@@ -90,22 +93,24 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
 
         modelBuilder.Entity<Episode>(episode =>
         {
-            episode.Property(e => e.ServiceId).HasConversion(ServiceIdConverter);
+            episode.Property(e => e.OpenedByServiceId).HasConversion(ServiceIdConverter);
             episode.Property(e => e.ApplicationId).HasConversion(ApplicationIdConverter);
-            episode.Property(e => e.Fingerprint).HasMaxLength(300);
+            episode.Property(e => e.ScopeKey).HasMaxLength(EpisodeScope.MaxKeyLength);
+            episode.Property(e => e.Fingerprint).HasMaxLength(Fingerprint.MaxLength);
+            episode.Property(e => e.Title).HasMaxLength(Fingerprint.MaxTitleLength);
             episode.Property(e => e.FirstMatchDetail).HasMaxLength(500);
-            // The invariant: at most one open Episode per kind of trouble per Service. The Watch
-            // is part of the key because a Fingerprint means something different under each — a
-            // log whose body happens to read like the Health Check Watch's reserved kind is a
+            // The invariant: at most one open Episode per kind of trouble per Episode Scope. The
+            // Watch is part of the key because a Fingerprint means something different under each
+            // — a log whose body happens to read like the Health Check Watch's reserved kind is a
             // different trouble, not the same one. Also the open-episode scan.
             // Named HasIndex overloads make two distinct indexes over overlapping columns; the
             // explicit database names keep the snake_case convention from renaming them.
-            episode.HasIndex(e => new { e.ServiceId, e.Watch, e.Fingerprint }, "one_open_per_kind")
+            episode.HasIndex(e => new { e.ScopeKey, e.Watch, e.Fingerprint }, "one_open_per_kind")
                 .IsUnique()
                 .HasFilter("closed_at IS NULL")
                 .HasDatabaseName("ix_episodes_one_open_per_kind");
             // The full history of a kind of trouble: recurrence counts and the grouped UI read.
-            episode.HasIndex(e => new { e.ServiceId, e.Fingerprint }, "kind_history")
+            episode.HasIndex(e => new { e.ScopeKey, e.Fingerprint }, "kind_history")
                 .HasDatabaseName("ix_episodes_kind_history");
             episode.HasIndex(e => e.ApplicationId);
             episode.HasIndex(e => new { e.OpenedAt, e.Id });
@@ -116,6 +121,20 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             // The lapse sweep's only query: claims whose lease has run out.
             episode.HasIndex(e => e.ClaimLeaseUntil)
                 .HasFilter("claimed_by_delegation_id IS NOT NULL");
+        });
+
+        modelBuilder.Entity<Participation>(participation =>
+        {
+            participation.Property(p => p.ServiceId).HasConversion(ServiceIdConverter);
+            participation.Property(p => p.Version).HasMaxLength(Participation.MaxVersionLength);
+            participation.HasOne<Episode>().WithMany()
+                .HasForeignKey(p => p.EpisodeId).OnDelete(DeleteBehavior.Cascade);
+            // The key the domain means (see Participation): a sender declaring no version is one
+            // participant, so its nulls compare equal rather than minting a row per Match.
+            participation.HasIndex(p => new { p.EpisodeId, p.ServiceId, p.Version })
+                .IsUnique().AreNullsDistinct(false);
+            // Filtering Episodes by Service now goes through here — the Episode has no Service.
+            participation.HasIndex(p => p.ServiceId);
         });
 
         modelBuilder.Entity<JournalEntry>(entry =>
@@ -130,6 +149,7 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
         modelBuilder.Entity<Delivery>(delivery =>
         {
             delivery.Property(d => d.LastError).HasMaxLength(2000);
+            delivery.Property(d => d.JoiningServiceId).HasConversion(ServiceIdConverter);
             delivery.HasOne<Episode>().WithMany()
                 .HasForeignKey(d => d.EpisodeId).OnDelete(DeleteBehavior.Cascade);
             // Mail goes to a User; chat goes to the Application's webhook, so it names nobody.
@@ -138,10 +158,13 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
             // The sender's only query: pending rows that have come due.
             delivery.HasIndex(d => d.NextAttemptAt)
                 .HasFilter("delivered_at IS NULL AND lapsed_at IS NULL");
-            // Belt and braces: one Alert and one All Clear per Episode, channel and recipient.
-            // Resignations sit outside it — a dismissed Resignation may be laid (and owed) again.
+            // Belt and braces: one message of each announcing kind per Episode, channel and
+            // recipient. That an Alert and a Joining Alert never both reach one recipient is the
+            // narrower rule AlertsOwed keeps — it needs the recipient's whole history on the
+            // Episode, which no index can see. Resignations sit outside this: a dismissed
+            // Resignation may be laid, and owed, again.
             delivery.HasIndex(d => new { d.EpisodeId, d.Kind, d.Channel, d.UserId })
-                .IsUnique().AreNullsDistinct(false).HasFilter("kind IN (1, 2)");
+                .IsUnique().AreNullsDistinct(false).HasFilter("kind IN (1, 2, 4, 5)");
         });
 
         modelBuilder.Entity<Reading>(reading =>

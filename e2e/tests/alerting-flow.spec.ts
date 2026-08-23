@@ -47,17 +47,24 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   await row.click();
   await page.waitForURL(/episode=/);
   const panel = page.getByRole("complementary").filter({ hasText: "VOLUME SO FAR" });
-  await expect(panel.getByText("Payment declined: insufficient funds")).toBeVisible();
+  await expect(panel.getByText("Payment declined: insufficient funds").first()).toBeVisible();
   await expect(panel.getByText(/Opened by an ERROR log/)).toBeVisible();
 
+  // Which services and versions are in it (ADR 0034) — one here, the one that opened it.
+  await expect(panel.getByText("IN 1 SERVICE")).toBeVisible();
+  await expect(panel.getByText("eshop-web")).toBeVisible();
+  // This sender declared no exception on the log record, so the throwing code could not be read
+  // and the grouping coarsened — visibly, which is the whole point of ADR 0033.
+  await expect(panel.getByText("coarser").first()).toBeVisible();
+
   // The kind of trouble takes a Quiet Window of its own, and gives it back. What is set belongs
-  // to the (Service, Fingerprint) pair, so the wording never claims the Episode owns it.
+  // to the (Episode Scope, Fingerprint) pair, so the wording never claims the Episode owns it.
   const window = panel.getByLabel(/Quiet window for this kind of trouble/);
   await expect(panel.getByText("Inherited from the service: 15 min.")).toBeVisible();
   await window.fill("120");
   await window.blur();
   await expect(
-    panel.getByText(/2 h for this kind of trouble in this service/),
+    panel.getByText(/2 h for this kind of trouble wherever its episode reaches/),
   ).toBeVisible();
   // A tuned kind is marked wherever Episodes are listed: the open-now band and the list row.
   await expect(page.getByText("quiet window 2 h")).toHaveCount(2);
@@ -83,4 +90,53 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   await expect(
     page.getByRole("complementary").getByText("Payment declined: insufficient funds"),
   ).toBeVisible();
+});
+
+/**
+ * The one settings change that re-partitions what is already open (ADR 0033, 0034): changing the
+ * Fingerprint Rule or the Episode Scope leaves every open Logs Episode in a partition nothing will
+ * report again, so it warns before with the count and confirms after with what it cost.
+ */
+test("changing what counts as the same trouble warns first and mutes the open episodes", async ({ page }) => {
+  test.setTimeout(180_000);
+  await signIn(page);
+
+  const appName = `Regroup E2E ${Date.now()}`;
+  const apiKey = await registerApplication(page, appName);
+
+  execSync(`dotnet run tools/send-sample-telemetry.cs -- ${apiKey}`, {
+    cwd: "..",
+    encoding: "utf8",
+  });
+
+  // Wait for the detection loop to open the episode this change is about to mute.
+  await page.getByRole("link", { name: "Episodes" }).click();
+  await page.getByRole("button", { name: "Episodes", exact: true }).click();
+  await selectFilter(page, "All applications", appName);
+  await expect(
+    page.getByTestId("episode-rows").getByText("Payment declined: insufficient funds").first(),
+  ).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
+  await page.getByRole("button", { name: appName }).click();
+
+  // Narrowing the Scope by service name is a re-partition like any other.
+  await page.getByLabel("Service name must match").click();
+
+  const warning = page.getByTestId("regroup-warning");
+  await expect(warning).toContainText("Saving mutes 1 open episode");
+  await expect(warning).toContainText("This cannot be undone.");
+  await warning.getByRole("button", { name: "Regroup" }).click();
+
+  await expect(page.getByTestId("regroup-done")).toContainText("1 episode muted");
+
+  // The verdict is visible where the episodes are read, not only where the setting was changed.
+  await page.getByRole("link", { name: "Episodes" }).click();
+  await page.getByRole("button", { name: "Episodes", exact: true }).click();
+  await selectFilter(page, "All applications", appName);
+  const row = page
+    .getByTestId("episode-row")
+    .filter({ hasText: "Payment declined: insufficient funds" })
+    .first();
+  await expect(row.getByText("muted", { exact: true })).toBeVisible();
 });

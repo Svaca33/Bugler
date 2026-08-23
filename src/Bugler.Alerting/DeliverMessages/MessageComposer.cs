@@ -124,6 +124,80 @@ public static class MessageComposer
             Language: language);
     }
 
+    /// <summary>
+    /// The late Alert a Service falling into a running Episode owes its own followers (ADR 0034).
+    /// It names <em>that</em> Service — the Episode may have opened in a deployment its reader
+    /// neither runs nor cares about — and says since when, because for this reader nothing opened
+    /// just now. The quoted evidence is the Episode's Title: what the trouble is.
+    /// </summary>
+    public static ComposedAlert ComposeJoined(
+        Episode episode, CatalogService joining, string publicBaseUrl, Language language)
+    {
+        var messages = AlertingMessages.For(language);
+        return Compose(
+            episode, joining, publicBaseUrl, language, messages,
+            messages.JoinedWords(Instant(episode.OpenedAt)),
+            instant: Instant(episode.LastMatchAt),
+            detail: episode.Title);
+    }
+
+    /// <summary>
+    /// The one message a Storm sends in place of the Alerts it folded (see CONTEXT.md: Storm):
+    /// how many kinds of trouble opened in one Episode Scope, and the newest of them as an
+    /// example of what they look like. The Episodes are all there; only the mails were spared.
+    /// </summary>
+    public static ComposedAlert ComposeStormDigest(
+        Episode episode,
+        CatalogService identity,
+        int episodeCount,
+        int windowMinutes,
+        string publicBaseUrl,
+        Language language)
+    {
+        var messages = AlertingMessages.For(language);
+        return Compose(
+            episode, identity, publicBaseUrl, language, messages,
+            messages.StormWords(episodeCount, windowMinutes),
+            instant: Instant(episode.OpenedAt),
+            detail: episode.Title);
+    }
+
+    /// <summary>The one shape every message leaves in, once its own words and evidence are chosen.</summary>
+    private static ComposedAlert Compose(
+        Episode episode,
+        CatalogService identity,
+        string publicBaseUrl,
+        Language language,
+        AlertingMessages messages,
+        AlertWords words,
+        string instant,
+        string detail)
+    {
+        var place = $"{identity.ApplicationName} {identity.Namespace}/{identity.Environment}/{identity.Name}";
+        var episodeUrl = publicBaseUrl.Length == 0
+            ? null
+            : $"{publicBaseUrl.TrimEnd('/')}/episodes?episode={episode.Id}";
+        var headline = $"{words.Subject} {place}";
+
+        return new ComposedAlert(
+            Subject: $"[Bugler] {headline}",
+            Headline: headline,
+            Place: place,
+            Opening: words.Opening,
+            EvidenceLabel: words.EvidenceLabel,
+            SeverityLabel: null,
+            MatchInstant: instant,
+            MatchDetail: detail,
+            Reading: null,
+            ReadingLabel: messages.ReadingLabel,
+            EpisodeUrl: episodeUrl,
+            TextBody: ComposeText(place, words, null, instant, detail, null, episodeUrl, messages),
+            HtmlBody: ComposeHtml(
+                place, words, null, instant, detail, null, episodeUrl, messages, language),
+            OpenEpisodeLabel: messages.OpenEpisodeButton,
+            Language: language);
+    }
+
     private static string ComposeText(
         string place,
         AlertWords words,

@@ -23,8 +23,13 @@ internal static class ResignationsOwed
     {
         if (mailEnabled)
         {
+            // Everyone the Episode concerns: the Application's followers and the followers of
+            // every Service in it — a Resignation calls for a human hand, and whose hand it is
+            // depends on which tenant is affected.
             var subscribers = await dbContext.Subscriptions
-                .Where(s => s.ServiceId == episode.ServiceId || s.ApplicationId == episode.ApplicationId)
+                .Where(s => s.ApplicationId == episode.ApplicationId
+                    || (s.ServiceId != null && dbContext.Participations.Any(p =>
+                        p.EpisodeId == episode.Id && p.ServiceId == s.ServiceId!.Value)))
                 .Select(s => s.UserId)
                 .Distinct()
                 .ToListAsync(cancellationToken);

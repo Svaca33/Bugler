@@ -45,6 +45,7 @@ internal static class EpisodesByServiceEndpoint
     public static async Task<IResult> Handle(
         Guid? applicationId,
         Guid[]? serviceId,
+        string? scopeKey,
         string? fingerprint,
         DateTimeOffset? from,
         string? q,
@@ -71,39 +72,51 @@ internal static class EpisodesByServiceEndpoint
         }
 
         var filtered = dbContext.Episodes.AsNoTracking()
-            .Apply(visible, applicationId, serviceId, fingerprint, from, q, acknowledged, callerId);
+            .Apply(dbContext, visible, applicationId, serviceId, scopeKey, fingerprint, from, q,
+                acknowledged, callerId);
+
+        // An Episode has no single Service (ADR 0034), so "this Service's Episodes" are the ones
+        // it put something into — and one Episode fed by three Services is quoted by all three,
+        // which is the honest answer to "what is burning here".
+        var perService = filtered.SelectMany(
+            e => dbContext.Participations.Where(p => p.EpisodeId == e.Id),
+            (e, p) => new { p.ServiceId, Episode = e });
 
         // Same predicates as the state counts (ADR 0003 — the state is derived, never stored),
         // grouped by Service instead of folded into one row.
-        var counts = await filtered
-            .GroupBy(e => e.ServiceId)
+        var counts = await perService
+            .GroupBy(row => row.ServiceId)
             .Select(g => new
             {
                 ServiceId = g.Key,
-                Open = g.Count(e => e.ClosedAt == null),
-                Quieted = g.Count(e =>
-                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.QuietWindow),
-                Solved = g.Count(e => e.SolvedAt != null),
-                Muted = g.Count(e =>
-                    e.SolvedAt == null && e.CloseReason == EpisodeCloseReason.WatchOff),
+                Open = g.Count(row => row.Episode.ClosedAt == null),
+                Quieted = g.Count(row => row.Episode.SolvedAt == null
+                    && row.Episode.CloseReason == EpisodeCloseReason.QuietWindow),
+                Solved = g.Count(row => row.Episode.SolvedAt != null),
+                Muted = g.Count(row => row.Episode.SolvedAt == null
+                    && row.Episode.ClosedAt != null
+                    && row.Episode.CloseReason != EpisodeCloseReason.QuietWindow),
             })
             .ToListAsync(cancellationToken);
 
         // Episode ids are UUIDv7, so the greatest id is the newest opening (same keyset the list
         // pages on). Both picks translate to one ROW_NUMBER pass per query.
-        var latestOpen = (await filtered
-                .Where(e => e.ClosedAt == null)
-                .GroupBy(e => e.ServiceId)
-                .Select(g => g.OrderByDescending(e => e.Id).First())
+        var latestOpen = (await perService
+                .Where(row => row.Episode.ClosedAt == null)
+                .GroupBy(row => row.ServiceId)
+                .Select(g => g.OrderByDescending(row => row.Episode.Id).First())
                 .ToListAsync(cancellationToken))
-            .ToDictionary(e => e.ServiceId);
+            .ToDictionary(row => row.ServiceId, row => row.Episode);
 
-        var latestClosed = (await filtered
-                .Where(e => e.ClosedAt != null)
-                .GroupBy(e => e.ServiceId)
-                .Select(g => g.OrderByDescending(e => e.ClosedAt).ThenByDescending(e => e.Id).First())
+        var latestClosed = (await perService
+                .Where(row => row.Episode.ClosedAt != null)
+                .GroupBy(row => row.ServiceId)
+                .Select(g => g
+                    .OrderByDescending(row => row.Episode.ClosedAt)
+                    .ThenByDescending(row => row.Episode.Id)
+                    .First())
                 .ToListAsync(cancellationToken))
-            .ToDictionary(e => e.ServiceId);
+            .ToDictionary(row => row.ServiceId, row => row.Episode);
 
         var services = counts
             .OrderBy(c => c.ServiceId.Value)

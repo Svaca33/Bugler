@@ -67,3 +67,6 @@ export type ApplicationAlerting =
   >;
 
 export type Sensitivity = NonNullable<ApplicationAlerting["sensitivity"]>;
+
+/** How an Application distills its kinds of trouble (see Alerting CONTEXT.md: Fingerprint Rule). */
+export type FingerprintRule = NonNullable<ApplicationAlerting["defaults"]["fingerprintRule"]>;

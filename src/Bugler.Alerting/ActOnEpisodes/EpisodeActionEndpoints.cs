@@ -126,7 +126,7 @@ internal static class EpisodeActionEndpoints
             after: static async (dbContext, episode, userId, now, cancellationToken) =>
             {
                 var acknowledged = await dbContext.Episodes
-                    .Where(e => e.ServiceId == episode.ServiceId
+                    .Where(e => e.ScopeKey == episode.ScopeKey
                         && e.Fingerprint == episode.Fingerprint
                         && e.AcknowledgedByUserId != null)
                     .ToListAsync(cancellationToken);
@@ -188,7 +188,7 @@ internal static class EpisodeActionEndpoints
         if (requireNewest)
         {
             var newerExists = await dbContext.Episodes.AnyAsync(n =>
-                n.ServiceId == episode.ServiceId
+                n.ScopeKey == episode.ScopeKey
                 && n.Fingerprint == episode.Fingerprint
                 && n.Id.CompareTo(episode.Id) > 0, cancellationToken);
             if (newerExists)

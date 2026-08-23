@@ -50,7 +50,7 @@ public sealed class AlertingFingerprintQuietWindowTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Only_one_kind_of_trouble_in_one_service_is_tuned()
+    public async Task Only_one_kind_of_trouble_in_one_episode_scope_is_tuned()
     {
         var (siblingApp, siblingService, _) = await _harness.SeedApplicationAsync(
             "Eshop2", "acme", "prod", "worker");
@@ -61,8 +61,8 @@ public sealed class AlertingFingerprintQuietWindowTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NoContent, (await SetAsync(tuned, 120)).StatusCode);
 
         Assert.Equal(120, (await GetDetailAsync(tuned)).QuietWindowMinutes);
-        // Another kind in the same Service, and the same kind in another Service, both inherit:
-        // ADR 0001 keeps one noisy kind from reaching past itself.
+        // Another kind in the same Scope, and the same kind in another Application's Scope, both
+        // inherit: ADR 0001 keeps one noisy kind from reaching past itself.
         Assert.Equal(15, (await GetDetailAsync(sibling)).QuietWindowMinutes);
         Assert.Equal(15, (await GetDetailAsync(elsewhere)).QuietWindowMinutes);
     }
@@ -132,17 +132,23 @@ public sealed class AlertingFingerprintQuietWindowTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_deleted_service_takes_its_tuned_kinds_with_it()
+    public async Task A_tuned_kind_outlives_a_deleted_service_and_dies_with_its_application()
     {
         var episodeId = await SeedEpisodeAsync(Kind);
         Assert.Equal(HttpStatusCode.NoContent, (await SetAsync(episodeId, 120)).StatusCode);
 
-        var deleted = await _harness.Client.DeleteAsync(
-            $"/api/admin/services/{_harness.ServiceId}");
-        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        // The window is the Episode Scope's since ADR 0034, and a Scope outlives any one of its
+        // Services — the next deployment to log this kind falls under the same tuning.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.DeleteAsync($"/api/admin/services/{_harness.ServiceId}")).StatusCode);
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.fingerprint_quiet_windows", 1));
 
-        await _harness.WaitForCountAsync(
-            "SELECT COUNT(*) FROM alerting.fingerprint_quiet_windows", 0);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.DeleteAsync(
+                $"/api/admin/applications/{_harness.ApplicationId}")).StatusCode);
+        Assert.Equal(0, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.fingerprint_quiet_windows", 0));
     }
 
     private Task<HttpResponseMessage> SetAsync(Guid episodeId, int? minutes) =>
@@ -168,13 +174,18 @@ public sealed class AlertingFingerprintQuietWindowTests : IAsyncLifetime
         await _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
-                 first_match_at, first_match_severity, first_match_detail, error_count,
-                 warn_count, last_match_at, closed_at, close_reason)
+                (id, opened_by_service_id, application_id, scope_key, watch, fingerprint, title,
+                 recipe_version, fingerprint_rung, stack_truncated, alert_folded_into_storm,
+                 opened_at, first_match_log_id, first_match_at, first_match_severity,
+                 first_match_detail, error_count, warn_count, last_match_at, closed_at, close_reason)
             VALUES
-                ('{id}', '{service}', '{applicationId}', 1, '{fingerprint}', now(), 1,
+                ('{id}', '{service}', '{applicationId}', 'app={applicationId}|env=prod', 1,
+                 '{fingerprint}', '{fingerprint}', 1, 2, false, false, now(), 1,
                  now(), 17, 'boom', 1, 0, now(),
-                 {(quieted ? "now()" : "NULL")}, {(quieted ? "1" : "NULL")})
+                 {(quieted ? "now()" : "NULL")}, {(quieted ? "1" : "NULL")});
+            INSERT INTO alerting.participations
+                (id, episode_id, service_id, version, first_at, last_at, error_count, warn_count)
+            VALUES (gen_random_uuid(), '{id}', '{service}', NULL, now(), now(), 1, 0);
             """);
         return id;
     }

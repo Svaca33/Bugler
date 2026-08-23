@@ -11,6 +11,13 @@ public static class AlertingDefaults
     public const int QuietWindowMinutes = 15;
 
     /// <summary>
+    /// The finest the ladder goes (ADR 0033): by the code that threw. Coarsening is the visible
+    /// remedy for a sender whose grouping went wrong, so the default is the answer that separates
+    /// most — a merged Episode cannot be un-merged after the fact.
+    /// </summary>
+    public const FingerprintRule FingerprintRule = Settings.FingerprintRule.ThrowingCode;
+
+    /// <summary>
     /// How long a Machine Claim's lease runs before it wilts unless renewed — long enough for an
     /// agent's overnight run, short enough that a crashed one gives the Episode back within a day.
     /// </summary>

@@ -26,8 +26,16 @@ internal static class SilentClose
             return;
         }
 
+        // An Episode has no single Service (ADR 0034): it belongs to everyone feeding it, so
+        // turning one tenant's watch off must not end an Episode the others are still filling.
+        // Only an Episode whose every participant has gone silent has had its watching stop.
+        var ids = serviceIds.ToList();
         var episodes = await dbContext.Episodes
-            .Where(e => serviceIds.Contains(e.ServiceId) && e.Watch == watch && e.ClosedAt == null)
+            .Where(e => e.Watch == watch && e.ClosedAt == null
+                && dbContext.Participations.Any(p =>
+                    p.EpisodeId == e.Id && ids.Contains(p.ServiceId))
+                && !dbContext.Participations.Any(p =>
+                    p.EpisodeId == e.Id && !ids.Contains(p.ServiceId)))
             .ToListAsync(cancellationToken);
         if (episodes.Count == 0)
         {

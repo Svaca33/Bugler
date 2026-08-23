@@ -9,7 +9,39 @@ using Microsoft.EntityFrameworkCore;
 namespace Bugler.Alerting.ManageAlertingSettings;
 
 public sealed record AlertingDefaultsDto(
-    Sensitivity Sensitivity, int QuietWindowMinutes, int ClaimLeaseHours);
+    Sensitivity Sensitivity,
+    int QuietWindowMinutes,
+    int ClaimLeaseHours,
+    FingerprintRule FingerprintRule,
+    EpisodeScopeDto Scope);
+
+/// <summary>
+/// How far one Episode reaches (see CONTEXT.md: Episode Scope). The Application always stands;
+/// these are the facets of the sender that must match on top of it.
+/// </summary>
+public sealed record EpisodeScopeDto(
+    bool ByNamespace, bool ByEnvironment, bool ByServiceName);
+
+/// <summary>
+/// How an Application distills its Fingerprints and how far its Episodes reach — the two settings
+/// that decide what "the same trouble" means, and therefore the only two whose change re-partitions
+/// what is already open.
+/// </summary>
+public sealed record FingerprintRuleDto(
+    FingerprintRule? Rule,
+    /// <summary>The attribute that outranks the Rule where a Match carries it; null means none is named.</summary>
+    string? AttributeKey,
+    EpisodeScopeDto? Scope);
+
+public sealed record SetFingerprintRuleRequest(
+    FingerprintRule? Rule, string? AttributeKey, EpisodeScopeDto? Scope);
+
+/// <summary>
+/// What a change to the Fingerprint Rule or the Episode Scope cost: the open Logs Episodes it
+/// Muted as Regrouped, and the Quiet Window overrides it dropped. Both were keyed on a partition
+/// that no longer exists — so the UI can warn before and confirm after.
+/// </summary>
+public sealed record RegroupedDto(int MutedEpisodes, int DroppedQuietWindows);
 
 /// <summary>The webhook is a secret: after saving, only its host ever comes back.</summary>
 public sealed record ChatWebhookDto(string Domain);
@@ -24,6 +56,8 @@ public sealed record ApplicationAlertingDto(
     /// <summary>How long this Application's Machine Claims lease for; null inherits the default.</summary>
     int? ClaimLeaseHours,
     ChatWebhookDto? ChatWebhook,
+    /// <summary>What the Application groups by; nulls inherit the defaults (see CONTEXT.md: Fingerprint Rule).</summary>
+    FingerprintRuleDto Grouping,
     IReadOnlyList<ServiceAlertingOverrideDto> ServiceOverrides,
     AlertingDefaultsDto Defaults);
 
@@ -61,12 +95,144 @@ internal static class AdminAlertingEndpoints
             settings?.QuietWindowMinutes,
             settings?.ClaimLeaseHours,
             ToWebhookDto(settings?.ChatWebhookUrl),
+            new FingerprintRuleDto(
+                settings?.FingerprintRule,
+                settings?.FingerprintAttributeKey,
+                settings is null
+                    ? null
+                    : settings.ScopeByNamespace is null
+                        && settings.ScopeByEnvironment is null
+                        && settings.ScopeByServiceName is null
+                            ? null
+                            : ToScopeDto(EffectiveSettings.ScopeOf(settings))),
             overrides,
             new AlertingDefaultsDto(
                 AlertingDefaults.Sensitivity,
                 AlertingDefaults.QuietWindowMinutes,
-                AlertingDefaults.ClaimLeaseHours));
+                AlertingDefaults.ClaimLeaseHours,
+                AlertingDefaults.FingerprintRule,
+                ToScopeDto(EpisodeScope.Default)));
     }
+
+    /// <summary>
+    /// Sets what "the same trouble" means for this Application (ADR 0033, 0034). Changing either
+    /// half leaves every open Logs Episode in a partition nothing will report again, so they are
+    /// Muted as Regrouped and the Quiet Window overrides keyed on the old Fingerprints go with
+    /// them — in the same transaction as the settings write, because a half-applied re-partition
+    /// is a Bugler that groups by one rule and closes by another. The answer says how many, so
+    /// the UI can confirm what its warning promised.
+    /// </summary>
+    public static async Task<IResult> SetFingerprintRule(
+        Guid applicationId,
+        SetFingerprintRuleRequest request,
+        AlertingDbContext dbContext,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken)
+    {
+        var attributeKey = string.IsNullOrWhiteSpace(request.AttributeKey)
+            ? null
+            : request.AttributeKey.Trim();
+        if (attributeKey is { Length: > ApplicationAlertingSettings.MaxAttributeKeyLength })
+        {
+            var messages = AlertingMessages.For(await requestLanguage.GetAsync(cancellationToken));
+            return Results.BadRequest(messages.AttributeKeyTooLong(
+                ApplicationAlertingSettings.MaxAttributeKeyLength));
+        }
+
+        var id = new ApplicationId(applicationId);
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var settings = await dbContext.ApplicationSettings
+            .FirstOrDefaultAsync(s => s.ApplicationId == id, cancellationToken);
+        if (settings is null)
+        {
+            settings = new ApplicationAlertingSettings { ApplicationId = id };
+            dbContext.ApplicationSettings.Add(settings);
+        }
+
+        var unchanged = settings.FingerprintRule == request.Rule
+            && settings.FingerprintAttributeKey == attributeKey
+            && EffectiveSettings.ScopeOf(settings) == ScopeOrDefault(request.Scope);
+
+        settings.FingerprintRule = request.Rule;
+        settings.FingerprintAttributeKey = attributeKey;
+        settings.ScopeByNamespace = request.Scope?.ByNamespace;
+        settings.ScopeByEnvironment = request.Scope?.ByEnvironment;
+        settings.ScopeByServiceName = request.Scope?.ByServiceName;
+        settings.UpdatedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var regrouped = unchanged
+            ? new RegroupedDto(0, 0)
+            : await RegroupAsync(dbContext, id, cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return Results.Ok(regrouped);
+    }
+
+    /// <summary>
+    /// What a re-partition costs, counted as it is paid: the open Logs Episodes Muted as
+    /// Regrouped — Muted is the honest end, the watching changed and nothing is claimed about the
+    /// problem — and the Quiet Window overrides dropped with them. The Health Check Watch is
+    /// untouched: its Fingerprint is reserved and its Scope is always the Service's own.
+    /// </summary>
+    private static async Task<RegroupedDto> RegroupAsync(
+        AlertingDbContext dbContext, ApplicationId applicationId, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var open = await dbContext.Episodes
+            .Where(e => e.ApplicationId == applicationId
+                && e.Watch == Watch.Logs
+                && e.ClosedAt == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var episode in open)
+        {
+            episode.ClosedAt = now;
+            episode.CloseReason = EpisodeCloseReason.Regrouped;
+
+            // A claim on an Episode nothing will report into again holds nothing; it falls off
+            // with the close, and the Journal says so rather than letting the mark wilt in silence.
+            if (episode.ShedClaim() is { } shed)
+            {
+                dbContext.JournalEntries.Add(new JournalEntry
+                {
+                    EpisodeId = episode.Id,
+                    Kind = JournalEntryKind.ClaimLapsed,
+                    UserId = shed.UserId,
+                    DelegationId = shed.DelegationId,
+                    At = now,
+                });
+            }
+        }
+
+        var episodeIds = open.Select(e => e.Id).ToList();
+        var pending = await dbContext.Deliveries
+            .Where(d => episodeIds.Contains(d.EpisodeId)
+                && d.DeliveredAt == null && d.LapsedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var delivery in pending)
+        {
+            delivery.LapsedAt = now;
+            delivery.LastError = "The application was regrouped before this message left.";
+        }
+
+        var dropped = await dbContext.FingerprintQuietWindows
+            .Where(w => w.ApplicationId == applicationId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return new RegroupedDto(open.Count, dropped);
+    }
+
+    private static EpisodeScope ScopeOrDefault(EpisodeScopeDto? scope) =>
+        scope is null
+            ? EpisodeScope.Default
+            : new EpisodeScope(scope.ByNamespace, scope.ByEnvironment, scope.ByServiceName);
+
+    private static EpisodeScopeDto ToScopeDto(EpisodeScope scope) =>
+        new(scope.ByNamespace, scope.ByEnvironment, scope.ByServiceName);
 
     public static async Task<IResult> SetApplicationAlerting(
         Guid applicationId,

@@ -56,6 +56,121 @@ export const registry: RegistryMessages = {
     noKeyYet: "Zatím žádný API klíč — dokud nějaký nevydáte, služba nemůže posílat telemetrii.",
   },
 
+  groupingCard: {
+    caption: "CO JE TÁŽ POTÍŽ",
+    ruleLabel: "Seskupovat podle",
+    rule: {
+      ThrowingCode: "Kódu, který chybu vyhodil",
+      KindOfFailure: "Druhu selhání",
+      WhatWasSaid: "Toho, co bylo řečeno",
+    },
+    attributeLabel: "Nebo podle tohoto atributu",
+    attributePlaceholder: "acme.error_code",
+    scopeCaption: "KAM AŽ JEDNA EPIZODA SAHÁ",
+    byEnvironment: "Musí sedět prostředí",
+    byNamespace: "Musí sedět namespace",
+    byServiceName: "Musí sedět název služby",
+    confirmTitle: "Přeskupit tuto aplikaci?",
+    confirmIntro:
+      "Měníte, co se tady počítá za tutéž potíž — buď z čeho se otisk destiluje, nebo kam až "
+      + "jedna epizoda sahá.",
+    warningCounting: "Zjišťuji, co tahle změna bude stát…",
+    warning: (openEpisodes, capped) =>
+      openEpisodes === 0
+        ? "Uložením se druhy potíží této aplikace přerozdělí. Teď není nic otevřené, ale všechna "
+          + "vyladěná tichá okna se zahodí. Vrátit to nejde."
+        : `Uložení ztlumí ${capped ? "nejméně " : ""}${openEpisodes} `
+          + `${openEpisodes === 1 ? "otevřenou epizodu" : openEpisodes < 5 ? "otevřené epizody" : "otevřených epizod"} `
+          + "a zahodí všechna vyladěná tichá okna: jejich druhy potíží skončí v oddílu, který už "
+          + "nikdo nenahlásí. Převzetí a strojní držení na nich padnou s nimi. Vrátit to nejde.",
+    confirmButton: "Přeskupit",
+    done: (mutedEpisodes, droppedQuietWindows) =>
+      `Přeskupeno: ztlumeno ${mutedEpisodes} `
+      + `${mutedEpisodes === 1 ? "epizoda" : mutedEpisodes < 5 ? "epizody" : "epizod"}, `
+      + `zahozeno ${droppedQuietWindows} `
+      + `${droppedQuietWindows === 1 ? "vyladěné tiché okno" : droppedQuietWindows < 5 ? "vyladěná tichá okna" : "vyladěných tichých oken"}.`,
+    explainer:
+      "Epizoda sahá napříč službami, takže obě nastavení patří aplikaci a žádná služba je "
+      + "nepřebíjí. Kde kód, který chybu vyhodil, přečíst nejde — neznámý runtime, žádný stack — "
+      + "se seskupení samo zhrubne a epizoda to řekne.",
+    saveFailed: "Nastavení seskupování se nepodařilo uložit",
+    countFailed: "Otevřené epizody se nepodařilo spočítat",
+  },
+
+  groupingHelp: {
+    title: "Jak funguje seskupování",
+    description:
+      "Rozhodují dvě nastavení: z čeho se druh potíží destiluje a kam až jedna epizoda sahá. Obě "
+      + "patří aplikaci — epizoda jde napříč službami, takže se konce musí shodnout.",
+    ladderLabel: "ŽEBŘÍK — Z ČEHO SE OTISK DESTILUJE",
+    finer: "ROZLIŠUJE NEJVÍC",
+    coarser: "ROZLIŠUJE NEJMÍŇ",
+    rungAboveTheRule: "nad pravidlem",
+    rungDefault: "výchozí",
+    rungAttributeTitle: "Pojmenovaný atribut",
+    rungAttributeBody:
+      "Pojmenujte jeden a jeho hodnota je celá odpověď všude, kde ji záznam nese — odesílatel, "
+      + "který už ví, jak se jeho potíže seskupují, porazí cokoli, co Bugler vydestiluje. Kde ho "
+      + "záznam nenese, rozhodne pravidlo níž. Prázdné pole znamená jen pravidlo.",
+    rungStackTitle: "Kód, který chybu vyhodil",
+    rungStackBody:
+      "Rámce z exception.stacktrace, hašované spolu s exception.type. Dvě místa v kódu, která "
+      + "logují tutéž větu, zůstanou dva druhy potíží; jedna chyba dosažená dvakrát zůstane jedna.",
+    rungFailureTitle: "Druh selhání",
+    rungFailureBody:
+      "exception.type a šablona zprávy, stack se ignoruje. Každý timeout v aplikaci se sejde v "
+      + "jedné epizodě, ať byl vyhozen kdekoli.",
+    rungMessageTitle: "Co bylo řečeno",
+    rungMessageBody:
+      "Šablona zprávy (Serilogu i .NET loggeru), název události, nebo tělo s vynechanými id a "
+      + "čísly. Seskupuje podle toho, jaká slova odesílatel zvolil, takže jedna nedbalá obecná "
+      + "věta slije nesouvisející selhání dohromady.",
+    ruleNote:
+      "„Seskupovat podle“ určuje, na kterém příčli žebřík začíná. Nad zvolenou příčlí se nekouká "
+      + "nikam kromě pojmenovaného atributu, který ji přebíjí vždycky.",
+    degradeNote:
+      "Co přečíst nejde, spadne o příčku níž a řekne to: neznámý runtime, stack, ve kterém recept "
+      + "Bugleru nenajde rámce, záznam bez stacku vůbec — epizoda dostane značku „hruběji“, a "
+      + "stack příliš dlouhý na přečtení celý značku „zkrácený stack“. Nikdo na tom není hůř než "
+      + "předtím; špatně napsaný parser se projeví viditelným zhrubnutím, nikdy věrohodnou odpovědí.",
+    framesLabel: "CO JE RÁMEC, KDYŽ SE ODEČTE ŠUM",
+    framesRawCaption: "JAK TO PŘIJDE",
+    framesKeptCaption: "CO SE HAŠUJE",
+    framesNote:
+      "Hlavička jde pryč, protože nese vlastní zprávu výjimky — tady jméno stroje a číslo "
+      + "transakce, což by razilo nový druh potíží při každém výskytu. Stejně tak Caused by:, "
+      + "„… 12 more“, opsané zdrojové řádky Pythonu, cesty k souborům a čísla řádků. Každý běh "
+      + "číslic se vynechá, takže deploy, který posunul řádky, nerozdělí jednu potíž na dvě, a "
+      + "běhy stejných rámců se sloučí, takže rekurze jakékoli hloubky je jedna chyba.",
+    runtimesNote:
+      "Jak se stack trace píše, je věc každého runtimu, takže se recept vybírá podle "
+      + "telemetry.sdk.language, které vaše SDK už posílá: dotnet, java, kotlin, nodejs, webjs, "
+      + "python, go, php a ruby ho mají. Cokoli jiného spadne o příčku níž, místo aby hádalo.",
+    scopeLabel: "KAM AŽ JEDNA EPIZODA SAHÁ",
+    scopeAlways:
+      "Epizodu vždycky ohraničuje aplikace. Nad ní zaškrtněte ty stránky odesílatele, které musí "
+      + "sedět, aby dva záznamy jednoho druhu sdílely epizodu.",
+    byEnvironment: "Prostředí",
+    byNamespace: "Namespace",
+    byServiceName: "Název služby",
+    scopeEnvNote:
+      "Doporučeno. Staging a produkce sdílejí kód a tím i otisky; slité dohromady krmí padající "
+      + "testovací běh epizodu donekonečna a produkční potíž nikdy neutichne.",
+    scopeNsNote:
+      "Zaškrtněte, aby tenanti — nebo cokoli, co váš namespace pojmenovává — měli vlastní epizody.",
+    scopeNameNote:
+      "Zaškrtněte, aby každá role zůstala zvlášť: api a worker jednoho nasazení pak nesdílejí "
+      + "epizodu ani při téže chybě ve sdíleném kódu.",
+    scopeExample:
+      "Se zaškrtnutým jen prostředím je jedna chyba v deseti zákaznických nasazeních produkce "
+      + "jedna epizoda s deseti účastmi — jedno upozornění, jedno převzetí, jeden verdikt — "
+      + "zatímco staging si nechá svou.",
+    repartitionNote:
+      "Změna kteréhokoli z nich přerozdělí to, co je otevřené: takové epizody se ztlumí a "
+      + "vyladěná tichá okna zahodí. Karta se před uložením zeptá.",
+    gotIt: "Rozumím",
+  },
+
   alertingCard: {
     caption: (sensitivity, quietWindowMinutes) =>
       `VÝSTRAHY · výchozí ${sensitivity} · tiché okno ${quietWindowMinutes} min`,

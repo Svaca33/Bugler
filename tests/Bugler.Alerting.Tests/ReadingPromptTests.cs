@@ -1,4 +1,5 @@
 using Bugler.Ai;
+using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.Episodes;
 using Bugler.Alerting.WriteReadings;
 using Bugler.Registry.Contracts;
@@ -11,8 +12,12 @@ public class ReadingPromptTests
     private static Episode Episode(Watch watch = Watch.Logs) => new()
     {
         Id = Guid.CreateVersion7(),
-        ServiceId = ServiceId.New(),
+        OpenedByServiceId = ServiceId.New(),
         ApplicationId = ApplicationId.New(),
+        ScopeKey = "app=test|env=prod",
+        Title = "Payment gateway timed out",
+        RecipeVersion = Fingerprint.RecipeVersion,
+        FingerprintRung = FingerprintRung.Message,
         Watch = watch,
         Fingerprint = "Payment gateway timed out",
         OpenedAt = new DateTimeOffset(2026, 8, 9, 12, 10, 0, TimeSpan.Zero),

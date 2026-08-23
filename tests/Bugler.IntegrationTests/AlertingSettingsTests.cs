@@ -160,13 +160,22 @@ public sealed class AlertingSettingsTests : IAsyncLifetime
     {
         await _harness.ExecuteSqlAsync(
             $"""
-            INSERT INTO alerting.episodes
-                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
-                 first_match_at, first_match_severity, first_match_detail, error_count,
-                 warn_count, last_match_at)
-            VALUES
-                (gen_random_uuid(), '{_harness.ServiceId}', '{_harness.ApplicationId}', 1, 'boom',
-                 now(), 1, now(), 17, 'boom', 3, 0, now())
+            WITH opened AS (
+                INSERT INTO alerting.episodes
+                    (id, opened_by_service_id, application_id, scope_key, watch, fingerprint,
+                     title, recipe_version, fingerprint_rung, stack_truncated,
+                     alert_folded_into_storm, opened_at, first_match_log_id, first_match_at,
+                     first_match_severity, first_match_detail, error_count, warn_count,
+                     last_match_at)
+                VALUES
+                    (gen_random_uuid(), '{_harness.ServiceId}', '{_harness.ApplicationId}',
+                     'app={_harness.ApplicationId}|env=prod', 1, 'boom', 'boom', 1, 2, false,
+                     false, now(), 1, now(), 17, 'boom', 3, 0, now())
+                RETURNING id)
+            INSERT INTO alerting.participations
+                (id, episode_id, service_id, version, first_at, last_at, error_count, warn_count)
+            SELECT gen_random_uuid(), id, '{_harness.ServiceId}', NULL, now(), now(), 3, 0
+            FROM opened
             """);
 
         var put = await _harness.Client.PutAsJsonAsync(

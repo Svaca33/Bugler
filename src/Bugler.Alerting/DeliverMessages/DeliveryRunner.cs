@@ -36,11 +36,11 @@ public sealed class DeliveryRunner(
 
         await LapseExpiredAsync(dbContext, now, cancellationToken);
 
-        // Alerts and Resignation messages are what Bugler sends (ADR 0003 retired the All
-        // Clear). Historical AllClear rows are lapsed or delivered; the filter is belt and
-        // braces against composing one anyway.
+        // Alerts — opening, joining and folded into a Storm digest — and Resignation messages are
+        // what Bugler sends (ADR 0003 retired the All Clear). Historical AllClear rows are lapsed
+        // or delivered; the filter is belt and braces against composing one anyway.
         var due = await dbContext.Deliveries
-            .Where(d => (d.Kind == DeliveryKind.Alert || d.Kind == DeliveryKind.Resignation)
+            .Where(d => d.Kind != DeliveryKind.AllClear
                 && d.DeliveredAt == null && d.LapsedAt == null && d.NextAttemptAt <= now)
             .OrderBy(d => d.CreatedAt)
             .Take(BatchSize)
@@ -59,6 +59,15 @@ public sealed class DeliveryRunner(
         var catalog = await scope.ServiceProvider.GetRequiredService<ICatalogReader>()
             .GetServicesAsync(cancellationToken);
         var identityByService = catalog.ToDictionary(s => s.Id);
+        // An Episode has no single Service (ADR 0034): a message names the Service it is about —
+        // the joining one where there is one — and falls back to whoever is still in the Episode.
+        var participants = (await dbContext.Participations.AsNoTracking()
+                .Where(p => episodeIds.Contains(p.EpisodeId))
+                .Select(p => new { p.EpisodeId, p.ServiceId })
+                .Distinct()
+                .ToListAsync(cancellationToken))
+            .GroupBy(p => p.EpisodeId)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.ServiceId).ToList());
 
         // The Readings these Alerts would carry — and the patience the pending ones are owed
         // (Alerting ADR 0009). The patience sits with the AI settings: it is a fact about the
@@ -94,9 +103,10 @@ public sealed class DeliveryRunner(
                 continue;
             }
 
-            if (!identityByService.TryGetValue(episode.ServiceId, out var identity))
+            if (IdentityFor(delivery, episode, identityByService, participants) is not { } identity)
             {
-                // The Service is gone; the cascade will collect this Episode shortly.
+                // Every Service that could name this message is gone; the cascade will collect
+                // the Episode itself once its last Participation goes with them.
                 Lapse(delivery, "The service is no longer registered.");
             }
             else if (delivery.Channel == DeliveryChannel.Mail)
@@ -113,6 +123,33 @@ public sealed class DeliveryRunner(
 
             await dbContext.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Which Service a message names. A Joining Alert names the one that fell in, because it is
+    /// for that Service's own followers; everything else names the Service that opened the
+    /// Episode, or — once that one is Deleted — whoever is still in it. Null when nobody is.
+    /// </summary>
+    private static CatalogService? IdentityFor(
+        Delivery delivery,
+        Episode episode,
+        IReadOnlyDictionary<ServiceId, CatalogService> identityByService,
+        IReadOnlyDictionary<Guid, List<ServiceId>> participants)
+    {
+        if (delivery is { Kind: DeliveryKind.Joined, JoiningServiceId: { } joining })
+        {
+            return identityByService.GetValueOrDefault(joining);
+        }
+
+        if (episode.OpenedByServiceId is { } opener
+            && identityByService.TryGetValue(opener, out var identity))
+        {
+            return identity;
+        }
+
+        return participants.GetValueOrDefault(episode.Id, [])
+            .Select(identityByService.GetValueOrDefault)
+            .FirstOrDefault(candidate => candidate is not null);
     }
 
     private static bool HoldsTheDoor(int? patienceSeconds, DateTimeOffset openedAt) =>
@@ -185,12 +222,19 @@ public sealed class DeliveryRunner(
     /// <summary>The words a Delivery leaves in, by its Kind — the one place that decides.</summary>
     private ComposedAlert Compose(
         Delivery delivery, Episode episode, CatalogService identity, Language language, Reading? reading) =>
-        delivery.Kind == DeliveryKind.Resignation
-            ? MessageComposer.ComposeResignation(
-                episode, identity, options.Value.PublicBaseUrl, language)
-            : MessageComposer.ComposeAlert(
+        delivery.Kind switch
+        {
+            DeliveryKind.Resignation => MessageComposer.ComposeResignation(
+                episode, identity, options.Value.PublicBaseUrl, language),
+            DeliveryKind.Joined => MessageComposer.ComposeJoined(
+                episode, identity, options.Value.PublicBaseUrl, language),
+            DeliveryKind.StormDigest => MessageComposer.ComposeStormDigest(
+                episode, identity, delivery.FoldedEpisodeCount ?? 0,
+                options.Value.StormWindowMinutes, options.Value.PublicBaseUrl, language),
+            _ => MessageComposer.ComposeAlert(
                 episode, identity, options.Value.PublicBaseUrl, language,
-                ReadingIn(reading, language));
+                ReadingIn(reading, language)),
+        };
 
     private async Task AttemptAsync(Delivery delivery, Func<Task> send)
     {

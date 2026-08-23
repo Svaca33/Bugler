@@ -18,6 +18,7 @@ import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
 import { clock, historyStamp } from "./format";
+import { GroupingMarks } from "./GroupingMarks";
 import { HealthCheckBadge } from "./HealthCheckBadge";
 import { describeQuietWindow, MAX_QUIET_WINDOW_MINUTES, quietWindowError } from "./quietWindow";
 import { SolveDialog } from "./SolveDialog";
@@ -97,8 +98,10 @@ export function EpisodeDetailPanel(props: {
         <EpisodeBody
           episode={episode}
           detail={detail.data ?? undefined}
-          known={props.services.get(episode.serviceId)}
-          version={versionAt(props.timelines, episode.serviceId, episode.openedAt)}
+          services={props.services}
+          version={episode.openedByServiceId === null
+            ? undefined
+            : versionAt(props.timelines, episode.openedByServiceId, episode.openedAt)}
           onOpenLogs={props.onOpenLogs}
           onSelectEpisode={props.onSelectEpisode}
         />
@@ -110,23 +113,26 @@ export function EpisodeDetailPanel(props: {
 function EpisodeBody(props: {
   episode: Episode;
   detail: EpisodeDetail | undefined;
-  known: KnownService | undefined;
+  services: Map<string, KnownService>;
   version: VersionAtInstant | undefined;
   onOpenLogs: (episode: Episode) => void;
   onSelectEpisode: (id: string) => void;
 }) {
-  const { episode, detail, known, version } = props;
+  const { episode, detail, version } = props;
+  const known = episode.openedByServiceId === null
+    ? undefined
+    : props.services.get(episode.openedByServiceId);
   const t = useT();
   const currentUser = useCurrentUser();
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
 
   const history = useQuery({
-    queryKey: ["alerts", "episode-history", episode.serviceId, episode.fingerprint],
+    queryKey: ["alerts", "episode-history", episode.scopeKey, episode.fingerprint],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/episodes", {
         params: {
-          query: { serviceId: [episode.serviceId], fingerprint: episode.fingerprint, limit: 50 },
+          query: { scopeKey: episode.scopeKey, fingerprint: episode.fingerprint, limit: 50 },
         },
       });
       if (error !== undefined) throw new Error(t.alerting.errors.loadHistory);
@@ -162,9 +168,11 @@ function EpisodeBody(props: {
             ? `${known.application.name} · ${serviceLabel(known.facets)}`
             : "—"}
         </p>
+        <p className="text-[13.5px] leading-[1.45] text-foreground">{episode.title}</p>
         <div className="rounded-lg border border-[#1E344C] bg-card px-[11px] py-2.5 font-mono text-[12.5px] leading-[1.55] text-[#DCE8F3]">
           {episode.firstMatchDetail}
         </div>
+        <GroupingMarks episode={episode} className="font-mono text-[11px]" />
         <div className="flex items-center gap-2.5">
           {isHealthCheck ? (
             <HealthCheckBadge />
@@ -252,7 +260,6 @@ function EpisodeBody(props: {
             </p>
             <p className="font-mono text-[11px] text-[#7D93AA]">
               {clock(episode.openedAt)}
-              {version !== undefined && ` · ${t.alerting.version.on(version.version)}`}
               {/* Sensitivity is the logs watch's setting and governs nothing here. */}
               {!isHealthCheck && detail !== undefined
                 && ` · ${t.alerting.detail.sensitivity(
@@ -335,6 +342,8 @@ function EpisodeBody(props: {
           </div>
         </div>
       )}
+
+      <ParticipationsSection episode={episode} services={props.services} />
 
       {/* Recurrence */}
       <div className="flex flex-col gap-2">
@@ -637,6 +646,58 @@ function ReadingSection(props: { reading: NonNullable<EpisodeDetail["reading"]> 
  * worded as a property of the Episode: what is saved here outlives it and governs every later
  * Episode of the same kind — which is why the field stays live on a closed one too.
  */
+/**
+ * Which Services and versions are in this Episode (see CONTEXT.md: Participation) — when each
+ * first and last fell in, and how much it put in. The read this table exists for is "is it still
+ * happening on the version we just shipped, and is it every deployment or only one", so the
+ * version comes from each Match's own `service.version` rather than from the Release ledger,
+ * which reports one version during a rolling deploy while two are demonstrably running (ADR 0016).
+ */
+function ParticipationsSection(props: {
+  episode: Episode;
+  services: Map<string, KnownService>;
+}) {
+  const t = useT();
+  const { participations } = props.episode;
+  if (participations.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={CAPTION}>{t.alerting.participants.caption(participations.length)}</p>
+      <div>
+        <div className="grid grid-cols-[1fr_86px_62px_54px] items-center gap-2 border-b border-[#17293D] pb-[5px] font-mono text-[10px] tracking-[0.12em] text-[#5F7590]">
+          <span>{t.alerting.participants.columnService}</span>
+          <span>{t.alerting.participants.columnVersion}</span>
+          <span>{t.alerting.participants.columnLast}</span>
+          <span className="text-right">{t.alerting.participants.columnMatches}</span>
+        </div>
+        {participations.map(participation => {
+          const known = props.services.get(participation.serviceId);
+          const matches = Number(participation.errorCount) + Number(participation.warnCount);
+          return (
+            <div
+              key={`${participation.serviceId} ${participation.version ?? ""}`}
+              className="grid grid-cols-[1fr_86px_62px_54px] items-center gap-2 border-t border-[#101F31] py-[5px] font-mono text-[11px] text-[#7D93AA]"
+              title={t.alerting.participants.firstSeen(clock(participation.firstAt))}
+            >
+              <span className="truncate text-[#A9BDD1]">
+                {known === undefined ? "—" : serviceLabel(known.facets)}
+              </span>
+              <span className="truncate text-[#DCE8F3]">
+                {participation.version ?? t.alerting.participants.noVersion}
+              </span>
+              <span className="whitespace-nowrap">
+                {historyStamp(participation.lastAt, Date.now())}
+              </span>
+              <span className="text-right">{matches}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function QuietWindowSection(props: {
   episodeId: string;
   own: number | null;

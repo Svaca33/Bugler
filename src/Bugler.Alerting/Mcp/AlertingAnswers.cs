@@ -10,13 +10,18 @@ namespace Bugler.Alerting.Mcp;
 public sealed record EpisodeSummary(
     Guid Id,
     Guid ApplicationId,
-    Guid ServiceId,
+    /// <summary>The Service whose match opened it. An Episode may be fed by several — see Participations.</summary>
+    Guid? OpenedByServiceId,
     /// <summary>Which watch opened it: Errors logged, or a Health Check that stopped answering.</summary>
     string Watch,
     /// <summary>Open, Quieted, Solved or Muted.</summary>
     string State,
-    /// <summary>What makes this one kind of trouble rather than another — the message template, or the body with its varying parts blanked.</summary>
+    /// <summary>An opaque token standing for one kind of trouble; pass it back to list every episode of that kind.</summary>
     string Fingerprint,
+    /// <summary>The readable name of the trouble, taken from the opening match — what the fingerprint stands for.</summary>
+    string Title,
+    /// <summary>Which Services and versions fed it, and how much each put in.</summary>
+    IReadOnlyList<ParticipationMark> Participations,
     DateTimeOffset OpenedAt,
     DateTimeOffset LastMatchAt,
     DateTimeOffset? ClosedAt,
@@ -36,6 +41,19 @@ public sealed record EpisodeSummary(
     ProposalMark? Proposal,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     ResignationMark? Resignation);
+
+/// <summary>
+/// What one Service running one version put into an Episode. The answer to "is it still happening
+/// on the version we just shipped, and is it every deployment or only one" — read the versions
+/// before concluding that a fix held.
+/// </summary>
+public sealed record ParticipationMark(
+    Guid ServiceId,
+    string? Version,
+    DateTimeOffset FirstAt,
+    DateTimeOffset LastAt,
+    int ErrorCount,
+    int WarnCount);
 
 /// <summary>The Machine Claim on an Episode: whose delegation, since when, and how long the lease still runs.</summary>
 public sealed record ClaimMark(

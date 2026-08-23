@@ -36,6 +36,7 @@ internal abstract class AlertingMessages
     public abstract string WebhookMustBeHttps { get; }
     public abstract string HealthCheckMustBeUrl { get; }
     public abstract string QuietWindowBetween(int maxMinutes);
+    public abstract string AttributeKeyTooLong(int maxLength);
     public abstract string EpisodePredatesGrouping { get; }
 
     // Subscriptions.
@@ -48,6 +49,19 @@ internal abstract class AlertingMessages
 
     /// <summary>The Resignation message's phrases (see CONTEXT.md: Resignation) — the quoted evidence is the machine's reason.</summary>
     public abstract AlertWords ResignationWords { get; }
+
+    /// <summary>
+    /// The phrases of the Alert a Service falling into a running Episode owes its own followers
+    /// (ADR 0034). It says <em>since when</em>, never "opened": for its recipient nothing opened
+    /// just now, and the quoted evidence is the Episode's Title — what the trouble is.
+    /// </summary>
+    public abstract AlertWords JoinedWords(string runningSince);
+
+    /// <summary>
+    /// The phrases of the Storm digest (see CONTEXT.md: Storm) — how many kinds of trouble opened
+    /// and over how long, with the newest of them quoted as an example of what they look like.
+    /// </summary>
+    public abstract AlertWords StormWords(int episodeCount, int windowMinutes);
     public abstract string NoBody { get; }
     public abstract string EpisodeLinkLabel { get; }
     public abstract string OpenEpisodeButton { get; }

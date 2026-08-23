@@ -50,6 +50,14 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("episode_id");
 
+                    b.Property<int?>("FoldedEpisodeCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("folded_episode_count");
+
+                    b.Property<Guid?>("JoiningServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("joining_service_id");
+
                     b.Property<short>("Kind")
                         .HasColumnType("smallint")
                         .HasColumnName("kind");
@@ -81,7 +89,7 @@ namespace Bugler.Alerting.Migrations
                     b.HasIndex("EpisodeId", "Kind", "Channel", "UserId")
                         .IsUnique()
                         .HasDatabaseName("ix_deliveries_episode_id_kind_channel_user_id")
-                        .HasFilter("kind IN (1, 2)");
+                        .HasFilter("kind IN (1, 2, 4, 5)");
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("EpisodeId", "Kind", "Channel", "UserId"), false);
 
@@ -142,6 +150,10 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("acknowledged_by_user_id");
 
+                    b.Property<bool>("AlertFoldedIntoStorm")
+                        .HasColumnType("boolean")
+                        .HasColumnName("alert_folded_into_storm");
+
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uuid")
                         .HasColumnName("application_id");
@@ -179,6 +191,10 @@ namespace Bugler.Alerting.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
                         .HasColumnName("fingerprint");
+
+                    b.Property<short>("FingerprintRung")
+                        .HasColumnType("smallint")
+                        .HasColumnName("fingerprint_rung");
 
                     b.Property<DateTimeOffset>("FirstMatchAt")
                         .HasColumnType("timestamp with time zone")
@@ -223,6 +239,10 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("opened_at");
 
+                    b.Property<Guid?>("OpenedByServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("opened_by_service_id");
+
                     b.Property<Guid?>("ProposalByDelegationId")
                         .HasColumnType("uuid")
                         .HasColumnName("proposal_by_delegation_id");
@@ -240,6 +260,10 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("proposed_at");
 
+                    b.Property<int>("RecipeVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("recipe_version");
+
                     b.Property<string>("ResignationReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -253,9 +277,11 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("resigned_by_delegation_id");
 
-                    b.Property<Guid>("ServiceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("service_id");
+                    b.Property<string>("ScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(700)
+                        .HasColumnType("character varying(700)")
+                        .HasColumnName("scope_key");
 
                     b.Property<DateTimeOffset?>("SolvedAt")
                         .HasColumnType("timestamp with time zone")
@@ -264,6 +290,16 @@ namespace Bugler.Alerting.Migrations
                     b.Property<Guid?>("SolvedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("solved_by_user_id");
+
+                    b.Property<bool>("StackTruncated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("stack_truncated");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
 
                     b.Property<int>("WarnCount")
                         .HasColumnType("integer")
@@ -286,10 +322,10 @@ namespace Bugler.Alerting.Migrations
                     b.HasIndex("OpenedAt", "Id")
                         .HasDatabaseName("ix_episodes_opened_at_id");
 
-                    b.HasIndex(new[] { "ServiceId", "Fingerprint" }, "kind_history")
+                    b.HasIndex(new[] { "ScopeKey", "Fingerprint" }, "kind_history")
                         .HasDatabaseName("ix_episodes_kind_history");
 
-                    b.HasIndex(new[] { "ServiceId", "Watch", "Fingerprint" }, "one_open_per_kind")
+                    b.HasIndex(new[] { "ScopeKey", "Watch", "Fingerprint" }, "one_open_per_kind")
                         .IsUnique()
                         .HasDatabaseName("ix_episodes_one_open_per_kind")
                         .HasFilter("closed_at IS NULL");
@@ -333,6 +369,57 @@ namespace Bugler.Alerting.Migrations
                         .HasDatabaseName("ix_journal_entries_episode_id");
 
                     b.ToTable("journal_entries", "alerting");
+                });
+
+            modelBuilder.Entity("Bugler.Alerting.Episodes.Participation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EpisodeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("episode_id");
+
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("error_count");
+
+                    b.Property<DateTimeOffset>("FirstAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_at");
+
+                    b.Property<DateTimeOffset>("LastAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_at");
+
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("service_id");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("version");
+
+                    b.Property<int>("WarnCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("warn_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_participations");
+
+                    b.HasIndex("ServiceId")
+                        .HasDatabaseName("ix_participations_service_id");
+
+                    b.HasIndex("EpisodeId", "ServiceId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_participations_episode_id_service_id_version");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("EpisodeId", "ServiceId", "Version"), false);
+
+                    b.ToTable("participations", "alerting");
                 });
 
             modelBuilder.Entity("Bugler.Alerting.Readings.Reading", b =>
@@ -406,9 +493,30 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("claim_lease_hours");
 
+                    b.Property<string>("FingerprintAttributeKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("fingerprint_attribute_key");
+
+                    b.Property<short?>("FingerprintRule")
+                        .HasColumnType("smallint")
+                        .HasColumnName("fingerprint_rule");
+
                     b.Property<int?>("QuietWindowMinutes")
                         .HasColumnType("integer")
                         .HasColumnName("quiet_window_minutes");
+
+                    b.Property<bool?>("ScopeByEnvironment")
+                        .HasColumnType("boolean")
+                        .HasColumnName("scope_by_environment");
+
+                    b.Property<bool?>("ScopeByNamespace")
+                        .HasColumnType("boolean")
+                        .HasColumnName("scope_by_namespace");
+
+                    b.Property<bool?>("ScopeByServiceName")
+                        .HasColumnType("boolean")
+                        .HasColumnName("scope_by_service_name");
 
                     b.Property<short?>("Sensitivity")
                         .HasColumnType("smallint")
@@ -431,9 +539,10 @@ namespace Bugler.Alerting.Migrations
 
             modelBuilder.Entity("Bugler.Alerting.Settings.FingerprintQuietWindow", b =>
                 {
-                    b.Property<Guid>("ServiceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("service_id");
+                    b.Property<string>("ScopeKey")
+                        .HasMaxLength(700)
+                        .HasColumnType("character varying(700)")
+                        .HasColumnName("scope_key");
 
                     b.Property<string>("Fingerprint")
                         .HasMaxLength(300)
@@ -452,7 +561,7 @@ namespace Bugler.Alerting.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("ServiceId", "Fingerprint")
+                    b.HasKey("ScopeKey", "Fingerprint")
                         .HasName("pk_fingerprint_quiet_windows");
 
                     b.HasIndex("ApplicationId")
@@ -569,6 +678,16 @@ namespace Bugler.Alerting.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_journal_entries_episodes_episode_id");
+                });
+
+            modelBuilder.Entity("Bugler.Alerting.Episodes.Participation", b =>
+                {
+                    b.HasOne("Bugler.Alerting.Episodes.Episode", null)
+                        .WithMany()
+                        .HasForeignKey("EpisodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_participations_episodes_episode_id");
                 });
 
             modelBuilder.Entity("Bugler.Alerting.Readings.Reading", b =>

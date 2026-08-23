@@ -205,12 +205,19 @@ public sealed class MachineHandTests : IAsyncLifetime
         await _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
-                (id, service_id, application_id, watch, fingerprint, opened_at, first_match_log_id,
-                 first_match_at, first_match_severity, first_match_detail, error_count,
-                 warn_count, last_match_at, closed_at, close_reason)
+                (id, opened_by_service_id, application_id, scope_key, watch, fingerprint, title,
+                 recipe_version, fingerprint_rung, stack_truncated, alert_folded_into_storm,
+                 opened_at, first_match_log_id, first_match_at, first_match_severity,
+                 first_match_detail, error_count, warn_count, last_match_at, closed_at, close_reason)
             VALUES
                 ('{id}', '{serviceId ?? _harness.ServiceId}', '{applicationId ?? _harness.ApplicationId}',
-                 1, '{body}', now(), 1, now(), 17, '{body}', 1, 0, now(), NULL, NULL)
+                 'app={applicationId ?? _harness.ApplicationId}|env=prod', 1, '{body}', '{body}',
+                 1, 2, false, false, now(), 1, now(), 17, '{body}', 1, 0, now(), NULL, NULL);
+            INSERT INTO alerting.participations
+                (id, episode_id, service_id, version, first_at, last_at, error_count, warn_count)
+            VALUES
+                (gen_random_uuid(), '{id}', '{serviceId ?? _harness.ServiceId}', NULL,
+                 now(), now(), 1, 0);
             """);
         return id;
     }

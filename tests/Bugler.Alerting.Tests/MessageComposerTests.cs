@@ -1,4 +1,5 @@
 using Bugler.Alerting.DeliverMessages;
+using Bugler.Alerting.DetectEpisodes;
 using Bugler.Alerting.Episodes;
 using Bugler.Registry.Contracts;
 using Bugler.SharedKernel;
@@ -13,10 +14,14 @@ public class MessageComposerTests
     private static Episode Episode(string firstLogBody = "Payment gateway timed out") => new()
     {
         Id = Guid.NewGuid(),
-        ServiceId = Identity.Id,
+        OpenedByServiceId = Identity.Id,
         ApplicationId = Identity.ApplicationId,
+        ScopeKey = "app=test|env=prod",
         Watch = Watch.Logs,
-        Fingerprint = "Payment gateway timed out",
+        Fingerprint = "9f2c1b7a4d6e8051",
+        Title = "Payment gateway timed out",
+        RecipeVersion = Fingerprint.RecipeVersion,
+        FingerprintRung = FingerprintRung.Stack,
         OpenedAt = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero),
         FirstMatchLogId = 42,
         FirstMatchAt = new DateTimeOffset(2026, 7, 29, 9, 59, 58, TimeSpan.Zero),
@@ -78,10 +83,14 @@ public class MessageComposerTests
         var episode = new Episode
         {
             Id = Guid.NewGuid(),
-            ServiceId = Identity.Id,
+            OpenedByServiceId = Identity.Id,
             ApplicationId = Identity.ApplicationId,
+            ScopeKey = $"service={Identity.Id.Value}",
             Watch = Watch.HealthCheck,
-            Fingerprint = "(health check failing)",
+            Fingerprint = Fingerprint.HealthCheckFailing,
+            Title = "Health check failing",
+            RecipeVersion = Fingerprint.RecipeVersion,
+            FingerprintRung = FingerprintRung.NamedAttribute,
             OpenedAt = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero),
             FirstMatchAt = new DateTimeOffset(2026, 7, 29, 9, 59, 58, TimeSpan.Zero),
             FirstMatchDetail = "HTTP 503 from http://backend:8080/health",
@@ -99,6 +108,51 @@ public class MessageComposerTests
         Assert.Contains("Health check (2026-07-29 09:59:58 UTC):", alert.TextBody);
         Assert.DoesNotContain("ERROR", alert.TextBody);
         Assert.DoesNotContain("started logging trouble", alert.TextBody);
+    }
+
+    [Fact]
+    public void The_joining_alert_names_the_service_that_fell_in_and_says_since_when()
+    {
+        var joining = new CatalogService(
+            ServiceId.New(), Identity.ApplicationId, "Eshop", "globex", "prod", "web");
+
+        var alert = MessageComposer.ComposeJoined(
+            Episode(), joining, "https://bugler.example.com", Language.English);
+
+        // The Episode opened in another tenant's deployment; this reader follows their own.
+        Assert.Equal("[Bugler] Trouble reached Eshop globex/prod/web", alert.Subject);
+        Assert.Contains("running since 2026-07-29 10:00:00 UTC", alert.TextBody);
+        Assert.DoesNotContain("started logging trouble", alert.TextBody);
+        // What the trouble is, by its readable name rather than by its opaque fingerprint.
+        Assert.Contains("The kind of trouble", alert.TextBody);
+        Assert.Contains("Payment gateway timed out", alert.TextBody);
+        Assert.DoesNotContain("9f2c1b7a4d6e8051", alert.TextBody);
+    }
+
+    [Fact]
+    public void The_storm_digest_names_how_many_kinds_opened_and_over_how_long()
+    {
+        var alert = MessageComposer.ComposeStormDigest(
+            Episode(), Identity, 37, 15, "https://bugler.example.com", Language.English);
+
+        Assert.Equal("[Bugler] Storm in Eshop acme/prod/web", alert.Subject);
+        Assert.Contains("opened 37 kinds of trouble in the last 15 minutes", alert.TextBody);
+        Assert.Contains("every episode is there to be seen", alert.TextBody);
+        Assert.Contains("Payment gateway timed out", alert.TextBody);
+    }
+
+    [Fact]
+    public void A_czech_reader_hears_the_joining_alert_and_the_digest_in_czech()
+    {
+        var joined = MessageComposer.ComposeJoined(
+            Episode(), Identity, "https://bugler.example.com", Language.Czech);
+        var digest = MessageComposer.ComposeStormDigest(
+            Episode(), Identity, 37, 15, "https://bugler.example.com", Language.Czech);
+
+        Assert.Equal("[Bugler] Potíže dosáhly na Eshop acme/prod/web", joined.Subject);
+        Assert.Contains("běží od 2026-07-29 10:00:00 UTC", joined.TextBody);
+        Assert.Equal("[Bugler] Bouře v Eshop acme/prod/web", digest.Subject);
+        Assert.Contains("37 druhů potíží", digest.TextBody);
     }
 
     [Fact]

@@ -13,4 +13,12 @@ public enum EpisodeCloseReason : short
 
     /// <summary>A human Solved it while it was still open — the verdict ended the stretch by hand.</summary>
     Solved = 3,
+
+    /// <summary>
+    /// The Fingerprint Rule or the Episode Scope changed under it, leaving its kind of trouble in
+    /// a partition nothing will report again (see CONTEXT.md: Muted). Displays as Muted, like
+    /// every close that is neither Quieted nor Solved — but records the truth rather than
+    /// claiming a Watch was switched off.
+    /// </summary>
+    Regrouped = 4,
 }

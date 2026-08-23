@@ -29,6 +29,9 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
     public override string QuietWindowBetween(int maxMinutes) =>
         $"The quiet window must be between 1 and {maxMinutes} minutes.";
 
+    public override string AttributeKeyTooLong(int maxLength) =>
+        $"The attribute name can hold at most {maxLength} characters.";
+
     public override string EpisodePredatesGrouping =>
         "This episode predates grouping by kind of trouble and cannot carry a quiet window.";
 
@@ -53,6 +56,18 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
         "carries trouble a machine resigned: it looked and cannot fix this from the code. "
         + "A human hand is needed.",
         "The machine's reason");
+
+    public override AlertWords JoinedWords(string runningSince) => new(
+        "Trouble reached",
+        $"has fallen into trouble that has been running since {runningSince}.",
+        "The kind of trouble");
+
+    public override AlertWords StormWords(int episodeCount, int windowMinutes) => new(
+        "Storm in",
+        $"opened {episodeCount} kinds of trouble in the last {windowMinutes} minutes. "
+        + "Their alerts were folded into this one message; every episode is there to be seen. "
+        + "A storm is a sender's grouping gone wrong as often as it is a real outage.",
+        "The newest of them");
 
     public override string NoBody => "(no body)";
 

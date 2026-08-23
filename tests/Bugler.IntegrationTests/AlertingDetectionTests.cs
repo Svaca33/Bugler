@@ -168,6 +168,107 @@ public sealed class AlertingDetectionTests : IAsyncLifetime
         Assert.Equal(0, await _harness.WaitForCountAsync("SELECT COUNT(*) FROM alerting.episodes", 0));
     }
 
+    [Fact]
+    public async Task Two_services_of_one_application_on_one_kind_of_trouble_meet_in_one_episode()
+    {
+        var (worker, _) = await _harness.SeedServiceAsync(
+            _harness.ApplicationId, "acme", "prod", "worker");
+        var (staging, _) = await _harness.SeedServiceAsync(
+            _harness.ApplicationId, "acme", "staging", "web");
+
+        await _detector.DetectOnceAsync(CancellationToken.None); // Seeds the cursor.
+        await InsertThrownAsync(_harness.ServiceId, "1.4.0");
+        await InsertThrownAsync(worker, "1.5.0");
+        await InsertThrownAsync(staging, "1.5.0");
+        await _detector.DetectOnceAsync(CancellationToken.None);
+
+        // Environment stands by default, so production's two Services meet and staging does not.
+        Assert.Equal(2, await _harness.WaitForCountAsync("SELECT COUNT(*) FROM alerting.episodes", 2));
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes WHERE error_count = 2", 1));
+
+        // Two Participations, each with the version its own sender declared — the answer to
+        // "is it still happening on the version we just shipped".
+        Assert.Equal(2, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.participations p JOIN alerting.episodes e "
+            + "ON e.id = p.episode_id WHERE e.error_count = 2", 2));
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.participations WHERE version = '1.4.0'", 1));
+    }
+
+    [Fact]
+    public async Task A_runtime_with_no_recipe_coarsens_visibly_instead_of_guessing()
+    {
+        await _detector.DetectOnceAsync(CancellationToken.None); // Seeds the cursor.
+
+        // Two failures thrown in different places, in a Runtime Bugler has no recipe for: the
+        // stack cannot be read, so both fall a rung to the kind of failure and meet there.
+        await InsertRawAsync(
+            "erlang", "badmatch",
+            "** exception error: no match of right hand side value {error,timeout}\n"
+            + "     in function  acme_pay:charge/2 (src/acme_pay.erl, line 42)");
+        await InsertRawAsync(
+            "erlang", "badmatch",
+            "** exception error: no match of right hand side value {error,closed}\n"
+            + "     in function  acme_ship:book/1 (src/acme_ship.erl, line 91)");
+        await _detector.DetectOnceAsync(CancellationToken.None);
+
+        // Rung 3 is the kind of failure — the degradation is on the Episode for anyone to see.
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes WHERE fingerprint_rung = 3 "
+            + "AND error_count = 2 AND recipe_version = 1", 1));
+    }
+
+    [Fact]
+    public async Task The_throwing_code_tells_two_call_sites_of_one_sentence_apart()
+    {
+        await _detector.DetectOnceAsync(CancellationToken.None); // Seeds the cursor.
+
+        // The failure ADR 0033 exists to end: one generic template, two unrelated call sites.
+        await InsertRawAsync(
+            "dotnet", "MongoDB.Driver.MongoException",
+            "System.Exception: boom\n   at Acme.Checkout.Commit(Order o) in /src/A.cs:line 3",
+            template: "MongoDb transaction commit error");
+        await InsertRawAsync(
+            "dotnet", "MongoDB.Driver.MongoException",
+            "System.Exception: boom\n   at Acme.Warehouse.Reserve(Order o) in /src/B.cs:line 7",
+            template: "MongoDb transaction commit error");
+        await _detector.DetectOnceAsync(CancellationToken.None);
+
+        Assert.Equal(2, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes WHERE fingerprint_rung = 2", 2));
+        // The Title is what a person reads; the Fingerprint stands for the trouble.
+        Assert.Equal(2, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.episodes "
+            + "WHERE title = 'MongoException: MongoDb transaction commit error'", 2));
+    }
+
+    private Task InsertThrownAsync(Guid serviceId, string version) => _harness.ExecuteSqlAsync($$"""
+        INSERT INTO telemetry.log_records
+            (service_id, timestamp, severity_number, body, resource_attributes, attributes)
+        VALUES ('{{serviceId}}', now(), 17, 'boom',
+                '{"telemetry.sdk.language": "dotnet", "service.version": "{{version}}"}',
+                '{"exception.type": "System.TimeoutException",
+                  "exception.stacktrace": "System.TimeoutException: boom\n   at Acme.Pay.Charge(Order o) in /src/Pay.cs:line 42"}')
+        """);
+
+    private Task InsertRawAsync(
+        string runtime, string exceptionType, string stack, string? template = null) =>
+        _harness.ExecuteSqlAsync($$"""
+        INSERT INTO telemetry.log_records
+            (service_id, timestamp, severity_number, body, resource_attributes, attributes)
+        VALUES ('{{_harness.ServiceId}}', now(), 17, 'boom',
+                '{"telemetry.sdk.language": "{{runtime}}"}',
+                jsonb_build_object(
+                    'exception.type', '{{exceptionType}}',
+                    'exception.stacktrace', {{Quote(stack)}}
+                    {{(template is null ? "" : $", 'message_template.text', {Quote(template)}")}}))
+        """);
+
+    /// <summary>A PostgreSQL string literal that keeps the newlines a stack trace is made of.</summary>
+    private static string Quote(string value) =>
+        "E'" + value.Replace(@"\", @"\\").Replace("'", "''").Replace("\n", @"\n") + "'";
+
     private Task InsertWithIdAsync(long id, string body) => _harness.ExecuteSqlAsync($$"""
         INSERT INTO telemetry.log_records
             (id, service_id, timestamp, severity_number, body, resource_attributes, attributes)

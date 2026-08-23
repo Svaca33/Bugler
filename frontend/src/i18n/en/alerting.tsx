@@ -87,11 +87,35 @@ export const alerting: AlertingMessages = {
     nthTime: n => `${ordinal(n)} time`,
   },
 
+  participants: {
+    caption: count => (count === 1 ? "IN 1 SERVICE" : `IN ${count} SERVICES`),
+    columnService: "SERVICE",
+    columnVersion: "VERSION",
+    columnLast: "LAST",
+    columnMatches: "MATCHES",
+    noVersion: "no version",
+    firstSeen: clockText => `First fell in at ${clockText}`,
+    more: count => `+${count}`,
+    moreTitle: count => (count === 1 ? "1 more service" : `${count} more services`),
+  },
+
+  grouping: {
+    coarsened: "coarser",
+    coarsenedTitle:
+      "Bugler could not read the throwing code, so this is grouped by the kind of failure or by "
+      + "what was said. Grouping is coarser here than elsewhere.",
+    truncated: "stack cut",
+    truncatedTitle:
+      "The stack trace was too long to read whole, so its head and tail were read and the middle "
+      + "dropped. The grouping may be coarser than it could be.",
+    storm: "folded",
+    stormTitle:
+      "More kinds of trouble opened in this scope at once than anybody can read, so this "
+      + "episode's alerts were folded into one digest. The episode itself is untouched.",
+  },
+
   version: {
     on: version => `on ${version}`,
-    releasedBefore: ago => `released ${ago} before`,
-    releasedTitle: ago => `Released ${ago} before this episode opened`,
-    runningTitle: "The version this service was running when the episode opened",
   },
 
   detail: {
@@ -126,9 +150,10 @@ export const alerting: AlertingMessages = {
     thisOne: "← this one",
     byName: name => `by ${name}`,
     nobody: "nobody",
-    firstOfKind: "The first episode of its kind in this service.",
+    firstOfKind: "The first episode of its kind here.",
     cameBack: times =>
-      `Same service, same kind of trouble — it came back ${times === 1 ? "once" : `${times} times`} before.`,
+      `The same kind of trouble, as far as this episode reaches — it came back `
+      + `${times === 1 ? "once" : `${times} times`} before.`,
     isHistory: "This episode is history — actions belong to the newest of its kind.",
     openIt: "Open it ›",
   },
@@ -212,11 +237,13 @@ export const alerting: AlertingMessages = {
   quietWindow: {
     caption: "QUIET WINDOW",
     badge: words => `quiet window ${words}`,
-    badgeTitle: "This kind of trouble keeps its own quiet window instead of the service's",
+    badgeTitle: "This kind of trouble keeps its own quiet window instead of the service's; it "
+      + "governs every episode of the kind in this episode scope",
     days: days => `${days} day${days === 1 ? "" : "s"}`,
     inheritedFromService: words => `Inherited from the service: ${words}.`,
     ownDescription: (own, inherited) =>
-      `${own} for this kind of trouble in this service — it would otherwise inherit ${inherited}.`,
+      `${own} for this kind of trouble wherever its episode reaches — it would otherwise `
+      + `inherit ${inherited}.`,
     wholeMinutesOnly: "Whole minutes only.",
     bounds: maxMinutes => `Between 1 minute and ${maxMinutes} minutes (7 days).`,
     notSaved: "The quiet window was not saved.",
@@ -263,7 +290,9 @@ export const alerting: AlertingMessages = {
   help: {
     title: "How episodes work",
     description:
-      "One episode is one kind of trouble in one service — from what opens it to the hand that ends it.",
+      "One episode is one kind of trouble in one episode scope — from what opens it to the hand "
+      + "that ends it. A scope is the application plus whichever facets of the sender an admin "
+      + "says must match, so several services can be in one episode.",
     fromTroubleLabel: "FROM TROUBLE TO ALERT",
     step1Title: "Something goes wrong",
     step1Body: (
@@ -275,22 +304,22 @@ export const alerting: AlertingMessages = {
     step2Title: "It gets a fingerprint",
     step2Body: (
       <>
-        A log&apos;s message template, variables blanked — the{" "}
-        <span className="text-[#DCE8F3]">kind of trouble</span>.
+        Distilled from <span className="text-[#DCE8F3]">the code that threw</span> — the stack&apos;s
+        frames, not the words. What cannot be read coarsens, and the episode says so.
       </>
     ),
     step3Title: "An episode opens",
     step3Body: (
       <>
-        Only if none of that kind is open. Otherwise it just{" "}
-        <span className="text-[#DCE8F3]">feeds</span> the open one.
+        Only if none of that kind is open <span className="text-[#DCE8F3]">in its scope</span>.
+        Otherwise it feeds the open one, and its service joins as a participation.
       </>
     ),
     step4Title: "One alert goes out",
     step4Body: (
       <>
-        To subscribers and the app&apos;s chat. <span className="text-[#DCE8F3]">Once</span> per
-        episode, at the open.
+        <span className="text-[#DCE8F3]">Once</span> per recipient, never once per subscription. A
+        service falling in later tells its own followers since when.
       </>
     ),
     howItEndsLabel: "AND HOW IT ENDS",

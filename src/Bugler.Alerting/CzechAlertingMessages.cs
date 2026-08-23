@@ -29,6 +29,9 @@ internal sealed class CzechAlertingMessages : AlertingMessages
     public override string QuietWindowBetween(int maxMinutes) =>
         $"Tiché okno musí být mezi 1 a {maxMinutes} minutami.";
 
+    public override string AttributeKeyTooLong(int maxLength) =>
+        $"Název atributu smí mít nejvýše {maxLength} znaků.";
+
     public override string EpisodePredatesGrouping =>
         "Tato epizoda předchází seskupování podle druhu potíží a tiché okno nést nemůže.";
 
@@ -53,6 +56,18 @@ internal sealed class CzechAlertingMessages : AlertingMessages
         "nese potíže, které stroj vzdal: podíval se a z kódu je opravit neumí. "
         + "Je potřeba lidská ruka.",
         "Důvod stroje");
+
+    public override AlertWords JoinedWords(string runningSince) => new(
+        "Potíže dosáhly na",
+        $"spadl do potíží, které běží od {runningSince}.",
+        "Druh potíží");
+
+    public override AlertWords StormWords(int episodeCount, int windowMinutes) => new(
+        "Bouře v",
+        $"otevřel za posledních {windowMinutes} minut {episodeCount} druhů potíží. "
+        + "Jejich upozornění se složila do této jediné zprávy; každá epizoda je k vidění. "
+        + "Bouře bývá stejně často špatné seskupování odesílatele jako skutečný výpadek.",
+        "Nejnovější z nich");
 
     public override string NoBody => "(bez těla)";
 

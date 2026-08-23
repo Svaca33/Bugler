@@ -44,16 +44,34 @@ public sealed class EpisodeCloser(
             await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
             await dbContext.FingerprintQuietWindows.AsNoTracking().ToListAsync(cancellationToken));
 
+        // An Episode has no single Service any more (ADR 0034), so who is still being watched is
+        // a question about its Participations — one query for the whole sweep.
+        var openIds = openEpisodes.Select(e => e.Id).ToList();
+        var participants = (await dbContext.Participations.AsNoTracking()
+                .Where(p => openIds.Contains(p.EpisodeId))
+                .Select(p => new { p.EpisodeId, p.ServiceId })
+                .Distinct()
+                .ToListAsync(cancellationToken))
+            .GroupBy(p => p.EpisodeId)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.ServiceId).ToList());
+
         var mutedByWatch = new Dictionary<Watch, List<ServiceId>>();
 
         foreach (var episode in openEpisodes)
         {
+            var fedBy = ServicesFeeding(episode, participants);
             var reason = CloseDecision.Decide(
-                IsWatchOff(episode, effective),
+                IsWatchOff(episode, effective, fedBy),
                 episode.AcknowledgedAt is not null,
                 episode.ClaimedByDelegationId is not null,
                 episode.LastMatchAt,
-                effective.QuietWindowOf(episode.ServiceId, episode.Fingerprint),
+                // Sensitivity and the Quiet Window stay per Service; the kind of trouble's own
+                // override is the Scope's. An Episode fed by Services configured differently
+                // resolves against the one that opened it — the fallback, not the override.
+                effective.QuietWindowOf(
+                    episode.OpenedByServiceId ?? fedBy.FirstOrDefault(),
+                    episode.ScopeKey,
+                    episode.Fingerprint),
                 now);
 
             switch (reason)
@@ -61,27 +79,37 @@ public sealed class EpisodeCloser(
                 case EpisodeCloseReason.WatchOff:
                     // SilentClose closes and lapses below, per Watch.
                     mutedByWatch.TryAdd(episode.Watch, []);
-                    mutedByWatch[episode.Watch].Add(episode.ServiceId);
+                    mutedByWatch[episode.Watch].AddRange(fedBy);
                     break;
 
                 case EpisodeCloseReason.QuietWindow:
                     episode.ClosedAt = now;
                     episode.CloseReason = EpisodeCloseReason.QuietWindow;
                     logger.LogInformation(
-                        "Episode of service {ServiceId} fell quiet after {Errors} errors "
+                        "Episode in scope {ScopeKey} fell quiet after {Errors} errors "
                         + "and {Warns} warnings",
-                        episode.ServiceId, episode.ErrorCount, episode.WarnCount);
+                        episode.ScopeKey, episode.ErrorCount, episode.WarnCount);
                     break;
             }
         }
 
         foreach (var (watch, services) in mutedByWatch)
         {
-            await SilentClose.ApplyAsync(dbContext, services, watch, now, cancellationToken);
+            await SilentClose.ApplyAsync(
+                dbContext, services.Distinct().ToList(), watch, now, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Who is still feeding this Episode. Every Episode holds at least one Participation — both
+    /// watches write one as they open, and the Deletion cascade takes an Episode down with its
+    /// last one — so an empty answer here means the Episode is already gone in all but name.
+    /// </summary>
+    private static List<ServiceId> ServicesFeeding(
+        Episode episode, IReadOnlyDictionary<Guid, List<ServiceId>> participants) =>
+        participants.GetValueOrDefault(episode.Id, []);
 
     /// <summary>
     /// The lease doing its work: claims whose time ran out fall off by themselves, each with its
@@ -112,11 +140,18 @@ public sealed class EpisodeCloser(
         }
     }
 
-    /// <summary>Each Watch has its own switch: Sensitivity for the Logs Watch, an address for the Health Check Watch.</summary>
-    private static bool IsWatchOff(Episode episode, EffectiveSettings effective) => episode.Watch switch
-    {
-        Watch.Logs => effective.SensitivityOf(episode.ServiceId) == Sensitivity.Off,
-        Watch.HealthCheck => effective.HealthCheckUrlOf(episode.ServiceId) is null,
-        _ => false,
-    };
+    /// <summary>
+    /// Each Watch has its own switch: Sensitivity for the Logs Watch, an address for the Health
+    /// Check Watch. An Episode is Muted only when every Service still feeding it has had that
+    /// switch turned off — one tenant going quiet must not end an Episode the others are still
+    /// filling. An Episode nothing feeds any more (its Services Deleted) is off by definition.
+    /// </summary>
+    private static bool IsWatchOff(
+        Episode episode, EffectiveSettings effective, IReadOnlyList<ServiceId> fedBy) =>
+        fedBy.Count > 0 && episode.Watch switch
+        {
+            Watch.Logs => fedBy.All(id => effective.SensitivityOf(id) == Sensitivity.Off),
+            Watch.HealthCheck => fedBy.All(id => effective.HealthCheckUrlOf(id) is null),
+            _ => false,
+        };
 }

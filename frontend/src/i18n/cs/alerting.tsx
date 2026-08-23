@@ -98,11 +98,37 @@ export const alerting: AlertingMessages = {
     nthTime: n => `${n}. výskyt`,
   },
 
+  participants: {
+    caption: count =>
+      count === 1 ? "V 1 SLUŽBĚ" : count < 5 ? `VE ${count} SLUŽBÁCH` : `V ${count} SLUŽBÁCH`,
+    columnService: "SLUŽBA",
+    columnVersion: "VERZE",
+    columnLast: "NAPOSLED",
+    columnMatches: "SHOD",
+    noVersion: "bez verze",
+    firstSeen: clockText => `Poprvé spadla v ${clockText}`,
+    more: count => `+${count}`,
+    moreTitle: count =>
+      count === 1 ? "ještě 1 služba" : count < 5 ? `ještě ${count} služby` : `ještě ${count} služeb`,
+  },
+
+  grouping: {
+    coarsened: "hruběji",
+    coarsenedTitle:
+      "Bugler nedokázal přečíst kód, který chybu vyhodil, takže se seskupuje podle druhu selhání "
+      + "nebo podle toho, co bylo řečeno. Seskupení je tu hrubší než jinde.",
+    truncated: "zkrácený stack",
+    truncatedTitle:
+      "Stack trace byl příliš dlouhý na přečtení celý, takže se přečetl jeho začátek a konec a "
+      + "prostředek se zahodil. Seskupení může být hrubší, než by mohlo být.",
+    storm: "složeno",
+    stormTitle:
+      "V tomto rozsahu se naráz otevřelo víc druhů potíží, než kdo přečte, takže se upozornění "
+      + "této epizody složila do jediné souhrnné zprávy. Samotné epizody se to nedotklo.",
+  },
+
   version: {
     on: version => `na verzi ${version}`,
-    releasedBefore: ago => `vydána ${ago} předtím`,
-    releasedTitle: ago => `Vydána ${ago} před otevřením této epizody`,
-    runningTitle: "Verze, na které služba běžela, když se epizoda otevřela",
   },
 
   detail: {
@@ -142,9 +168,9 @@ export const alerting: AlertingMessages = {
     thisOne: "← tato",
     byName: name => name,
     nobody: "nikdo",
-    firstOfKind: "První epizoda svého druhu v této službě.",
+    firstOfKind: "První epizoda svého druhu tady.",
     cameBack: times =>
-      `Stejná služba, stejný druh potíží — vrátil se už ${plural("cs", times, {
+      `Stejný druh potíží, kam až tahle epizoda sahá — vrátil se už ${plural("cs", times, {
         one: "jednou",
         other: `${times}krát`,
       })}.`,
@@ -233,12 +259,13 @@ export const alerting: AlertingMessages = {
   quietWindow: {
     caption: "TICHÉ OKNO",
     badge: words => `tiché okno ${words}`,
-    badgeTitle: "Tento druh potíží si drží vlastní tiché okno místo okna služby",
+    badgeTitle: "Tento druh potíží si drží vlastní tiché okno místo okna služby; platí pro "
+      + "každou epizodu toho druhu v tomto rozsahu",
     days: days =>
       plural("cs", days, { one: `${days} den`, few: `${days} dny`, other: `${days} dní` }),
     inheritedFromService: words => `Zděděno od služby: ${words}.`,
     ownDescription: (own, inherited) =>
-      `${own} pro tento druh potíží v této službě — jinak by zdědil ${inherited}.`,
+      `${own} pro tento druh potíží všude, kam jeho epizoda sahá — jinak by zdědil ${inherited}.`,
     wholeMinutesOnly: "Pouze celé minuty.",
     bounds: maxMinutes => `Mezi 1 minutou a ${maxMinutes} minutami (7 dní).`,
     notSaved: "Tiché okno se neuložilo.",
@@ -292,7 +319,9 @@ export const alerting: AlertingMessages = {
   help: {
     title: "Jak epizody fungují",
     description:
-      "Jedna epizoda je jeden druh potíží v jedné službě — od toho, co ji otevře, po ruku, která ji ukončí.",
+      "Jedna epizoda je jeden druh potíží v jednom rozsahu — od toho, co ji otevře, po ruku, "
+      + "která ji ukončí. Rozsah je aplikace plus ty stránky odesílatele, o kterých admin řekne, "
+      + "že musí sedět, takže v jedné epizodě může být několik služeb.",
     fromTroubleLabel: "OD POTÍŽÍ K VÝSTRAZE",
     step1Title: "Něco se pokazí",
     step1Body: (
@@ -304,22 +333,23 @@ export const alerting: AlertingMessages = {
     step2Title: "Dostane otisk",
     step2Body: (
       <>
-        Šablona zprávy záznamu s vynechanými proměnnými —{" "}
-        <span className="text-[#DCE8F3]">druh potíží</span>.
+        Vydestilovaný z <span className="text-[#DCE8F3]">kódu, který chybu vyhodil</span> — z rámců
+        stacku, ne ze slov. Co přečíst nejde, zhrubne a epizoda to řekne.
       </>
     ),
     step3Title: "Otevře se epizoda",
     step3Body: (
       <>
-        Jen pokud žádná toho druhu není otevřená. Jinak jen{" "}
-        <span className="text-[#DCE8F3]">přiživí</span> tu otevřenou.
+        Jen pokud žádná toho druhu není otevřená{" "}
+        <span className="text-[#DCE8F3]">v jejím rozsahu</span>. Jinak přiživí tu otevřenou a její
+        služba do ní vstoupí jako účast.
       </>
     ),
     step4Title: "Odejde jedna výstraha",
     step4Body: (
       <>
-        Odběratelům a do chatu aplikace. <span className="text-[#DCE8F3]">Jednou</span> za
-        epizodu, při otevření.
+        <span className="text-[#DCE8F3]">Jednou</span> na příjemce, nikdy jednou na odběr. Služba,
+        která spadne do epizody později, řekne svým odběratelům, odkdy běží.
       </>
     ),
     howItEndsLabel: "A JAK KONČÍ",

@@ -5,7 +5,6 @@ import type { Episode } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n";
 import { describeMillis } from "@/lib/duration";
-import { serviceLabel } from "@/lib/serviceLabel";
 import { episodeRailClass } from "@/lib/severity";
 
 import { describeLiveMillis } from "@/lib/duration";
@@ -13,6 +12,7 @@ import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
 import { clock, clockShort } from "./format";
 import { HealthCheckBadge } from "./HealthCheckBadge";
+import { Participants } from "./Participants";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { SolveDialog } from "./SolveDialog";
 import type { KnownService } from "./serviceIndex";
@@ -66,7 +66,7 @@ export function OpenNowBand(props: {
           <OpenCard
             key={episode.id}
             episode={episode}
-            known={props.services.get(episode.serviceId)}
+            services={props.services}
             myName={myName}
             onSelect={props.onSelect}
           />
@@ -78,7 +78,7 @@ export function OpenNowBand(props: {
 
 function OpenCard(props: {
   episode: Episode;
-  known: KnownService | undefined;
+  services: Map<string, KnownService>;
   myName: string | undefined;
   onSelect: (id: string) => void;
 }) {
@@ -124,13 +124,12 @@ function OpenCard(props: {
           </span>
         </div>
 
-        <p className="truncate text-[13.5px] font-medium text-foreground">{episode.firstMatchDetail}</p>
+        <p className="truncate text-[13.5px] font-medium text-foreground">{episode.title}</p>
 
         <div className="flex min-w-0 items-center gap-2.5 overflow-hidden font-mono text-[11px] whitespace-nowrap text-[#7D93AA]">
           {/* The application name is dropped here on purpose — it is in the rail and the detail. */}
-          <span className="flex-none text-[#A9BDD1]">
-            {props.known !== undefined ? serviceLabel(props.known.facets) : "—"}
-          </span>
+          {/* Which Services and versions are in it, since an Episode is no longer one's. */}
+          <Participants episode={episode} services={props.services} />
           <span className="flex-none">{clock(episode.openedAt)}</span>
           {/* Nothing was logged under the health check watch, so there is nothing to count. */}
           {episode.watch !== "HealthCheck" && (

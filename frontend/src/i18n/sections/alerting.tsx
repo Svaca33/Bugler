@@ -84,12 +84,45 @@ export interface AlertingMessages {
     nthTime(n: number): string;
   };
 
-  /** The Declared Version an Episode opened on (ADR 0016). */
+  /**
+   * Which Services and versions are in an Episode (see CONTEXT.md: Participation) — the answer to
+   * "is it still happening on the version we just shipped, and is it every deployment or only one".
+   */
+  participants: {
+    /** "IN 3 SERVICES" — the detail section's caption. */
+    caption(count: number): string;
+    columnService: string;
+    columnVersion: string;
+    columnLast: string;
+    columnMatches: string;
+    /** Where the sender declared none — the intended degradation, never a dash. */
+    noVersion: string;
+    firstSeen(clockText: string): string;
+    /** "+2" on a row too narrow to name them all. */
+    more(count: number): string;
+    moreTitle(count: number): string;
+  };
+
+  /**
+   * What Bugler admits about how it grouped an Episode (ADR 0033): what is not understood
+   * coarsens visibly, and a folded Alert says so rather than going quiet.
+   */
+  grouping: {
+    coarsened: string;
+    coarsenedTitle: string;
+    truncated: string;
+    truncatedTitle: string;
+    storm: string;
+    stormTitle: string;
+  };
+
+  /**
+   * The version a Service declared. It rides on a Participation now, from the Match's own
+   * `service.version` — the Release ledger answers a different question, and still overlays the
+   * volume (ADR 0016, 0034).
+   */
   version: {
     on(version: string): string;
-    releasedBefore(ago: string): string;
-    releasedTitle(ago: string): string;
-    runningTitle: string;
   };
 
   /** The right-hand detail panel: captions, the lifecycle timeline, volume and recurrence. */
@@ -224,6 +257,7 @@ export interface AlertingMessages {
     /** Whole days as words — hours and minutes stay unit abbreviations. */
     days(days: number): string;
     inheritedFromService(words: string): string;
+    /** What the override says it governs: the kind of trouble, wherever its Episode Scope reaches. */
     ownDescription(own: string, inherited: string): string;
     wholeMinutesOnly: string;
     bounds(maxMinutes: number): string;

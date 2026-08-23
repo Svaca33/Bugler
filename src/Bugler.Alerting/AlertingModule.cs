@@ -81,6 +81,11 @@ public static class AlertingModule
             AdminAlertingEndpoints.SetApplicationAlerting);
         admin.MapPut("/applications/{applicationId:guid}/alerting/webhook",
             AdminAlertingEndpoints.SetChatWebhook);
+        // What "the same trouble" means for this Application (ADR 0033, 0034). Admin only, like
+        // the rest of alerting settings: it re-partitions every open Episode it touches.
+        admin.MapPut("/applications/{applicationId:guid}/alerting/grouping",
+            AdminAlertingEndpoints.SetFingerprintRule)
+            .Produces<RegroupedDto>();
         admin.MapPut("/services/{serviceId:guid}/alerting",
             AdminAlertingEndpoints.SetServiceAlerting)
             .Produces<SetServiceAlertingResponse>();

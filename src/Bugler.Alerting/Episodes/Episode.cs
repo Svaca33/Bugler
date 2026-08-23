@@ -1,11 +1,15 @@
+using Bugler.Alerting.DetectEpisodes;
 using Bugler.SharedKernel;
 
 namespace Bugler.Alerting.Episodes;
 
 /// <summary>
-/// One bounded stretch of trouble in one Service (see CONTEXT.md: Episode). Carries everything a
-/// message about it needs — Deliveries never read the evidence again, so an Alert survives the
-/// Purge of the Log Records that drove it.
+/// One bounded stretch of trouble in one Episode Scope (see CONTEXT.md: Episode). Carries
+/// everything a message about it needs — Deliveries never read the evidence again, so an Alert
+/// survives the Purge of the Log Records that drove it.
+///
+/// It has no single Service (ADR 0034): the Services that fed it are its Participations, and
+/// <see cref="OpenedByServiceId"/> is part of the opening evidence rather than an owner.
 /// </summary>
 public sealed class Episode
 {
@@ -16,16 +20,50 @@ public sealed class Episode
     public const int MaxMachineLinkLength = 1000;
 
     public required Guid Id { get; init; }
-    public required ServiceId ServiceId { get; init; }
+
+    /// <summary>
+    /// The Service whose Match opened this Episode — the opening evidence belongs to it anyway.
+    /// Nulled out when that Service is Deleted while others are still participating: the evidence
+    /// loses its name, the Episode stands.
+    /// </summary>
+    public ServiceId? OpenedByServiceId { get; set; }
 
     /// <summary>Stored redundantly (immutable mapping) so visibility filtering and cascades need no catalog round-trip.</summary>
     public required ApplicationId ApplicationId { get; init; }
 
+    /// <summary>
+    /// How far this Episode reaches (see CONTEXT.md: Episode Scope), materialised once at opening.
+    /// Derived, never authoritative: a Scope change mutes the open Episodes rather than rewriting
+    /// their keys, because what they were bound by is what they were bound by.
+    /// </summary>
+    public required string ScopeKey { get; init; }
+
     /// <summary>Which watch found this trouble and keeps feeding it (see CONTEXT.md: Watch).</summary>
     public required Watch Watch { get; init; }
 
-    /// <summary>The kind of trouble this Episode is about — what tells it apart from the Service's other Episodes.</summary>
+    /// <summary>
+    /// The kind of trouble this Episode is about — what tells it apart from the other kinds open
+    /// in its Scope. Opaque by design (ADR 0033): the Title is what a person reads.
+    /// </summary>
     public required string Fingerprint { get; init; }
+
+    /// <summary>The readable name of the trouble, taken once from the opening Match (see CONTEXT.md: Title).</summary>
+    public required string Title { get; init; }
+
+    /// <summary>
+    /// Which version of the distilling recipe produced the Fingerprint. Legacy rows carry 0 and
+    /// belong to a partition that no longer exists; nothing ever re-fingerprints them.
+    /// </summary>
+    public required int RecipeVersion { get; init; }
+
+    /// <summary>Which rung of the ladder answered — the visible degradation (see CONTEXT.md: Runtime).</summary>
+    public required FingerprintRung FingerprintRung { get; init; }
+
+    /// <summary>Whether the opening Match's stack was too long to read whole, so the grouping may be coarser than it could.</summary>
+    public bool StackTruncated { get; init; }
+
+    /// <summary>Whether this Episode's Alerts were folded into a Storm digest rather than sent (see CONTEXT.md: Storm).</summary>
+    public bool AlertFoldedIntoStorm { get; set; }
 
     /// <summary>Detection wall-clock, not the evidence's own claim — durations stay immune to sender clock skew.</summary>
     public required DateTimeOffset OpenedAt { get; init; }

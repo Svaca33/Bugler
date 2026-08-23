@@ -10,12 +10,7 @@ import { useT } from "@/i18n";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
 import { describeMillis } from "@/lib/duration";
 import { LiveDuration } from "@/lib/LiveDuration";
-import {
-  buildTimelines,
-  versionAt,
-  type ReleaseTimelines,
-  type VersionAtInstant,
-} from "@/lib/releases";
+import { buildTimelines, type ReleaseTimelines } from "@/lib/releases";
 import { episodeRailClass } from "@/lib/severity";
 
 import {
@@ -34,9 +29,10 @@ import { HealthCheckBadge } from "./HealthCheckBadge";
 import { MachineHandBadges } from "./MachineHandBadges";
 import { OpenNowBand } from "./OpenNowBand";
 import { QuietWindowBadge } from "./QuietWindowBadge";
+import { GroupingMarks } from "./GroupingMarks";
+import { Participants } from "./Participants";
 import { indexServices, type KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
-import { VersionAtOpen } from "./VersionAtOpen";
 
 const PAGE_SIZE = 100;
 const HISTORY_PAGE = 25;
@@ -152,7 +148,9 @@ export function EpisodesPage(props: {
   const timelines = buildTimelines(releases.data);
 
   const openLogs = (episode: Episode) => {
-    const known = services.get(episode.serviceId);
+    const known = episode.openedByServiceId === null
+      ? undefined
+      : services.get(episode.openedByServiceId);
     // The window starts a little before the opening: the first log's own timestamp predates
     // the detection that opened the episode, and the list must not hide the panel's subject.
     const windowStart = new Date(Date.parse(episode.openedAt) - 5 * 60_000).toISOString();
@@ -215,7 +213,6 @@ export function EpisodesPage(props: {
               <EpisodeRows
                 items={items}
                 services={services}
-                timelines={timelines}
                 selectedId={selectedId}
                 myName={myName}
                 onSelect={onSelect}
@@ -265,7 +262,6 @@ export function EpisodesPage(props: {
 function EpisodeRows(props: {
   items: Episode[];
   services: Map<string, KnownService>;
-  timelines: ReleaseTimelines;
   selectedId: string | undefined;
   myName: string | undefined;
   onSelect: (id: string) => void;
@@ -307,14 +303,14 @@ function EpisodeRows(props: {
         </div>,
       );
     }
-    const groupKey = `${episode.serviceId}\u0000${episode.fingerprint}`;
+    // One kind of trouble in one Episode Scope (ADR 0034), not one Service's any more.
+    const groupKey = `${episode.scopeKey}\u0000${episode.fingerprint}`;
     const expanded = unfolded.has(groupKey);
     rows.push(
       <EpisodeRow
         key={episode.id}
         episode={episode}
-        known={props.services.get(episode.serviceId)}
-        version={versionAt(props.timelines, episode.serviceId, episode.openedAt)}
+        services={props.services}
         selected={episode.id === props.selectedId}
         myName={props.myName}
         expanded={expanded}
@@ -339,15 +335,14 @@ function EpisodeRows(props: {
 
 function EpisodeRow(props: {
   episode: Episode;
-  known: KnownService | undefined;
-  version: VersionAtInstant | undefined;
+  services: Map<string, KnownService>;
   selected: boolean;
   myName: string | undefined;
   expanded: boolean;
   onToggleHistory: (() => void) | undefined;
   onSelect: (id: string) => void;
 }) {
-  const { episode, known, selected } = props;
+  const { episode, selected } = props;
   const t = useT();
   const muted = episode.state === "Muted";
   const open = episode.state === "Open";
@@ -406,16 +401,15 @@ function EpisodeRow(props: {
             muted ? "text-[#8CA1B8]" : selected ? "font-medium text-foreground" : "text-[#DCE8F3]"
           }`}
         >
-          {episode.firstMatchDetail}
+          {episode.title}
         </span>
         <span
           className={`flex min-w-0 items-center gap-[9px] overflow-hidden font-mono text-[11px] whitespace-nowrap ${
             muted ? "text-[#6E86A0]" : "text-[#7D93AA]"
           }`}
         >
-          <span className={muted ? undefined : "text-[#A9BDD1]"}>{known?.facets.name ?? "—"}</span>
-          {/* Beside the service, because that is what it qualifies. */}
-          <VersionAtOpen at={props.version} />
+          {/* Which Services and versions are in it: the Episode states its own versions now. */}
+          <Participants episode={episode} services={props.services} muted={muted} />
           <span>{clock(episode.openedAt)}</span>
           {muted ? (
             <>
@@ -440,6 +434,7 @@ function EpisodeRow(props: {
                 </>
               )}
               {historyToggle}
+              <GroupingMarks episode={episode} />
               <QuietWindowBadge episode={episode} />
               <MachineHandBadges episode={episode} />
               {owner !== undefined && <span className="truncate">{owner}</span>}
@@ -477,12 +472,12 @@ function GroupHistory(props: {
   const { face } = props;
   const t = useT();
   const history = useInfiniteQuery({
-    queryKey: ["alerts", "group-history", face.serviceId, face.fingerprint],
+    queryKey: ["alerts", "group-history", face.scopeKey, face.fingerprint],
     queryFn: async ({ pageParam }) => {
       const { data, error } = await api.GET("/api/alerting/episodes", {
         params: {
           query: {
-            serviceId: [face.serviceId],
+            scopeKey: face.scopeKey,
             fingerprint: face.fingerprint,
             beforeId: pageParam,
             limit: HISTORY_PAGE,

@@ -9,9 +9,9 @@ namespace Bugler.Alerting.ManageAlertingSettings;
 public sealed record SetFingerprintQuietWindowRequest(int? QuietWindowMinutes);
 
 /// <summary>
-/// The Quiet Window of one kind of trouble in one Service (ADR 0004), addressed through an
-/// Episode: the Episode names the (Service, Fingerprint) pair, so no caller ever handles a
-/// 300-character Fingerprint as a value. What is set outlives the Episode it was set from and
+/// The Quiet Window of one kind of trouble in one Episode Scope (ADR 0004), addressed through an
+/// Episode: the Episode names the (Episode Scope, Fingerprint) pair, so no caller ever handles an
+/// opaque Fingerprint as a value. What is set outlives the Episode it was set from and
 /// governs every later Episode of that kind — which is why any Episode will do, open or closed.
 /// </summary>
 internal static class FingerprintQuietWindowEndpoint
@@ -47,7 +47,7 @@ internal static class FingerprintQuietWindowEndpoint
         }
 
         var existing = await dbContext.FingerprintQuietWindows.FirstOrDefaultAsync(
-            w => w.ServiceId == episode.ServiceId && w.Fingerprint == episode.Fingerprint,
+            w => w.ScopeKey == episode.ScopeKey && w.Fingerprint == episode.Fingerprint,
             cancellationToken);
 
         if (request.QuietWindowMinutes is not { } minutes)
@@ -61,7 +61,7 @@ internal static class FingerprintQuietWindowEndpoint
         {
             dbContext.FingerprintQuietWindows.Add(new FingerprintQuietWindow
             {
-                ServiceId = episode.ServiceId,
+                ScopeKey = episode.ScopeKey,
                 Fingerprint = episode.Fingerprint,
                 ApplicationId = episode.ApplicationId,
                 QuietWindowMinutes = minutes,
