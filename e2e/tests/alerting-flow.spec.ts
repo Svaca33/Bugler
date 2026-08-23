@@ -50,12 +50,14 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   await expect(panel.getByText("Payment declined: insufficient funds").first()).toBeVisible();
   await expect(panel.getByText(/Opened by an ERROR log/)).toBeVisible();
 
-  // Which services and versions are in it (ADR 0034) — one here, the one that opened it.
+  // Which services and versions are in it (ADR 0034) — one here, the one that opened it, on the
+  // version its own log declared rather than one inferred from the release ledger.
   await expect(panel.getByText("IN 1 SERVICE")).toBeVisible();
-  await expect(panel.getByText("eshop-web")).toBeVisible();
-  // This sender declared no exception on the log record, so the throwing code could not be read
-  // and the grouping coarsened — visibly, which is the whole point of ADR 0033.
-  await expect(panel.getByText("coarser").first()).toBeVisible();
+  await expect(panel.getByText("e2e/prod · backend").first()).toBeVisible();
+  await expect(panel.getByText("1.4.0").first()).toBeVisible();
+  // The sender's log carries a stack, so the kind of trouble came from the code that threw and
+  // nothing had to coarsen — the mark ADR 0033 shows when something did stays absent.
+  await expect(panel.getByText("coarser")).toHaveCount(0);
 
   // The kind of trouble takes a Quiet Window of its own, and gives it back. What is set belongs
   // to the (Episode Scope, Fingerprint) pair, so the wording never claims the Episode owns it.
@@ -134,6 +136,7 @@ test("changing what counts as the same trouble warns first and mutes the open ep
   await page.getByRole("link", { name: "Episodes" }).click();
   await page.getByRole("button", { name: "Episodes", exact: true }).click();
   await selectFilter(page, "All applications", appName);
+  await page.getByRole("checkbox", { name: "Muted" }).click();
   const row = page
     .getByTestId("episode-row")
     .filter({ hasText: "Payment declined: insufficient funds" })

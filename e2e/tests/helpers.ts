@@ -39,9 +39,11 @@ export async function registerApplication(page: Page, appName: string) {
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("button", { name: appName })).toBeVisible();
 
+  // Exact: a label is matched as a substring by default, and the grouping card on this same
+  // page carries "Environment must match" and "Service name must match" (ADR 0034).
   await page.getByLabel("Namespace (deployment)").fill("e2e");
-  await page.getByLabel("Environment").fill("prod");
-  await page.getByLabel("Service name").fill("backend");
+  await page.getByLabel("Environment", { exact: true }).fill("prod");
+  await page.getByLabel("Service name", { exact: true }).fill("backend");
   await page.getByRole("button", { name: "Add service" }).click();
   await expect(page.getByText("e2e/prod · backend", { exact: true })).toBeVisible();
 
