@@ -1,6 +1,7 @@
 using Bugler.Access.Contracts;
 using Bugler.Alerting.ActOnEpisodes;
 using Bugler.Alerting.CloseQuietEpisodes;
+using Bugler.Alerting.DeleteKindOfTrouble;
 using Bugler.Alerting.DeliverMessages;
 using Bugler.Alerting.DescribeEpisode;
 using Bugler.Alerting.DetectEpisodes;
@@ -90,6 +91,11 @@ public static class AlertingModule
             AdminAlertingEndpoints.SetServiceAlerting)
             .Produces<SetServiceAlertingResponse>();
         admin.MapPut("/episodes/{id:guid}/quiet-window", FingerprintQuietWindowEndpoint.Set);
+        // Deleting a kind of trouble for good (see CONTEXT.md: Deletion) — the one hand in
+        // Alerting that destroys a Journal, so it asks for a capability of its own rather than
+        // riding on the settings group.
+        endpoints.MapDelete("/api/admin/episodes/{id:guid}/kind", KindOfTroubleDeletionEndpoint.Delete)
+            .RequireAuthorization(Capabilities.DeleteKindsOfTrouble);
 
         var user = endpoints.MapGroup("/api/alerting").RequireAuthorization();
         user.MapGet("/subscriptions", SubscriptionEndpoints.GetOwn).Produces<SubscriptionsDto>();

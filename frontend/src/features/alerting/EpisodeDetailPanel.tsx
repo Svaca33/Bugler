@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DetailPanel } from "@/components/ui/detail-panel";
 import { Input } from "@/components/ui/input";
 import { useLanguage, useT, type Messages } from "@/i18n";
-import { canConfigureAlerting } from "@/lib/capabilities";
+import { canConfigureAlerting, canDeleteKindsOfTrouble } from "@/lib/capabilities";
 import { describeMillis } from "@/lib/duration";
 import { formatTime } from "@/lib/format";
 import { versionAt, type ReleaseTimelines, type VersionAtInstant } from "@/lib/releases";
@@ -17,6 +17,7 @@ import { serviceLabel } from "@/lib/serviceLabel";
 import { describeLiveMillis } from "@/lib/duration";
 import { LiveDuration, useNow } from "@/lib/LiveDuration";
 
+import { DeleteKindDialog } from "./DeleteKindDialog";
 import { clock, historyStamp } from "./format";
 import { GroupingMarks } from "./GroupingMarks";
 import { HealthCheckBadge } from "./HealthCheckBadge";
@@ -104,6 +105,7 @@ export function EpisodeDetailPanel(props: {
             : versionAt(props.timelines, episode.openedByServiceId, episode.openedAt)}
           onOpenLogs={props.onOpenLogs}
           onSelectEpisode={props.onSelectEpisode}
+          onDeleted={props.onClose}
         />
       )}
     </DetailPanel>
@@ -117,6 +119,8 @@ function EpisodeBody(props: {
   version: VersionAtInstant | undefined;
   onOpenLogs: (episode: Episode) => void;
   onSelectEpisode: (id: string) => void;
+  /** The Episode is gone with its whole kind; the panel has nothing left to show. */
+  onDeleted: () => void;
 }) {
   const { episode, detail, version } = props;
   const known = episode.openedByServiceId === null
@@ -126,13 +130,22 @@ function EpisodeBody(props: {
   const currentUser = useCurrentUser();
   const actions = useEpisodeActions(episode.id);
   const [solveOpen, setSolveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
+  // The whole kind, filed Episodes included: the history of a kind of trouble is every Episode
+  // of it, and Archived is a mark on the everyday view rather than on the record (Alerting
+  // CONTEXT.md: Archived). Without it a fully filed kind would read as having no history at all.
   const history = useQuery({
     queryKey: ["alerts", "episode-history", episode.scopeKey, episode.fingerprint],
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/episodes", {
         params: {
-          query: { scopeKey: episode.scopeKey, fingerprint: episode.fingerprint, limit: 50 },
+          query: {
+            scopeKey: episode.scopeKey,
+            fingerprint: episode.fingerprint,
+            includeArchived: true,
+            limit: 50,
+          },
         },
       });
       if (error !== undefined) throw new Error(t.alerting.errors.loadHistory);
@@ -462,6 +475,19 @@ function EpisodeBody(props: {
             {t.alerting.actions.openInLogs}
           </Button>
         )}
+        {/* The Admin's irreversible hand on the whole kind (Alerting CONTEXT.md: Deletion),
+            offered only once this Episode is filed — the server holds the rest of the kind to
+            the same bar and says so. The button opens a guard, never the deletion itself. */}
+        {episode.archivedAt !== null && canDeleteKindsOfTrouble(currentUser.data) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            {t.alerting.actions.deleteKind}
+          </Button>
+        )}
         {actions.failure != null && (
           <span className="text-[11.5px] text-destructive">{actions.failure.message}</span>
         )}
@@ -473,6 +499,28 @@ function EpisodeBody(props: {
         onOpenChange={setSolveOpen}
         pending={actions.solve.isPending}
         onSolve={() => actions.solve.mutate(undefined, { onSuccess: () => setSolveOpen(false) })}
+      />
+      <DeleteKindDialog
+        open={deleteOpen}
+        onOpenChange={open => {
+          if (!open) actions.deleteKind.reset();
+          setDeleteOpen(open);
+        }}
+        // The kind's newest Episode knows how many came before it, whatever the history page
+        // holds — the server counts the kind the way it is keyed, Watch and all.
+        episodeCount={
+          Number(history.data?.items.find(e => e.watch === episode.watch)?.priorCount
+            ?? episode.priorCount) + 1
+        }
+        pending={actions.deleteKind.isPending}
+        failure={actions.deleteKind.error}
+        onConfirm={() =>
+          actions.deleteKind.mutate(undefined, {
+            onSuccess: () => {
+              setDeleteOpen(false);
+              props.onDeleted();
+            },
+          })}
       />
     </>
   );

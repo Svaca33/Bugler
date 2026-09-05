@@ -21,4 +21,11 @@ public static class Capabilities
 
     /// <summary>Deciding whether this server opens a machine door at all, and where it answers.</summary>
     public const string ConfigureMcp = "ConfigureMcp";
+
+    /// <summary>
+    /// Removing a kind of trouble from the record for good — every Episode of it, Journal and all
+    /// (Alerting CONTEXT.md: Deletion). Destroying who acknowledged and who solved is no triage
+    /// gesture, so it is asked for by its own name rather than under ConfigureAlerting.
+    /// </summary>
+    public const string DeleteKindsOfTrouble = "DeleteKindsOfTrouble";
 }

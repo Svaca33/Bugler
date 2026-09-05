@@ -281,6 +281,29 @@
         }
       }
     },
+    "/api/admin/episodes/{id}/kind": {
+      "delete": {
+        "tags": [
+          "KindOfTroubleDeletionEndpoint"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/admin/mail/test": {
       "post": {
         "tags": [
@@ -6156,6 +6179,9 @@
     },
     {
       "name": "ResetPasswordEndpoints"
+    },
+    {
+      "name": "KindOfTroubleDeletionEndpoint"
     },
     {
       "name": "SendTestMail"

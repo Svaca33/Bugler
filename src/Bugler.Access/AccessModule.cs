@@ -119,6 +119,7 @@ public static class AccessModule
             .AddPolicy(Capabilities.InspectStorage, policy => policy.RequireRole(AuthEndpoints.AdminRole))
             .AddPolicy(Capabilities.InspectMachineDelegations, policy => policy.RequireRole(AuthEndpoints.AdminRole))
             .AddPolicy(Capabilities.ConfigureMcp, policy => policy.RequireRole(AuthEndpoints.AdminRole))
+            .AddPolicy(Capabilities.DeleteKindsOfTrouble, policy => policy.RequireRole(AuthEndpoints.AdminRole))
             // What the machine door asks for, and the only policy that names the Machine Delegation
             // scheme: a Session cookie arriving there authenticates nothing either.
             .AddPolicy(HoldsMachineDelegationPolicy, policy =>

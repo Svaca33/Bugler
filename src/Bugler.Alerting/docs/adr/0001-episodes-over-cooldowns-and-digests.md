@@ -1,5 +1,5 @@
 ---
-status: accepted, amended by ADR 0003 (the All Clear retired)
+status: accepted, amended by ADR 0003 (the All Clear retired) and ADR 0012 (an Admin may Delete a kind of trouble)
 ---
 
 # Episodes over cooldowns and digests
@@ -14,5 +14,5 @@ An Episode belongs to one Service, never to an Application. Each Service runs it
 
 - A Service that drips matching logs forever holds one Episode open forever: one Alert total, never an All Clear — and new, worse trouble inside that open Episode goes unannounced. Accepted for now; the remedy, if ever needed, is escalation on a volume spike within an open Episode, not a different model.
 - A cascading application failure opens one Episode per affected Service and fans out that many Alerts at once. Accepted as a true picture; if it ever hurts, the fix is grouping *notifications*, never merging Episodes.
-- Episodes are records of outages, not of logs: they survive the retention Purge of the Log Records that drove them (the "first log" link may go dark) and are removed only by the Deletion of their Service or Application.
+- Episodes are records of outages, not of logs: they survive the retention Purge of the Log Records that drove them (the "first log" link may go dark) and are removed only by the Deletion of their Service or Application — or, since ADR 0012, of their whole kind of trouble by an Admin's hand.
 - Turning Sensitivity Off closes the Service's open Episode immediately and silently — an All Clear would falsely announce a resolution when only the watching stopped.

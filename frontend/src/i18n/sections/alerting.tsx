@@ -284,6 +284,26 @@ export interface AlertingMessages {
   };
 
   /**
+   * The guard on the Deletion of a kind of trouble (CONTEXT.md: Deletion): it names what is about
+   * to be lost — every Episode of the kind, Journal and all — and stays disarmed until the Admin
+   * types the phrase back. Permanent, so never one click away.
+   */
+  deleteKind: {
+    title: string;
+    /** "Every episode of this kind goes — 3 in all — …" */
+    consequence(count: number): string;
+    cannotBeUndone: string;
+    /** What must be typed to arm the button; a word that can be typed on any keyboard. */
+    phrase: string;
+    typeBeforePhrase: string;
+    typeAfterPhrase: string;
+    confirm: string;
+    cancel: string;
+    /** The client-side fallback; a 409's own sentence is shown verbatim instead. */
+    failed: string;
+  };
+
+  /**
    * The selection in the list and the one hand it offers: the same Archived mark laid on many
    * Episodes at once. The bar says how many are chosen, and afterwards which were filed and which
    * refused — a selection with an open Episode in it never half-succeeds in silence.
@@ -312,6 +332,8 @@ export interface AlertingMessages {
     solve: string;
     archive: string;
     unarchive: string;
+    /** The Admin's irreversible hand on the whole kind, offered only once the Episode is filed. */
+    deleteKind: string;
     openInLogs: string;
     alreadySolvedNoAck: string;
     ackNotSaved: string;

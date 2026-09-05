@@ -18,6 +18,12 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
     public override string OnlyAClosedEpisodeIsArchived =>
         "An open Episode is still taking matches and cannot be archived.";
 
+    public override string KindStillHasAnOpenEpisode =>
+        "The kind of trouble still has an open Episode; it is deleted whole or not at all.";
+
+    public override string KindNotYetArchivedWhole =>
+        "Every Episode of the kind must be archived before the kind is deleted.";
+
     public override string QuietWindowAtLeastOneMinute =>
         "The quiet window must be at least 1 minute.";
 

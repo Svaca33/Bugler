@@ -288,6 +288,23 @@ export const alerting: AlertingMessages = {
     cancel: "Zrušit",
   },
 
+  deleteKind: {
+    title: "Smazat tento druh potíží nadobro?",
+    consequence: count =>
+      `Zmizí každá epizoda tohoto druhu — ${plural("cs", count, {
+        one: `${count} epizoda`,
+        few: `všechny ${count}`,
+        other: `všech ${count}`,
+      })}, napříč všemi službami, které je sytily — i s deníkem, účastmi, čteními a zprávami, které se ještě dluží. Kdo ji převzal a kdo vyřešil, zmizí s nimi, a nic o tomto druhu už se nebude počítat ani zobrazovat.`,
+    cannotBeUndone: "Tuto akci nelze vzít zpět.",
+    phrase: "smazat",
+    typeBeforePhrase: "Pro potvrzení napište",
+    typeAfterPhrase: "",
+    confirm: "Smazat nadobro",
+    cancel: "Zrušit",
+    failed: "Druh potíží se nepodařilo smazat — nic nebylo odstraněno.",
+  },
+
   selection: {
     selectEpisode: title => `Vybrat epizodu: ${title}`,
     selectAllLoaded: "Vybrat všechny načtené epizody",
@@ -319,6 +336,7 @@ export const alerting: AlertingMessages = {
     solve: "Vyřešit",
     archive: "Archivovat",
     unarchive: "Vrátit z archivu",
+    deleteKind: "Smazat druh…",
     openInLogs: "Otevřít v lozích",
     alreadySolvedNoAck: "Již vyřešena — vyřešenou epizodu nelze převzít.",
     ackNotSaved: "Převzetí se neuložilo.",

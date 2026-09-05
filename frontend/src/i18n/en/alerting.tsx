@@ -266,6 +266,19 @@ export const alerting: AlertingMessages = {
     cancel: "Cancel",
   },
 
+  deleteKind: {
+    title: "Delete this kind of trouble for good?",
+    consequence: count =>
+      `Every episode of this kind goes — ${count} in all, across every service that fed them — with its journal, participations, readings and any messages still owed. Who acknowledged and who solved it will be gone with them, and nothing about this kind will be counted or shown again.`,
+    cannotBeUndone: "This cannot be undone.",
+    phrase: "delete",
+    typeBeforePhrase: "Type",
+    typeAfterPhrase: "to confirm",
+    confirm: "Delete for good",
+    cancel: "Cancel",
+    failed: "The kind of trouble was not deleted — nothing was removed.",
+  },
+
   selection: {
     selectEpisode: title => `Select episode: ${title}`,
     selectAllLoaded: "Select every loaded episode",
@@ -285,6 +298,7 @@ export const alerting: AlertingMessages = {
     solve: "Solve",
     archive: "Archive",
     unarchive: "Unarchive",
+    deleteKind: "Delete kind…",
     openInLogs: "Open in logs",
     alreadySolvedNoAck: "Already solved — a Solved Episode is never acknowledged.",
     ackNotSaved: "The acknowledgement was not saved.",

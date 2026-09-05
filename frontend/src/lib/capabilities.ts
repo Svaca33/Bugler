@@ -8,3 +8,8 @@ import type { CurrentUser } from "@/api/client";
 export function canConfigureAlerting(user: CurrentUser | null | undefined): boolean {
   return user?.isAdmin === true;
 }
+
+/** Deleting a kind of trouble for good, Journal and all (Alerting CONTEXT.md: Deletion). */
+export function canDeleteKindsOfTrouble(user: CurrentUser | null | undefined): boolean {
+  return user?.isAdmin === true;
+}

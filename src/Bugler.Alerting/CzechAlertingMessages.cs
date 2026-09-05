@@ -18,6 +18,12 @@ internal sealed class CzechAlertingMessages : AlertingMessages
     public override string OnlyAClosedEpisodeIsArchived =>
         "Otevřená epizoda stále přijímá shody a archivovat ji nelze.";
 
+    public override string KindStillHasAnOpenEpisode =>
+        "Druh potíží má stále otevřenou epizodu; maže se celý, nebo vůbec.";
+
+    public override string KindNotYetArchivedWhole =>
+        "Před smazáním druhu potíží musí být archivována každá jeho epizoda.";
+
     public override string QuietWindowAtLeastOneMinute =>
         "Tiché okno musí být alespoň 1 minuta.";
 

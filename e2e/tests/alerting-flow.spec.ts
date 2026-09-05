@@ -116,6 +116,30 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   await expect(
     page.getByRole("complementary").getByText("Payment declined: insufficient funds"),
   ).toBeVisible();
+
+  // Deleted for good: the Admin's one irreversible hand reaches the whole kind, and only once
+  // it is filed. The button offers a guard rather than the deletion — a stray click on the
+  // disarmed confirm does nothing until the word is typed — and afterwards the kind is gone
+  // from the archive too, not merely out of the everyday view.
+  await page.getByRole("link", { name: "Episodes" }).click();
+  await page.getByRole("button", { name: "Episodes", exact: true }).click();
+  await selectFilter(page, "All applications", appName);
+  await expect(row).toBeVisible();
+  await row.click();
+  await page.waitForURL(/episode=/);
+  await expect(panel.getByText(/Solved by/)).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Delete kind…" })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Archive", exact: true }).click();
+  await page.getByLabel("Show archived").click();
+  await expect(row).toBeVisible();
+  await panel.getByRole("button", { name: "Delete kind…" }).click();
+  const guard = page.getByRole("dialog");
+  const confirm = guard.getByRole("button", { name: "Delete for good" });
+  await expect(confirm).toBeDisabled();
+  await guard.getByLabel(/to confirm/).fill("delete");
+  await confirm.click();
+  await expect(row).toHaveCount(0);
+  await expect(panel).toHaveCount(0);
 });
 
 /**

@@ -112,6 +112,21 @@ export function useEpisodeActions(episodeId: string) {
     onSettled: refresh,
   });
 
+  // The Admin's one irreversible hand (Alerting CONTEXT.md: Deletion): the whole kind this
+  // Episode belongs to, addressed through it. Its failure stays out of `failure` below — the
+  // dialog that guards it shows the sentence where the hand was laid.
+  const deleteKind = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await api.DELETE("/api/admin/episodes/{id}/kind", {
+        params: { path: { id: episodeId } },
+      });
+      const words = getMessages().alerting.deleteKind;
+      if (response.status === 409) throw new Error(refusal(error, words.failed));
+      if (!response.ok) throw new Error(words.failed);
+    },
+    onSettled: refresh,
+  });
+
   const failure =
     acknowledge.error
     ?? withdraw.error
@@ -122,8 +137,8 @@ export function useEpisodeActions(episodeId: string) {
     ?? dismissResignation.error
     ?? withdrawClaim.error;
   return {
-    acknowledge, withdraw, solve, archive, unarchive, rejectProposal, dismissResignation,
-    withdrawClaim, failure,
+    acknowledge, withdraw, solve, archive, unarchive, deleteKind, rejectProposal,
+    dismissResignation, withdrawClaim, failure,
   };
 }
 

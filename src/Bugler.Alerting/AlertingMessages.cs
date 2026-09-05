@@ -31,6 +31,10 @@ internal abstract class AlertingMessages
     public abstract string EpisodeAlreadySolved { get; }
     public abstract string OnlyAClosedEpisodeIsArchived { get; }
 
+    // Deleting a kind of trouble.
+    public abstract string KindStillHasAnOpenEpisode { get; }
+    public abstract string KindNotYetArchivedWhole { get; }
+
     // Alerting settings.
     public abstract string QuietWindowAtLeastOneMinute { get; }
     public abstract string ClaimLeaseAtLeastOneHour { get; }
