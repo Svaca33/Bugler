@@ -57,3 +57,17 @@ Module boundaries are enforced by `tests/Bugler.ArchitectureTests` (backend) and
 ## Design sync (claude.ai/design)
 
 The UI kit syncs to the "Bugler Design System" project via the `/design-sync` skill. Config, notes (gotchas + re-sync risks), authored previews, and the conventions header live in [.design-sync/](.design-sync/NOTES.md) — read NOTES.md before touching the sync. After changing the UI kit, tokens, or previews, run `/design-sync` again.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `Svaca33/Bugler`, driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: root `CONTEXT-MAP.md` points at one `CONTEXT.md` per module. See `docs/agents/domain.md`.
