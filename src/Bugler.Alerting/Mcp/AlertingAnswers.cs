@@ -32,6 +32,12 @@ public sealed record EpisodeSummary(
     string? FirstMatchDetail,
     DateTimeOffset? AcknowledgedAt,
     DateTimeOffset? SolvedAt,
+    /// <summary>
+    /// When a person filed this closed Episode out of the everyday view (see CONTEXT.md:
+    /// Archived). A shared fact about the Episode, not a lens, so the machine door reports it
+    /// rather than hiding the Episode behind it; null while unfiled.
+    /// </summary>
+    DateTimeOffset? ArchivedAt,
     /// <summary>The machine hand's marks, where one stands — so agents see each other's work.</summary>
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     ClaimMark? Claim,

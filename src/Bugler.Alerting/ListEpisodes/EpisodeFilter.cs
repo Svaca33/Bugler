@@ -111,6 +111,10 @@ internal static class EpisodeFilter
     public static IQueryable<Episode> WhereNotArchived(this IQueryable<Episode> query) =>
         query.Where(e => e.ArchivedAt == null);
 
+    /// <summary>The filed ones alone — the other half of the mark, for a caller who asks for it.</summary>
+    public static IQueryable<Episode> WhereArchived(this IQueryable<Episode> query) =>
+        query.Where(e => e.ArchivedAt != null);
+
     /// <summary>
     /// Keeps only each kind of trouble's latest Episode — the face the grouped list shows. The
     /// face is absolute: newest of its (Episode Scope, Watch, Fingerprint) over

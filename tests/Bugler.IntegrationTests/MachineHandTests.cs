@@ -1,8 +1,10 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Bugler.Access.ManageMachineDelegations;
 using Bugler.Alerting.DescribeEpisode;
 using Bugler.Alerting.Episodes;
 using Bugler.Alerting.ListEpisodes;
+using Bugler.Alerting.Mcp;
 
 namespace Bugler.IntegrationTests;
 
@@ -163,6 +165,58 @@ public sealed class MachineHandTests : IAsyncLifetime
         Assert.Contains("no such episode", refusal);
     }
 
+    [Fact]
+    public async Task The_machine_door_lists_filed_episodes_whole_and_narrows_only_when_asked()
+    {
+        var filed = await SeedEpisodeAsync("filed trouble", quieted: true);
+        var unfiled = await SeedEpisodeAsync("live trouble", quieted: true);
+        (await _harness.Client.PostAsync($"/api/alerting/episodes/{filed}/archive", null))
+            .EnsureSuccessStatusCode();
+        var reading = await IssueAsync("reader", grade: null);
+
+        // No implicit filter: a filing tidies the view a person reads, and hiding it from a
+        // machine would turn it into a blindfold. The mark itself is legible in the answer.
+        var whole = await CallToolAsync(
+            reading.Secret, "list_episodes", new { states = new[] { "Quieted" } });
+        Assert.Contains(filed.ToString(), whole);
+        Assert.Contains(unfiled.ToString(), whole);
+        var filedSummary = SummaryOf(whole, filed);
+        var unfiledSummary = SummaryOf(whole, unfiled);
+        Assert.NotNull(filedSummary.ArchivedAt);
+        Assert.Null(unfiledSummary.ArchivedAt);
+
+        var filedOnly = await CallToolAsync(
+            reading.Secret, "list_episodes", new { states = new[] { "Quieted" }, archived = true });
+        Assert.Contains(filed.ToString(), filedOnly);
+        Assert.DoesNotContain(unfiled.ToString(), filedOnly);
+
+        var unfiledOnly = await CallToolAsync(
+            reading.Secret, "list_episodes", new { states = new[] { "Quieted" }, archived = false });
+        Assert.DoesNotContain(filed.ToString(), unfiledOnly);
+        Assert.Contains(unfiled.ToString(), unfiledOnly);
+
+        // get_episode does not look away either.
+        var one = await CallToolAsync(reading.Secret, "get_episode", new { id = filed });
+        var detail = AnswerOf<EpisodeDetailAnswer>(one);
+        Assert.Equal(filed, detail.Episode.Id);
+        Assert.NotNull(detail.Episode.ArchivedAt);
+    }
+
+    private static EpisodeSummary SummaryOf(string listBody, Guid id) =>
+        Assert.Single(AnswerOf<EpisodeListAnswer>(listBody).Episodes, e => e.Id == id);
+
+    /// <summary>
+    /// The typed answer out of the door's envelope: one SSE frame carrying the JSON-RPC result,
+    /// whose text content is the answer serialised the way the tool wrote it.
+    /// </summary>
+    private static T AnswerOf<T>(string body)
+    {
+        var data = body.Split('\n').Single(line => line.StartsWith("data:", StringComparison.Ordinal))["data:".Length..];
+        var text = JsonDocument.Parse(data).RootElement
+            .GetProperty("result").GetProperty("content")[0].GetProperty("text").GetString()!;
+        return JsonSerializer.Deserialize<T>(text, JsonSerializerOptions.Web)!;
+    }
+
     private async Task<IssuedMachineDelegationDto> IssueAsync(string name, string? grade)
     {
         var response = await _harness.Client.PostAsJsonAsync(
@@ -199,7 +253,7 @@ public sealed class MachineHandTests : IAsyncLifetime
             $"/api/alerting/episodes/{id}/detail"))!;
 
     private async Task<Guid> SeedEpisodeAsync(
-        string body, Guid? serviceId = null, Guid? applicationId = null)
+        string body, Guid? serviceId = null, Guid? applicationId = null, bool quieted = false)
     {
         var id = Guid.CreateVersion7();
         await _harness.ExecuteSqlAsync(
@@ -212,7 +266,8 @@ public sealed class MachineHandTests : IAsyncLifetime
             VALUES
                 ('{id}', '{serviceId ?? _harness.ServiceId}', '{applicationId ?? _harness.ApplicationId}',
                  'app={applicationId ?? _harness.ApplicationId}|env=prod', 1, '{body}', '{body}',
-                 1, 2, false, false, now(), 1, now(), 17, '{body}', 1, 0, now(), NULL, NULL);
+                 1, 2, false, false, now(), 1, now(), 17, '{body}', 1, 0, now(),
+                 {(quieted ? "now()" : "NULL")}, {(quieted ? "1" : "NULL")});
             INSERT INTO alerting.participations
                 (id, episode_id, service_id, version, first_at, last_at, error_count, warn_count)
             VALUES

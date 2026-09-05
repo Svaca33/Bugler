@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Bugler.Access.Contracts;
 using Bugler.Alerting.Deliveries;
 using Bugler.Alerting.Episodes;
+using Bugler.Alerting.ListEpisodes;
 using Bugler.Alerting.Settings;
 using Bugler.Mail;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +47,10 @@ public sealed class AlertingTools
         + "by a Quiet Window of silence. One episode may be fed by several services and versions "
         + "— its participations say which. Start here: this is what Bugler noticed unasked. "
         + "States: Open (still happening), Quieted (went quiet on its own), Solved (a person said "
-        + "so), Muted. Defaults to the Episodes that are still open. Answers carry any machine "
+        + "so), Muted. Defaults to the Episodes that are still open. A closed Episode a person "
+        + "has filed away carries archivedAt; it is listed all the same, because filing tidies "
+        + "the view a person reads and this door sees the world whole — pass archived to narrow "
+        + "to filed or unfiled ones. Answers carry any machine "
         + "hand marks — claims, notes, proposals, resignations — so agents see each other's "
         + "work. Pass a fingerprint (with every state) to read the history of one kind of "
         + "trouble before retrying a fix that may already have failed: episodes never reopen, "
@@ -69,6 +73,10 @@ public sealed class AlertingTools
         string? fingerprint = null,
         [Description("Only Episodes whose last match is at or after this ISO-8601 instant.")]
         string? since = null,
+        [Description(
+            "true: only Episodes a person has filed away (Archived); false: only unfiled ones. "
+            + "Left out, both are listed — there is no implicit filter at this door.")]
+        bool? archived = null,
         [Description("How many to return, newest first. Default 50, at most 200.")]
         int? limit = null)
     {
@@ -109,6 +117,14 @@ public sealed class AlertingTools
             }
 
             query = query.Where(e => e.LastMatchAt >= lowerBound);
+        }
+
+        // Deliberately unlike the everyday REST view, which files Archived Episodes out unless
+        // asked (see CONTEXT.md: Archived): the mark is a shared fact about the Episode, not a
+        // reader's lens, so the machine door narrows on it only when told to.
+        if (archived is { } filed)
+        {
+            query = filed ? query.WhereArchived() : query.WhereNotArchived();
         }
 
         var take = Math.Clamp(limit ?? DefaultLimit, 1, MaxLimit);
@@ -633,6 +649,7 @@ public sealed class AlertingTools
         episode.FirstMatchDetail,
         episode.AcknowledgedAt,
         episode.SolvedAt,
+        episode.ArchivedAt,
         episode is { ClaimedByDelegationId: { } claimBy, ClaimedAt: { } claimAt, ClaimLeaseUntil: { } leaseUntil }
             ? new ClaimMark(
                 NameOf(names, claimBy)?.Name, NameOf(names, claimBy)?.HolderEmail, claimAt, leaseUntil)
