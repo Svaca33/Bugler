@@ -88,6 +88,14 @@ _Avoid_: handover, escalation, give-up, unsolvable flag, needs-human
 The append-only record of every hand laid on an Episode, and whether it was flesh or machine — Acknowledged, Withdrawn, Solved, and the machine hand's claims, notes, proposals and Resignations, each machine entry naming the delegation and through it its User. Entries are only ever added, never changed or removed; the live marks say what holds now, the Journal says what happened. When a Solve consumes an acknowledgement held by an earlier Episode of its kind, that Episode's Journal records the withdrawal by the solver's hand.
 _Avoid_: audit log, history, event log, activity feed
 
+**Archived**:
+A closed Episode filed out of the everyday view — a mark laid on top of a state, never a state of its own. It says nothing about the trouble, because Quieted, Solved and Muted have already said it; any closed Episode may carry it, an open one may not, and lifting it restores the Episode unchanged. Shared rather than each reader's own: one Episode is filed for everyone, and the Journal records whose hand did it.
+_Avoid_: deleted, resolved, closed, done, dismissed, hidden
+
+**Deletion**:
+The permanent removal of one kind of trouble from an Episode Scope — every Episode of it, and with them their Participations, Journals, Readings and the Deliveries still owed. Reaches the kind rather than one Episode, because what an Episode says about its kind — how often it recurred before, whose hand was laid on it earlier, whether a Solved Proposal has been overtaken — is an answer no surviving sibling could still give truthfully once one of them was gone. Only a kind whose every Episode is closed and Archived may be Deleted, and only by an Admin: it takes the Journal with it, which nothing else in Alerting may do.
+_Avoid_: archive, hide, purge, prune
+
 **Alert**:
 The message announcing that an Episode has begun to concern someone: that it opened — which Service, when, and the opening Match itself, the Log Record or what the probe got back — or that a Service they follow has just fallen into one already running, which says since when instead. Exactly one per Episode per recipient, so following both an Application and one of its Services is told once.
 _Avoid_: notification, alarm
