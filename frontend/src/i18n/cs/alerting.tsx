@@ -288,6 +288,30 @@ export const alerting: AlertingMessages = {
     cancel: "Zrušit",
   },
 
+  selection: {
+    selectEpisode: title => `Vybrat epizodu: ${title}`,
+    selectAllLoaded: "Vybrat všechny načtené epizody",
+    selected: count => plural("cs", count, {
+      one: `${count} vybraná`,
+      few: `${count} vybrané`,
+      other: `${count} vybraných`,
+    }),
+    archiveSelected: "Archivovat vybrané",
+    clear: "Zrušit výběr",
+    filed: count => plural("cs", count, {
+      one: `${count} archivovaná.`,
+      few: `${count} archivované.`,
+      other: `${count} archivovaných.`,
+    }),
+    filedAndRefused: (filed, refused, reasons) =>
+      `${plural("cs", filed, {
+        one: `${filed} archivovaná`,
+        few: `${filed} archivované`,
+        other: `${filed} archivovaných`,
+      })}, ${refused} ne — zůstávají vybrané. ${reasons}`,
+    dismiss: "Zavřít",
+  },
+
   actions: {
     acknowledge: "Převzít",
     withdraw: "Vrátit převzetí",

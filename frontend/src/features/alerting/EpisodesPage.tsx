@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { api, type Episode } from "@/api/client";
 import { useCatalog, useCurrentUser, useReleases } from "@/api/queries";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useT } from "@/i18n";
 import { MIN_LIST_WIDTH } from "@/lib/detailWidth";
@@ -22,6 +23,7 @@ import {
   resolveServiceIds,
   type EpisodesFilters,
 } from "./episodesFilter";
+import { isSelectable } from "./bulkArchive";
 import { EpisodesFilterRail } from "./EpisodesFilterRail";
 import { EpisodeDetailPanel } from "./EpisodeDetailPanel";
 import { clock, dayLabel, historyStamp } from "./format";
@@ -31,14 +33,24 @@ import { OpenNowBand } from "./OpenNowBand";
 import { QuietWindowBadge } from "./QuietWindowBadge";
 import { GroupingMarks } from "./GroupingMarks";
 import { Participants } from "./Participants";
+import { SelectionBar, type SelectionOutcome } from "./SelectionBar";
 import { indexServices, type KnownService } from "./serviceIndex";
 import { StateBadge } from "./StateBadge";
+import { useBulkArchive } from "./useEpisodeActions";
 
 const PAGE_SIZE = 100;
 const HISTORY_PAGE = 25;
 const REFETCH_MS = 30_000;
 
-const GRID = "grid grid-cols-[3px_1fr_128px_86px] items-center gap-3.5 px-5";
+const GRID = "grid grid-cols-[3px_16px_1fr_128px_86px] items-center gap-3.5 px-5";
+
+const NONE: ReadonlySet<string> = new Set();
+
+/** What a row's checkbox needs: whether it is in, and how to flip it. */
+interface Selection {
+  ids: ReadonlySet<string>;
+  toggle: (id: string) => void;
+}
 
 /** The Episodes within the viewer's Visibility Scope: the burning ones on top, history below. */
 export function EpisodesPage(props: {
@@ -141,6 +153,62 @@ export function EpisodesPage(props: {
   const items = episodes.data?.pages.flatMap(page => page.items) ?? [];
   const myName = currentUser.data?.displayName ?? currentUser.data?.email;
 
+  // The selection, and what the last bulk hand came to, belong to *this view*: both are keyed
+  // by the filters, so narrowing or widening the list starts afresh rather than carrying ids
+  // the reader can no longer see, or a verdict about rows no longer there. Ids survive a
+  // refetch, which is what lets the selection outlive the 30 s refresh.
+  const filtersKey = JSON.stringify(filters);
+  const [chosen, setChosen] = useState<{
+    key: string;
+    ids: ReadonlySet<string>;
+    outcome: SelectionOutcome | undefined;
+  }>();
+  const current = chosen?.key === filtersKey ? chosen : { key: filtersKey, ids: NONE, outcome: undefined };
+  const selectedIds = current.ids;
+  const setSelectedIds = (ids: ReadonlySet<string>) => setChosen({ ...current, ids });
+  const setOutcome = (outcome: SelectionOutcome | undefined) => setChosen({ ...current, outcome });
+  const selection: Selection = {
+    ids: selectedIds,
+    toggle: id => {
+      const next = new Set(selectedIds);
+      if (!next.delete(id)) next.add(id);
+      setSelectedIds(next);
+    },
+  };
+  // The header box reaches the faces the table has loaded, not the histories unfolded under
+  // them: what "all" means must be what the reader can see at a glance.
+  const selectableFaces = items.filter(isSelectable).map(episode => episode.id);
+  const facesChosen = selectableFaces.filter(id => selectedIds.has(id)).length;
+  const headerChecked: boolean | "indeterminate" =
+    selectableFaces.length > 0 && facesChosen === selectableFaces.length
+      ? true
+      : facesChosen > 0 ? "indeterminate" : false;
+
+  const bulkArchive = useBulkArchive();
+  const archiveSelected = () => {
+    setOutcome(undefined);
+    bulkArchive.mutate([...selectedIds], {
+      onSuccess: result => {
+        // The filed ones leave the selection with the view; the refused stay selected, so the
+        // reader sees exactly which rows the sentence is about. Read from the latest state, not
+        // the click's: a box ticked while the hands were landing must not be lost.
+        const filed = new Set(result.filed);
+        setChosen(latest => ({
+          key: filtersKey,
+          ids: new Set(
+            [...(latest?.key === filtersKey ? latest.ids : NONE)].filter(id => !filed.has(id)),
+          ),
+          outcome: {
+            filed: result.filed.length,
+            refused: result.refused.length,
+            reasons: [...new Set(result.refused.map(r => r.reason).filter(r => r.length > 0))]
+              .join(" "),
+          },
+        }));
+      },
+    });
+  };
+
   // Joined in the browser rather than server-side: Releases are Ingestion's and reach the UI
   // through Exploration, while Episodes are Alerting's, and no endpoint answers for both
   // (ADR 0013). The two arrive apart and meet here, on service id and instant.
@@ -209,11 +277,29 @@ export function EpisodesPage(props: {
             onSelect={onSelect}
           />
 
+          <SelectionBar
+            count={selectedIds.size}
+            pending={bulkArchive.isPending}
+            outcome={current.outcome}
+            onArchive={archiveSelected}
+            onClear={() => setSelectedIds(NONE)}
+            onDismiss={() => setOutcome(undefined)}
+          />
+
           <div className="min-h-0 flex-1 overflow-auto">
             <div
               className={`${GRID} sticky top-0 z-10 h-7 border-b border-[#17293D] bg-background font-mono text-[10px] tracking-[0.12em] text-[#5F7590]`}
             >
               <span />
+              <Checkbox
+                aria-label={t.alerting.selection.selectAllLoaded}
+                checked={headerChecked}
+                disabled={selectableFaces.length === 0}
+                onCheckedChange={checked =>
+                  setSelectedIds(checked === true
+                    ? new Set([...selectedIds, ...selectableFaces])
+                    : new Set([...selectedIds].filter(id => !selectableFaces.includes(id))))}
+              />
               <span>{t.alerting.list.columnEpisode}</span>
               <span>{t.alerting.list.columnState}</span>
               <span className="text-right">{t.alerting.list.columnDuration}</span>
@@ -224,6 +310,7 @@ export function EpisodesPage(props: {
                 services={services}
                 selectedId={selectedId}
                 myName={myName}
+                selection={selection}
                 onSelect={onSelect}
               />
               {items.length === 0 && !episodes.isLoading && (
@@ -273,6 +360,7 @@ function EpisodeRows(props: {
   services: Map<string, KnownService>;
   selectedId: string | undefined;
   myName: string | undefined;
+  selection: Selection;
   onSelect: (id: string) => void;
 }) {
   // Day labels only move at midnight — a render-time clock is enough, no ticking here. The only
@@ -322,6 +410,7 @@ function EpisodeRows(props: {
         services={props.services}
         selected={episode.id === props.selectedId}
         myName={props.myName}
+        selection={props.selection}
         expanded={expanded}
         onToggleHistory={Number(episode.priorCount) > 0 ? () => toggle(groupKey) : undefined}
         onSelect={props.onSelect}
@@ -333,6 +422,7 @@ function EpisodeRows(props: {
           key={`history-${groupKey}`}
           face={episode}
           selectedId={props.selectedId}
+          selection={props.selection}
           onSelect={props.onSelect}
         />,
       );
@@ -347,6 +437,7 @@ function EpisodeRow(props: {
   services: Map<string, KnownService>;
   selected: boolean;
   myName: string | undefined;
+  selection: Selection;
   expanded: boolean;
   onToggleHistory: (() => void) | undefined;
   onSelect: (id: string) => void;
@@ -403,6 +494,8 @@ function EpisodeRow(props: {
           muted ? "bg-severity-debug-rail" : episodeRailClass(episode.firstMatchSeverity)
         }`}
       />
+
+      <SelectBox episode={episode} selection={props.selection} />
 
       <div className="flex min-w-0 flex-col gap-[3px]">
         <span
@@ -481,6 +574,7 @@ function EpisodeRow(props: {
 function GroupHistory(props: {
   face: Episode;
   selectedId: string | undefined;
+  selection: Selection;
   onSelect: (id: string) => void;
 }) {
   const { face } = props;
@@ -518,6 +612,7 @@ function GroupHistory(props: {
           episode={episode}
           now={now}
           selected={episode.id === props.selectedId}
+          selection={props.selection}
           onSelect={props.onSelect}
         />
       ))}
@@ -546,6 +641,7 @@ function HistoryRow(props: {
   episode: Episode;
   now: number;
   selected: boolean;
+  selection: Selection;
   onSelect: (id: string) => void;
 }) {
   const { episode, selected } = props;
@@ -559,6 +655,7 @@ function HistoryRow(props: {
       onClick={() => props.onSelect(episode.id)}
     >
       <span />
+      <SelectBox episode={episode} selection={props.selection} />
       <span className="flex min-w-0 items-center gap-[9px] overflow-hidden pl-4 font-mono text-[11px] whitespace-nowrap text-[#7D93AA]">
         <span>{historyStamp(episode.openedAt, props.now)}</span>
         <span className="text-severity-error">{t.alerting.list.errCount(episode.errorCount)}</span>
@@ -581,5 +678,24 @@ function HistoryRow(props: {
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * The row's way into the selection. An Episode already filed gets an empty cell rather than a
+ * disabled box: it has nothing to gain from the one hand the selection offers. The click stays
+ * on the box — ticking a row is not opening it.
+ */
+function SelectBox(props: { episode: Episode; selection: Selection }) {
+  const t = useT();
+  const { episode, selection } = props;
+  if (!isSelectable(episode)) return <span />;
+  return (
+    <Checkbox
+      aria-label={t.alerting.selection.selectEpisode(episode.title)}
+      checked={selection.ids.has(episode.id)}
+      onCheckedChange={() => selection.toggle(episode.id)}
+      onClick={event => event.stopPropagation()}
+    />
   );
 }

@@ -283,6 +283,26 @@ export interface AlertingMessages {
     cancel: string;
   };
 
+  /**
+   * The selection in the list and the one hand it offers: the same Archived mark laid on many
+   * Episodes at once. The bar says how many are chosen, and afterwards which were filed and which
+   * refused — a selection with an open Episode in it never half-succeeds in silence.
+   */
+  selection: {
+    /** The row checkbox's accessible name: "Select episode: <title>". */
+    selectEpisode(title: string): string;
+    selectAllLoaded: string;
+    selected(count: number): string;
+    archiveSelected: string;
+    clear: string;
+    /** "3 archived." — the whole selection went through. */
+    filed(count: number): string;
+    /** "3 archived, 2 not — still selected. <the server's sentence>" — `reasons` are the server's
+     * own refusal sentences, deduplicated, shown verbatim in whatever language it spoke. */
+    filedAndRefused(filed: number, refused: number, reasons: string): string;
+    dismiss: string;
+  };
+
   /** The hands themselves — buttons shared by the band cards and the detail panel — and the
    * client-side fallbacks behind them. A 409's own sentence is shown verbatim, never these. */
   actions: {

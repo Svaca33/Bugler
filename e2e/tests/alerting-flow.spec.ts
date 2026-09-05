@@ -98,6 +98,18 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   await expect(row).toBeVisible();
   await expect(panel.getByText(/Solved by/)).toBeVisible();
 
+  // The same mark laid from the list: tick the row, archive the selection. The bar says what
+  // was filed, the filed row leaves the view, and the rail brings it back for the lift.
+  await row.getByRole("checkbox").click();
+  await page.getByRole("button", { name: "Archive selected" }).click();
+  await expect(page.getByTestId("selection-bar").getByRole("status")).toHaveText("1 archived.");
+  await expect(row).toHaveCount(0);
+  await page.getByLabel("Show archived").click();
+  await expect(row).toBeVisible();
+  await panel.getByRole("button", { name: "Unarchive", exact: true }).click();
+  await page.getByLabel("Show archived").click();
+  await expect(row).toBeVisible();
+
   // The panel deep-links to the logs view with the first record already open.
   await panel.getByRole("button", { name: "Open in logs", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Log record", exact: true })).toBeVisible();

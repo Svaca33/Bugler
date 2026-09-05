@@ -266,6 +266,18 @@ export const alerting: AlertingMessages = {
     cancel: "Cancel",
   },
 
+  selection: {
+    selectEpisode: title => `Select episode: ${title}`,
+    selectAllLoaded: "Select every loaded episode",
+    selected: count => `${count} selected`,
+    archiveSelected: "Archive selected",
+    clear: "Clear selection",
+    filed: count => `${count} archived.`,
+    filedAndRefused: (filed, refused, reasons) =>
+      `${filed} archived, ${refused} not — still selected. ${reasons}`,
+    dismiss: "Dismiss",
+  },
+
   actions: {
     acknowledge: "Acknowledge",
     withdraw: "Withdraw",
