@@ -1,3 +1,4 @@
+using Bugler.Alerting.Episodes;
 using Bugler.SharedKernel;
 
 namespace Bugler.Alerting.Settings;
@@ -9,7 +10,9 @@ namespace Bugler.Alerting.Settings;
 /// Absence means inherit, so a row is deleted rather than nulled.
 ///
 /// Keyed on the Scope rather than the Service since ADR 0034, for the same reason the Episode is:
-/// one window over one kind of trouble, however many deployments feed it.
+/// one window over one kind of trouble, however many deployments feed it — and on the Watch
+/// beside it, because a Fingerprint means something different under each (Alerting ADR 0007) and
+/// the key is what an Episode is told apart by.
 /// </summary>
 public sealed class FingerprintQuietWindow
 {
@@ -22,6 +25,9 @@ public sealed class FingerprintQuietWindow
 
     /// <summary>How far the Episodes it governs reach, exactly as they carry it (see CONTEXT.md: Episode Scope).</summary>
     public required string ScopeKey { get; init; }
+
+    /// <summary>Which Watch reads that Fingerprint, exactly as Episodes carry it (see CONTEXT.md: Watch).</summary>
+    public required Watch Watch { get; init; }
 
     /// <summary>The kind of trouble, exactly as Episodes carry it (see CONTEXT.md: Fingerprint).</summary>
     public required string Fingerprint { get; init; }

@@ -91,6 +91,7 @@ internal static class EpisodeDetailEndpoint
 
         var priorCount = await dbContext.Episodes.CountAsync(p =>
             p.ScopeKey == episode.ScopeKey
+            && p.Watch == episode.Watch
             && p.Fingerprint == episode.Fingerprint
             && p.Id.CompareTo(episode.Id) < 0, cancellationToken);
 
@@ -98,6 +99,7 @@ internal static class EpisodeDetailEndpoint
         // holding an acknowledgement also holds the kind's newest one.
         var earlierAck = await dbContext.Episodes.AsNoTracking()
             .Where(p => p.ScopeKey == episode.ScopeKey
+                && p.Watch == episode.Watch
                 && p.Fingerprint == episode.Fingerprint
                 && p.Id.CompareTo(episode.Id) < 0
                 && p.AcknowledgedByUserId != null)
@@ -132,7 +134,9 @@ internal static class EpisodeDetailEndpoint
             await dbContext.ServiceSettings.AsNoTracking().ToListAsync(cancellationToken),
             fingerprintWindows);
         var own = fingerprintWindows.FirstOrDefault(
-            w => w.ScopeKey == episode.ScopeKey && w.Fingerprint == episode.Fingerprint);
+            w => w.ScopeKey == episode.ScopeKey
+                && w.Watch == episode.Watch
+                && w.Fingerprint == episode.Fingerprint);
         var participations = await EpisodesEndpoint.ParticipationsOfAsync(
             dbContext, [episode.Id], cancellationToken);
         // Sensitivity and the Quiet Window's fallback stay per Service; the panel names them for
@@ -159,6 +163,7 @@ internal static class EpisodeDetailEndpoint
         var newerExists = (episode.ProposedAt is not null || episode.ResignedAt is not null)
             && await dbContext.Episodes.AnyAsync(p =>
                 p.ScopeKey == episode.ScopeKey
+                && p.Watch == episode.Watch
                 && p.Fingerprint == episode.Fingerprint
                 && p.Id.CompareTo(episode.Id) > 0, cancellationToken);
 
@@ -191,7 +196,8 @@ internal static class EpisodeDetailEndpoint
                 : null,
             chat is null ? null : new ChatAlertDto(chat.DeliveredAt),
             effective.SensitivityOf(speakingFor),
-            effective.QuietWindowMinutesOf(speakingFor, episode.ScopeKey, episode.Fingerprint),
+            effective.QuietWindowMinutesOf(
+                speakingFor, episode.ScopeKey, episode.Watch, episode.Fingerprint),
             effective.InheritedQuietWindowMinutesOf(speakingFor),
             journal.Select(j => new JournalEntryDto(
                 j.Kind, j.At, EpisodesEndpoint.NameOf(names, j.UserId),

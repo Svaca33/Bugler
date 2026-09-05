@@ -409,6 +409,7 @@ public sealed class AlertingTools
     {
         var newerExists = await dbContext.Episodes.AnyAsync(n =>
             n.ScopeKey == episode.ScopeKey
+            && n.Watch == episode.Watch
             && n.Fingerprint == episode.Fingerprint
             && n.Id.CompareTo(episode.Id) > 0, cancellationToken);
         if (newerExists)
@@ -602,6 +603,7 @@ public sealed class AlertingTools
         var ids = await dbContext.Episodes.AsNoTracking()
             .Where(e => marked.Contains(e.Id) && dbContext.Episodes.Any(p =>
                 p.ScopeKey == e.ScopeKey
+                && p.Watch == e.Watch
                 && p.Fingerprint == e.Fingerprint
                 && p.Id.CompareTo(e.Id) > 0))
             .Select(e => e.Id)

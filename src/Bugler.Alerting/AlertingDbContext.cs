@@ -65,8 +65,8 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
 
         modelBuilder.Entity<FingerprintQuietWindow>(window =>
         {
-            // The key is the pair an Episode is told apart by — the same one detection groups on.
-            window.HasKey(w => new { w.ScopeKey, w.Fingerprint });
+            // The key is what an Episode is told apart by — the same one detection groups on.
+            window.HasKey(w => new { w.ScopeKey, w.Watch, w.Fingerprint });
             window.Property(w => w.ScopeKey).HasMaxLength(EpisodeScope.MaxKeyLength);
             window.Property(w => w.ApplicationId).HasConversion(ApplicationIdConverter);
             window.Property(w => w.Fingerprint).HasMaxLength(Fingerprint.MaxLength);
@@ -110,7 +110,9 @@ public sealed class AlertingDbContext(DbContextOptions<AlertingDbContext> option
                 .HasFilter("closed_at IS NULL")
                 .HasDatabaseName("ix_episodes_one_open_per_kind");
             // The full history of a kind of trouble: recurrence counts and the grouped UI read.
-            episode.HasIndex(e => new { e.ScopeKey, e.Fingerprint }, "kind_history")
+            // Keyed the way the kind is, Watch and all, so every cross-Episode question about a
+            // kind reads the same three columns the open-Episode invariant is stated in.
+            episode.HasIndex(e => new { e.ScopeKey, e.Watch, e.Fingerprint }, "kind_history")
                 .HasDatabaseName("ix_episodes_kind_history");
             episode.HasIndex(e => e.ApplicationId);
             episode.HasIndex(e => new { e.OpenedAt, e.Id });

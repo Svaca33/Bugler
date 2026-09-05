@@ -127,6 +127,7 @@ internal static class EpisodeActionEndpoints
             {
                 var acknowledged = await dbContext.Episodes
                     .Where(e => e.ScopeKey == episode.ScopeKey
+                        && e.Watch == episode.Watch
                         && e.Fingerprint == episode.Fingerprint
                         && e.AcknowledgedByUserId != null)
                     .ToListAsync(cancellationToken);
@@ -189,6 +190,7 @@ internal static class EpisodeActionEndpoints
         {
             var newerExists = await dbContext.Episodes.AnyAsync(n =>
                 n.ScopeKey == episode.ScopeKey
+                && n.Watch == episode.Watch
                 && n.Fingerprint == episode.Fingerprint
                 && n.Id.CompareTo(episode.Id) > 0, cancellationToken);
             if (newerExists)

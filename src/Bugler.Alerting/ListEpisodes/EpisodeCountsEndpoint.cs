@@ -87,11 +87,13 @@ internal static class EpisodeCountsEndpoint
         var proposals = await filtered.CountAsync(e =>
             e.ProposedAt != null && !dbContext.Episodes.Any(p =>
                 p.ScopeKey == e.ScopeKey
+                && p.Watch == e.Watch
                 && p.Fingerprint == e.Fingerprint
                 && p.Id.CompareTo(e.Id) > 0), cancellationToken);
         var resignations = await filtered.CountAsync(e =>
             e.ResignedAt != null && !dbContext.Episodes.Any(p =>
                 p.ScopeKey == e.ScopeKey
+                && p.Watch == e.Watch
                 && p.Fingerprint == e.Fingerprint
                 && p.Id.CompareTo(e.Id) > 0), cancellationToken);
 

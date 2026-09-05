@@ -71,6 +71,7 @@ public sealed class EpisodeCloser(
                 effective.QuietWindowOf(
                     episode.OpenedByServiceId ?? fedBy.FirstOrDefault(),
                     episode.ScopeKey,
+                    episode.Watch,
                     episode.Fingerprint),
                 now);
 

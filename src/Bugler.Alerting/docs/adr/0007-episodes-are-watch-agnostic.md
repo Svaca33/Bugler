@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted, amended by ADR 0011 (the Watch joined every kind's key)
 ---
 
 # Episodes belong to a Watch rather than to the log stream

@@ -123,6 +123,55 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Two_episodes_differing_only_in_their_watch_are_two_kinds_of_trouble()
+    {
+        // One Episode Scope, one Fingerprint string, two Watches. A Fingerprint means something
+        // different under each (Alerting ADR 0007), so a log whose body happens to read like the
+        // Health Check Watch's kind is other trouble: neither Episode is the other's history, neither
+        // overtakes the other, and a verdict on one leaves the other's mark standing.
+        var logs = NextId();
+        await Seed(logs, _harness.ServiceId, _harness.ApplicationId, "flaky", quieted: false);
+        var health = NextId();
+        await Seed(
+            health, _harness.ServiceId, _harness.ApplicationId, "flaky", quieted: false, watch: 2);
+
+        var both = await ListAsync();
+        Assert.Equal(2, both.Items.Count);
+        Assert.All(both.Items, e => Assert.Equal(0, e.PriorCount));
+
+        // Two kinds, so two faces — the grouped list groups by the kind, not by the string.
+        var faces = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?latestPerFingerprint=true");
+        Assert.Equal(2, faces!.Items.Count);
+
+        // The older is still the newest of its own kind, so a hand lands on it rather than 409ing.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{logs}/acknowledge", null))
+                .StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{health}/acknowledge", null))
+                .StatusCode);
+
+        // Neither wears the other's mark as its kind's earlier acknowledgement.
+        var marked = await ListAsync();
+        Assert.All(marked.Items, e => Assert.Null(e.EarlierAcknowledgedBy));
+
+        // Solve consumes the acknowledgements of its own kind alone.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{logs}/solve", null))
+                .StatusCode);
+        var afterwards = await ListAsync();
+        Assert.Null(afterwards.Items.Single(e => e.Id == logs).AcknowledgedBy);
+        Assert.Equal("Admin", afterwards.Items.Single(e => e.Id == health).AcknowledgedBy);
+
+        // And the detail reads the kind the same way the list does.
+        var detail = await _harness.Client.GetFromJsonAsync<EpisodeDetailDto>(
+            $"/api/alerting/episodes/{health}/detail");
+        Assert.Equal(0, detail!.Episode.PriorCount);
+        Assert.Equal(EpisodeState.Open, detail.Episode.State);
+    }
+
+    [Fact]
     public async Task An_episode_is_acknowledged_taken_over_and_solved_by_hand()
     {
         await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom");
@@ -289,7 +338,9 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         // Application that scopes by Service Name still gets (ADR 0034).
         Seed(NextId(), serviceId, applicationId, body, quieted);
 
-    private Task Seed(Guid id, Guid serviceId, Guid applicationId, string body, bool quieted) =>
+    private Task Seed(
+        Guid id, Guid serviceId, Guid applicationId, string body, bool quieted,
+        short watch = 1) =>
         _harness.ExecuteSqlAsync(
             $"""
             INSERT INTO alerting.episodes
@@ -299,8 +350,10 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
                  first_match_detail, error_count, warn_count, last_match_at, closed_at, close_reason)
             VALUES
                 ('{id}', '{serviceId}', '{applicationId}',
-                 'app={applicationId}|env=prod|name={serviceId}', 1, '{body}', '{body}',
-                 1, 2, false, false, now(), 1, now(), 17, '{body}', 1, 0, now(),
+                 'app={applicationId}|env=prod|name={serviceId}', {watch}, '{body}', '{body}',
+                 1, 2, false, false, now(),
+                 {(watch == 1 ? "1" : "NULL")}, now(), {(watch == 1 ? "17" : "NULL")},
+                 '{body}', 1, 0, now(),
                  {(quieted ? "now()" : "NULL")}, {(quieted ? "1" : "NULL")});
             INSERT INTO alerting.participations
                 (id, episode_id, service_id, version, first_at, last_at, error_count, warn_count)

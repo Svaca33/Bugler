@@ -1,3 +1,4 @@
+using Bugler.Alerting.Episodes;
 using Bugler.Alerting.Settings;
 using Bugler.Registry.Contracts;
 using Bugler.SharedKernel;
@@ -20,10 +21,12 @@ public class EffectiveSettingsTests
     private static string ScopeOf(ServiceId service, ApplicationId app = default) =>
         EpisodeScope.Default.KeyOf(Registered(service, app == default ? App : app));
 
-    private static FingerprintQuietWindow Own(ServiceId service, string fingerprint, int minutes) =>
+    private static FingerprintQuietWindow Own(
+        ServiceId service, string fingerprint, int minutes, Watch watch = Watch.Logs) =>
         new()
         {
             ScopeKey = ScopeOf(service),
+            Watch = watch,
             Fingerprint = fingerprint,
             ApplicationId = App,
             QuietWindowMinutes = minutes,
@@ -35,7 +38,8 @@ public class EffectiveSettingsTests
         var effective = EffectiveSettings.Build([Registered(Web, App)], [], [], []);
 
         Assert.Equal(Sensitivity.Errors, effective.SensitivityOf(Web));
-        Assert.Equal(TimeSpan.FromMinutes(15), effective.QuietWindowOf(Web, ScopeOf(Web), Kind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(15), effective.QuietWindowOf(Web, ScopeOf(Web), Watch.Logs, Kind));
     }
 
     [Fact]
@@ -53,7 +57,9 @@ public class EffectiveSettingsTests
             []);
 
         Assert.Equal(Sensitivity.ErrorsAndWarnings, effective.SensitivityOf(Worker));
-        Assert.Equal(TimeSpan.FromMinutes(30), effective.QuietWindowOf(Worker, ScopeOf(Worker), Kind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(30),
+            effective.QuietWindowOf(Worker, ScopeOf(Worker), Watch.Logs, Kind));
     }
 
     [Fact]
@@ -72,7 +78,8 @@ public class EffectiveSettingsTests
             []);
 
         Assert.Equal(Sensitivity.Off, effective.SensitivityOf(Web));
-        Assert.Equal(TimeSpan.FromMinutes(45), effective.QuietWindowOf(Web, ScopeOf(Web), Kind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(45), effective.QuietWindowOf(Web, ScopeOf(Web), Watch.Logs, Kind));
     }
 
     [Fact]
@@ -89,9 +96,30 @@ public class EffectiveSettingsTests
             }],
             [Own(Web, Kind, 120)]);
 
-        Assert.Equal(TimeSpan.FromMinutes(120), effective.QuietWindowOf(Web, ScopeOf(Web), Kind));
-        Assert.Equal(TimeSpan.FromMinutes(20), effective.QuietWindowOf(Web, ScopeOf(Web), OtherKind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(120), effective.QuietWindowOf(Web, ScopeOf(Web), Watch.Logs, Kind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(20),
+            effective.QuietWindowOf(Web, ScopeOf(Web), Watch.Logs, OtherKind));
         Assert.Equal(20, effective.InheritedQuietWindowMinutesOf(Web));
+    }
+
+    [Fact]
+    public void A_kind_window_belongs_to_one_watch()
+    {
+        // A Fingerprint means something different under each Watch (Alerting ADR 0007), so the
+        // same string read under the other one is other trouble and inherits.
+        var effective = EffectiveSettings.Build(
+            [Registered(Web, App)],
+            [],
+            [],
+            [Own(Web, Kind, 120, Watch.HealthCheck)]);
+
+        Assert.Equal(
+            TimeSpan.FromMinutes(120),
+            effective.QuietWindowOf(Web, ScopeOf(Web), Watch.HealthCheck, Kind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(15), effective.QuietWindowOf(Web, ScopeOf(Web), Watch.Logs, Kind));
     }
 
     [Fact]
@@ -111,12 +139,14 @@ public class EffectiveSettingsTests
             [],
             [Own(Web, Kind, 120)]);
 
-        Assert.Equal(TimeSpan.FromMinutes(120), effective.QuietWindowOf(Web, ScopeOf(Web), Kind));
         Assert.Equal(
-            TimeSpan.FromMinutes(120), effective.QuietWindowOf(Worker, ScopeOf(Worker), Kind));
+            TimeSpan.FromMinutes(120), effective.QuietWindowOf(Web, ScopeOf(Web), Watch.Logs, Kind));
+        Assert.Equal(
+            TimeSpan.FromMinutes(120),
+            effective.QuietWindowOf(Worker, ScopeOf(Worker), Watch.Logs, Kind));
         Assert.Equal(
             TimeSpan.FromMinutes(15),
-            effective.QuietWindowOf(staging, effective.ScopeKeyOf(staging)!, Kind));
+            effective.QuietWindowOf(staging, effective.ScopeKeyOf(staging)!, Watch.Logs, Kind));
     }
 
     [Fact]

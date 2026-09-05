@@ -159,12 +159,14 @@ internal static class EpisodesEndpoint
                 Episode = e,
                 PriorCount = dbContext.Episodes.Count(p =>
                     p.ScopeKey == e.ScopeKey
+                    && p.Watch == e.Watch
                     && p.Fingerprint == e.Fingerprint
                     && p.Id.CompareTo(e.Id) < 0),
                 // Actions land only on the newest Episode of a kind, so the newest earlier
                 // Episode holding an acknowledgement also holds the kind's newest one.
                 EarlierAck = dbContext.Episodes
                     .Where(p => p.ScopeKey == e.ScopeKey
+                        && p.Watch == e.Watch
                         && p.Fingerprint == e.Fingerprint
                         && p.Id.CompareTo(e.Id) < 0
                         && p.AcknowledgedByUserId != null)
@@ -173,7 +175,9 @@ internal static class EpisodesEndpoint
                     .FirstOrDefault(),
                 // Keyed on the new table's primary key, so this is a lookup, not a scan.
                 FingerprintQuietWindowMinutes = dbContext.FingerprintQuietWindows
-                    .Where(w => w.ScopeKey == e.ScopeKey && w.Fingerprint == e.Fingerprint)
+                    .Where(w => w.ScopeKey == e.ScopeKey
+                        && w.Watch == e.Watch
+                        && w.Fingerprint == e.Fingerprint)
                     .Select(w => (int?)w.QuietWindowMinutes)
                     .FirstOrDefault(),
                 // Only a proposal or a Resignation ages into "overtaken", so the sibling check
@@ -181,6 +185,7 @@ internal static class EpisodesEndpoint
                 NewerExists = (e.ProposedAt != null || e.ResignedAt != null)
                     && dbContext.Episodes.Any(p =>
                         p.ScopeKey == e.ScopeKey
+                        && p.Watch == e.Watch
                         && p.Fingerprint == e.Fingerprint
                         && p.Id.CompareTo(e.Id) > 0),
             })

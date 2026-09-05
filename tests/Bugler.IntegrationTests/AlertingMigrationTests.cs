@@ -11,11 +11,17 @@ namespace Bugler.IntegrationTests;
 /// Fingerprint was readable — that is the whole trick — so it becomes the Title, every legacy row
 /// is stamped recipe version 0 so nothing ever re-fingerprints it, and the open Logs Episodes are
 /// Muted as Regrouped rather than left to quiet out in a partition nothing will report again.
+///
+/// And after it, the reversible one that puts the Watch in the key of a kind of trouble: nothing
+/// is decided there, only named, so every existing row has to come through it unchanged in meaning.
 /// </summary>
 public sealed class AlertingMigrationTests : IAsyncLifetime
 {
     /// <summary>The last migration before an Episode stopped being one Service's.</summary>
     private const string BeforeTheUpgrade = "20260811094238_AddMachineHand";
+
+    /// <summary>The last migration before a kind of trouble was keyed on its Watch.</summary>
+    private const string BeforeTheWatchInTheKey = "20260823111813_EpisodeIdentityAndScope";
 
     private BuglerHarness _harness = null!;
 
@@ -108,6 +114,37 @@ public sealed class AlertingMigrationTests : IAsyncLifetime
             "SELECT COUNT(*) FROM alerting.deliveries WHERE lapsed_at IS NOT NULL", 1));
         Assert.Equal(0, await _harness.WaitForCountAsync(
             "SELECT COUNT(*) FROM alerting.fingerprint_quiet_windows", 0));
+    }
+
+    /// <summary>
+    /// The Watch joins the key of `fingerprint_quiet_windows` without any override changing what
+    /// it governs. Nothing recorded the Watch before, so the Scope key's prefix is asked once —
+    /// `service=` is the Health Check Watch's and nothing else's — and never again.
+    /// </summary>
+    [Fact]
+    public async Task A_quiet_window_override_keeps_the_watch_its_scope_key_implied()
+    {
+        await MigrateToAsync(BeforeTheWatchInTheKey);
+        await _harness.ExecuteSqlAsync(
+            $"""
+            INSERT INTO alerting.fingerprint_quiet_windows
+                (scope_key, fingerprint, application_id, quiet_window_minutes, updated_at)
+            VALUES
+                ('app={_harness.ApplicationId}|env=prod', 'a1b2c3',
+                 '{_harness.ApplicationId}', 120, now()),
+                ('service={_harness.ServiceId}', 'a1b2c3',
+                 '{_harness.ApplicationId}', 30, now());
+            """);
+
+        await MigrateToAsync(null);
+
+        // The same Fingerprint under two Watches: two rows, each still governing what it did.
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.fingerprint_quiet_windows "
+            + "WHERE watch = 1 AND quiet_window_minutes = 120", 1));
+        Assert.Equal(1, await _harness.WaitForCountAsync(
+            "SELECT COUNT(*) FROM alerting.fingerprint_quiet_windows "
+            + "WHERE watch = 2 AND quiet_window_minutes = 30", 1));
     }
 
     /// <summary>Null means "all the way up" — the state every other test starts from.</summary>

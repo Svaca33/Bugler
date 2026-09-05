@@ -1,3 +1,4 @@
+using Bugler.Alerting.Episodes;
 using Bugler.Registry.Contracts;
 using Bugler.SharedKernel;
 
@@ -18,11 +19,12 @@ namespace Bugler.Alerting.Settings;
 public sealed class EffectiveSettings
 {
     private readonly Dictionary<ServiceId, ResolvedService> _services;
-    private readonly Dictionary<(string ScopeKey, string Fingerprint), int> _fingerprintWindows;
+    private readonly Dictionary<(string ScopeKey, Watch Watch, string Fingerprint), int>
+        _fingerprintWindows;
 
     private EffectiveSettings(
         Dictionary<ServiceId, ResolvedService> services,
-        Dictionary<(string, string), int> fingerprintWindows)
+        Dictionary<(string, Watch, string), int> fingerprintWindows)
     {
         _services = services;
         _fingerprintWindows = fingerprintWindows;
@@ -60,7 +62,7 @@ public sealed class EffectiveSettings
         return new EffectiveSettings(
             services,
             fingerprintWindows.ToDictionary(
-                w => (w.ScopeKey, w.Fingerprint), w => w.QuietWindowMinutes));
+                w => (w.ScopeKey, w.Watch, w.Fingerprint), w => w.QuietWindowMinutes));
     }
 
     /// <summary>An Application with no row, or nulls in it, scopes the way ADR 0034 says by default.</summary>
@@ -101,16 +103,19 @@ public sealed class EffectiveSettings
             .ToList();
 
     /// <summary>
-    /// How long this kind of trouble in this Episode Scope must stay silent. The Fingerprint's own
-    /// window wins where one is set; otherwise the Service's resolved value applies — Sensitivity
-    /// and the Quiet Window stay per Service even where the Episode does not, and that is correct:
-    /// an Episode may be fed by Services configured differently.
+    /// How long this kind of trouble in this Episode Scope must stay silent — the kind named the
+    /// way an Episode names it, Watch and all. The Fingerprint's own window wins where one is set;
+    /// otherwise the Service's resolved value applies — Sensitivity and the Quiet Window stay per
+    /// Service even where the Episode does not, and that is correct: an Episode may be fed by
+    /// Services configured differently.
     /// </summary>
-    public TimeSpan QuietWindowOf(ServiceId serviceId, string scopeKey, string fingerprint) =>
-        TimeSpan.FromMinutes(QuietWindowMinutesOf(serviceId, scopeKey, fingerprint));
+    public TimeSpan QuietWindowOf(
+        ServiceId serviceId, string scopeKey, Watch watch, string fingerprint) =>
+        TimeSpan.FromMinutes(QuietWindowMinutesOf(serviceId, scopeKey, watch, fingerprint));
 
-    public int QuietWindowMinutesOf(ServiceId serviceId, string scopeKey, string fingerprint) =>
-        _fingerprintWindows.TryGetValue((scopeKey, fingerprint), out var own)
+    public int QuietWindowMinutesOf(
+        ServiceId serviceId, string scopeKey, Watch watch, string fingerprint) =>
+        _fingerprintWindows.TryGetValue((scopeKey, watch, fingerprint), out var own)
             ? own
             : _services.GetValueOrDefault(serviceId)?.QuietWindowMinutes
                 ?? AlertingDefaults.QuietWindowMinutes;

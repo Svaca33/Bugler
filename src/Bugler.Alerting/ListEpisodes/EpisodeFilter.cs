@@ -68,12 +68,15 @@ internal static class EpisodeFilter
         if (scopeKey is not null)
         {
             // Opaque to whoever passes it, exactly as the Fingerprint is: the client echoes back
-            // what an earlier answer carried, and the pair is what a kind of trouble is told by.
+            // what an earlier answer carried.
             query = query.Where(e => e.ScopeKey == scopeKey);
         }
 
         if (fingerprint is not null)
         {
+            // A narrowing the caller asked for, not an answer to "which kind is this" — that
+            // question carries the Watch (Alerting ADR 0011), and the row says which Watch it
+            // was. Nobody has yet wanted to ask for one Watch's alone, so nothing offers it.
             query = query.Where(e => e.Fingerprint == fingerprint);
         }
 
@@ -101,7 +104,7 @@ internal static class EpisodeFilter
 
     /// <summary>
     /// Keeps only each kind of trouble's latest Episode — the face the grouped list shows. The
-    /// face is absolute: newest of its (Episode Scope, Fingerprint) over
+    /// face is absolute: newest of its (Episode Scope, Watch, Fingerprint) over
     /// <paramref name="everything"/>, regardless of any narrowing already applied, so this
     /// composes with Apply in either order. UUIDv7 ids compare bytewise in PostgreSQL, so "newer"
     /// is one id comparison.
@@ -110,6 +113,7 @@ internal static class EpisodeFilter
         this IQueryable<Episode> query, IQueryable<Episode> everything) =>
         query.Where(e => !everything.Any(n =>
             n.ScopeKey == e.ScopeKey
+            && n.Watch == e.Watch
             && n.Fingerprint == e.Fingerprint
             && n.Id.CompareTo(e.Id) > 0));
 }
