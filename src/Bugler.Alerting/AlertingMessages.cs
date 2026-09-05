@@ -29,6 +29,7 @@ internal abstract class AlertingMessages
     public abstract string SolvedEpisodeNeverAcknowledged { get; }
     public abstract string WithdrawingNeverRefuses { get; }
     public abstract string EpisodeAlreadySolved { get; }
+    public abstract string OnlyAClosedEpisodeIsArchived { get; }
 
     // Alerting settings.
     public abstract string QuietWindowAtLeastOneMinute { get; }

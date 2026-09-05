@@ -103,6 +103,15 @@ internal static class EpisodeFilter
     }
 
     /// <summary>
+    /// The everyday view: a filed Episode is out of it (see CONTEXT.md: Archived). Deliberately
+    /// not part of <see cref="Apply"/> — the rail hides the filed ones while still counting
+    /// them, because an observability tool must never let "hidden" read as "absent" (the same
+    /// principle as the Focus, Access ADR 0004).
+    /// </summary>
+    public static IQueryable<Episode> WhereNotArchived(this IQueryable<Episode> query) =>
+        query.Where(e => e.ArchivedAt == null);
+
+    /// <summary>
     /// Keeps only each kind of trouble's latest Episode — the face the grouped list shows. The
     /// face is absolute: newest of its (Episode Scope, Watch, Fingerprint) over
     /// <paramref name="everything"/>, regardless of any narrowing already applied, so this

@@ -12,6 +12,12 @@ export type EpisodeStateName = Episode["state"];
 export interface EpisodesFilters {
   lifecycle?: EpisodeStateName[];
   ack?: "none" | "me";
+  /**
+   * Whether the filed-away Episodes are in the view (see Alerting CONTEXT.md: Archived). Absent
+   * means the default: out of it — but never out of the rail's count, so "hidden" cannot read
+   * as "absent".
+   */
+  archived?: boolean;
   applicationId?: string;
   namespace?: string;
   environment?: string;
@@ -128,4 +134,9 @@ export function asOpened(value: unknown): string | undefined {
 
 export function asAck(value: unknown): "none" | "me" | undefined {
   return value === "none" || value === "me" ? value : undefined;
+}
+
+/** Only the shown state rides in the URL; the default one keeps it clean. */
+export function asArchived(value: unknown): boolean | undefined {
+  return value === true || value === "true" ? true : undefined;
 }

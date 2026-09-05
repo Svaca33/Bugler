@@ -44,4 +44,10 @@ public enum JournalEntryKind : short
 
     /// <summary>A person swept the Resignation aside; machines may claim again.</summary>
     ResignationDismissed = 13,
+
+    /// <summary>Somebody filed the closed Episode away (see CONTEXT.md: Archived).</summary>
+    Archived = 14,
+
+    /// <summary>Somebody lifted the mark; the Episode is back in the everyday view.</summary>
+    Unarchived = 15,
 }

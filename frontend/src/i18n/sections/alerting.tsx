@@ -19,6 +19,9 @@ export interface AlertingMessages {
   /** The left rail: group captions, choice labels, and the OPENED presets by ISO duration. */
   filters: {
     lifecycle: string;
+    /** A filter of its own, beside the lifecycle boxes and never among them (CONTEXT.md: Archived). */
+    archived: string;
+    showArchived: string;
     whoIsOnIt: string;
     source: string;
     opened: string;
@@ -63,6 +66,8 @@ export interface AlertingMessages {
     hideEarlier: string;
     showEarlier(times: number): string;
     mutedDuringEpisode: string;
+    /** The meta-line mark on a filed-away row — only ever seen while the rail asks for them. */
+    archived: string;
     /** "5 err" — the band abbreviation stays English in every language. */
     errCount(count: string | number): string;
     warnCount(count: string | number): string;
@@ -184,6 +189,10 @@ export interface AlertingMessages {
     withdrewOf(name: string, holder: string): string;
     solvedByYou: string;
     solvedBy(name: string): string;
+    youArchived: string;
+    archived(name: string): string;
+    youUnarchived: string;
+    unarchived(name: string): string;
     /** Stands in for a machine delegation no longer here, where its name would go. */
     formerMachine: string;
     claimed(machine: string): string;
@@ -281,12 +290,16 @@ export interface AlertingMessages {
     withdraw: string;
     takeOver: string;
     solve: string;
+    archive: string;
+    unarchive: string;
     openInLogs: string;
     alreadySolvedNoAck: string;
     ackNotSaved: string;
     withdrawFailed: string;
     alreadySolvedByOther: string;
     verdictNotSaved: string;
+    archiveFailed: string;
+    unarchiveFailed: string;
   };
 
   subscriptions: {

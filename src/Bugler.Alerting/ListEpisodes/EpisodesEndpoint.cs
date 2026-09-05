@@ -52,6 +52,10 @@ public sealed record EpisodeDto(
     string? AcknowledgedBy,
     DateTimeOffset? SolvedAt,
     string? SolvedBy,
+    /// <summary>When this Episode was filed away, and by whose hand (see CONTEXT.md: Archived) —
+    /// a mark on top of the State, which says nothing about it.</summary>
+    DateTimeOffset? ArchivedAt,
+    string? ArchivedBy,
     /// <summary>The newest acknowledgement still held by an earlier Episode of this kind — the "somebody
     /// is on it" context a fresh Episode shows. Solve wipes the kind's acknowledgements (ADR 0005), so
     /// whatever this names is by definition unresolved work.</summary>
@@ -86,6 +90,7 @@ internal static class EpisodesEndpoint
         string? q,
         string? acknowledged,
         bool? latestPerFingerprint,
+        bool? includeArchived,
         Guid? beforeId,
         int? limit,
         ClaimsPrincipal principal,
@@ -124,6 +129,14 @@ internal static class EpisodesEndpoint
             // The grouped list: one row per kind of trouble, faced by its latest Episode. Every
             // filter above and below then judges the face — a group is shown or hidden whole.
             query = query.WhereLatestPerFingerprint(dbContext.Episodes);
+        }
+
+        if (includeArchived != true)
+        {
+            // The face of a kind is chosen over every Episode, filed or not, so archiving the
+            // face takes the whole kind out of the everyday view rather than promoting an older
+            // Episode into it — which is the point of filing it.
+            query = query.WhereNotArchived();
         }
 
         if (state is { Length: > 0 })
@@ -200,7 +213,7 @@ internal static class EpisodesEndpoint
             rows.SelectMany(r => new[]
                 {
                     r.Episode.AcknowledgedByUserId, r.Episode.SolvedByUserId,
-                    r.EarlierAck?.AcknowledgedByUserId,
+                    r.Episode.ArchivedByUserId, r.EarlierAck?.AcknowledgedByUserId,
                 })
                 .OfType<Guid>()
                 .ToHashSet(),
@@ -221,6 +234,7 @@ internal static class EpisodesEndpoint
             r.Episode.FirstMatchDetail,
             r.Episode.AcknowledgedAt, NameOf(names, r.Episode.AcknowledgedByUserId),
             r.Episode.SolvedAt, NameOf(names, r.Episode.SolvedByUserId),
+            r.Episode.ArchivedAt, NameOf(names, r.Episode.ArchivedByUserId),
             r.EarlierAck?.AcknowledgedAt, NameOf(names, r.EarlierAck?.AcknowledgedByUserId),
             r.PriorCount, r.FingerprintQuietWindowMinutes,
             MachineHandDtos.Claim(r.Episode, machines),

@@ -116,10 +116,10 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         // Counts follow the faces (1 open + 1 quieted), not the episodes (1 + 3).
         var grouped = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
             "/api/alerting/episodes/counts?latestPerFingerprint=true");
-        Assert.Equal(new EpisodeCountsResponse(1, 1, 0, 0, 0, 0), grouped);
+        Assert.Equal(new EpisodeCountsResponse(1, 1, 0, 0, 0, 0, 0), grouped);
         var flat = await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
             "/api/alerting/episodes/counts");
-        Assert.Equal(new EpisodeCountsResponse(1, 3, 0, 0, 0, 0), flat);
+        Assert.Equal(new EpisodeCountsResponse(1, 3, 0, 0, 0, 0, 0), flat);
     }
 
     [Fact]
@@ -325,6 +325,110 @@ public sealed class AlertingEpisodesApiTests : IAsyncLifetime
         var untouched = (await ListAsync()).Items[0];
         Assert.Equal(EpisodeState.Open, untouched.State);
         Assert.Null(untouched.AcknowledgedBy);
+    }
+
+    [Fact]
+    public async Task A_dealt_with_episode_is_filed_away_and_found_again()
+    {
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom", quieted: true);
+        var id = (await ListAsync()).Items[0].Id;
+        await _harness.Client.PostAsync($"/api/alerting/episodes/{id}/acknowledge", null);
+
+        // Anyone who may see the Application may file it: a reversible triage gesture, not an
+        // Admin's act.
+        var member = await _harness.CreateUserClientAsync(
+            "member@bugler.test", "MemberPass123!", _harness.ApplicationId);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await member.PostAsync($"/api/alerting/episodes/{id}/archive", null)).StatusCode);
+
+        // Out of the everyday view — and counted all the same, so "hidden" never reads "absent".
+        Assert.Empty((await ListAsync()).Items);
+        Assert.Equal(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0, 1),
+            await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
+                "/api/alerting/episodes/counts"));
+
+        // One click away: the filed Episode comes back with its state and its marks unchanged.
+        var shown = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?includeArchived=true");
+        var filed = Assert.Single(shown!.Items);
+        Assert.Equal(EpisodeState.Quieted, filed.State);
+        Assert.Equal("Admin", filed.AcknowledgedBy);
+        Assert.Equal("member@bugler.test", filed.ArchivedBy);
+        Assert.NotNull(filed.ArchivedAt);
+        Assert.Equal(new EpisodeCountsResponse(0, 1, 0, 0, 0, 0, 1),
+            await _harness.Client.GetFromJsonAsync<EpisodeCountsResponse>(
+                "/api/alerting/episodes/counts?includeArchived=true"));
+
+        // Lifting the mark restores it whole; lifting nothing is nothing.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.DeleteAsync($"/api/alerting/episodes/{id}/archive")).StatusCode);
+        var restored = Assert.Single((await ListAsync()).Items);
+        Assert.Null(restored.ArchivedAt);
+        Assert.Null(restored.ArchivedBy);
+        Assert.Equal(EpisodeState.Quieted, restored.State);
+        Assert.Equal("Admin", restored.AcknowledgedBy);
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.DeleteAsync($"/api/alerting/episodes/{id}/archive")).StatusCode);
+
+        // Both hands are in the Journal, beside the acknowledgement that outlived them.
+        var detail = await _harness.Client.GetFromJsonAsync<EpisodeDetailDto>(
+            $"/api/alerting/episodes/{id}/detail");
+        Assert.Equal(
+            [
+                (JournalEntryKind.Acknowledged, "Admin"),
+                (JournalEntryKind.Archived, "member@bugler.test"),
+                (JournalEntryKind.Unarchived, "Admin"),
+            ],
+            detail!.Journal.Select(j => (j.Kind, j.By)));
+    }
+
+    [Fact]
+    public async Task An_open_episode_is_not_filed_away()
+    {
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "boom");
+        var id = (await ListAsync()).Items[0].Id;
+
+        // It is still taking Matches; filing it would be Muting by the back door.
+        var refused = await _harness.Client.PostAsync($"/api/alerting/episodes/{id}/archive", null);
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+
+        var untouched = Assert.Single((await ListAsync()).Items);
+        Assert.Null(untouched.ArchivedAt);
+
+        // Solving it says what became of the trouble and files nothing away.
+        await _harness.Client.PostAsync($"/api/alerting/episodes/{id}/solve", null);
+        var solved = Assert.Single((await ListAsync()).Items);
+        Assert.Equal(EpisodeState.Solved, solved.State);
+        Assert.Null(solved.ArchivedAt);
+    }
+
+    [Fact]
+    public async Task Filing_reaches_history_and_a_filed_face_takes_its_kind_out_of_view()
+    {
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky", quieted: true);
+        var older = (await ListAsync()).Items[0].Id;
+        await SeedEpisodeAsync(_harness.ServiceId, _harness.ApplicationId, "flaky", quieted: true);
+        var face = (await ListAsync()).Items[0].Id;
+
+        // Not the newest of its kind, and filed all the same: the gate is for verdicts about a
+        // kind of trouble, and filing is about one Episode.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{older}/archive", null))
+                .StatusCode);
+        Assert.Single((await ListAsync()).Items);
+
+        // The face is chosen over every Episode of the kind, filed or not, so filing it takes the
+        // whole kind out of the everyday view rather than promoting its history into it.
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await _harness.Client.PostAsync($"/api/alerting/episodes/{face}/archive", null))
+                .StatusCode);
+        var grouped = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?latestPerFingerprint=true");
+        Assert.Empty(grouped!.Items);
+
+        var shown = await _harness.Client.GetFromJsonAsync<ListEpisodesResponse>(
+            "/api/alerting/episodes?latestPerFingerprint=true&includeArchived=true");
+        Assert.Equal(face, Assert.Single(shown!.Items).Id);
     }
 
     private async Task<ListEpisodesResponse> ListAsync() =>

@@ -15,6 +15,9 @@ internal sealed class CzechAlertingMessages : AlertingMessages
     public override string EpisodeAlreadySolved =>
         "Epizoda už je vyřešená; verdikt se vynáší jen jednou.";
 
+    public override string OnlyAClosedEpisodeIsArchived =>
+        "Otevřená epizoda stále přijímá shody a archivovat ji nelze.";
+
     public override string QuietWindowAtLeastOneMinute =>
         "Tiché okno musí být alespoň 1 minuta.";
 

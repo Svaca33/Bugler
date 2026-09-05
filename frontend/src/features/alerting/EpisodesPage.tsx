@@ -77,6 +77,10 @@ export function EpisodesPage(props: {
         params: {
           query: {
             latestPerFingerprint: true,
+            // The filed-away ones are out of the everyday view until the rail asks for them;
+            // the face of a kind is still chosen over all of its Episodes, so a filed face
+            // takes its kind out of the list rather than handing the row to its history.
+            includeArchived: filters.archived,
             limit: PAGE_SIZE,
             beforeId: pageParam,
             state: lifecycle,
@@ -118,7 +122,12 @@ export function EpisodesPage(props: {
     queryFn: async () => {
       const { data, error } = await api.GET("/api/alerting/episodes/counts", {
         params: {
-          query: { latestPerFingerprint: true, from: openedFrom(filters), ...shared },
+          query: {
+            latestPerFingerprint: true,
+            includeArchived: filters.archived,
+            from: openedFrom(filters),
+            ...shared,
+          },
         },
       });
       if (error !== undefined) throw new Error(t.alerting.errors.countEpisodes);
@@ -179,7 +188,7 @@ export function EpisodesPage(props: {
     : t.alerting.list.countOfTotal(items.length, total, windowPhrase);
 
   const narrowed = [
-    filters.lifecycle, filters.ack, filters.applicationId, filters.namespace,
+    filters.lifecycle, filters.ack, filters.archived, filters.applicationId, filters.namespace,
     filters.environment, filters.service, filters.opened, filters.q,
   ].some(value => value !== undefined);
 
@@ -411,6 +420,11 @@ function EpisodeRow(props: {
           {/* Which Services and versions are in it: the Episode states its own versions now. */}
           <Participants episode={episode} services={props.services} muted={muted} />
           <span>{clock(episode.openedAt)}</span>
+          {/* Only ever on screen while the rail asks for the filed ones: it says why this row is
+              here, never anything about the trouble itself. */}
+          {episode.archivedAt !== null && (
+            <span className="text-[#6E86A0]">{t.alerting.list.archived}</span>
+          )}
           {muted ? (
             <>
               <span>{t.alerting.list.mutedDuringEpisode}</span>

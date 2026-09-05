@@ -109,6 +109,38 @@ internal static class EpisodeActionEndpoints
             static messages => messages.WithdrawingNeverRefuses,
             JournalEntryKind.Withdrawn);
 
+    /// <summary>
+    /// Files the closed Episode away (see CONTEXT.md: Archived) — anyone who may see the
+    /// Application may do it, and not only on the newest of its kind: that gate is for verdicts
+    /// about a kind of trouble, and filing is about this one Episode.
+    /// </summary>
+    public static Task<IResult> Archive(
+        Guid id,
+        ClaimsPrincipal principal,
+        AlertingDbContext dbContext,
+        IReadVisibility readVisibility,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken) =>
+        Act(id, principal, dbContext, readVisibility, requestLanguage, cancellationToken,
+            static (episode, userId, now) => episode.Archive(userId, now),
+            static messages => messages.OnlyAClosedEpisodeIsArchived,
+            JournalEntryKind.Archived,
+            requireNewest: false);
+
+    /// <summary>Lifts the mark: the Episode comes back unchanged, marks, Journal and all.</summary>
+    public static Task<IResult> Unarchive(
+        Guid id,
+        ClaimsPrincipal principal,
+        AlertingDbContext dbContext,
+        IReadVisibility readVisibility,
+        IRequestLanguage requestLanguage,
+        CancellationToken cancellationToken) =>
+        Act(id, principal, dbContext, readVisibility, requestLanguage, cancellationToken,
+            static (episode, _, _) => episode.Unarchive(), // Lifting nothing is nothing.
+            static messages => messages.WithdrawingNeverRefuses,
+            JournalEntryKind.Unarchived,
+            requireNewest: false);
+
     public static Task<IResult> Solve(
         Guid id,
         ClaimsPrincipal principal,

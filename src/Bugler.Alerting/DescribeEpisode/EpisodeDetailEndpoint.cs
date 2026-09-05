@@ -148,7 +148,11 @@ internal static class EpisodeDetailEndpoint
             ?? default;
 
         var names = await userNames.ResolveAsync(
-            new[] { episode.AcknowledgedByUserId, episode.SolvedByUserId, earlierAck?.AcknowledgedByUserId }
+            new[]
+                {
+                    episode.AcknowledgedByUserId, episode.SolvedByUserId, episode.ArchivedByUserId,
+                    earlierAck?.AcknowledgedByUserId,
+                }
                 .OfType<Guid>()
                 .Concat(journal.Select(j => j.UserId))
                 .ToHashSet(),
@@ -179,6 +183,7 @@ internal static class EpisodeDetailEndpoint
             episode.FirstMatchDetail,
             episode.AcknowledgedAt, EpisodesEndpoint.NameOf(names, episode.AcknowledgedByUserId),
             episode.SolvedAt, EpisodesEndpoint.NameOf(names, episode.SolvedByUserId),
+            episode.ArchivedAt, EpisodesEndpoint.NameOf(names, episode.ArchivedByUserId),
             earlierAck?.AcknowledgedAt,
             EpisodesEndpoint.NameOf(names, earlierAck?.AcknowledgedByUserId),
             priorCount, own?.QuietWindowMinutes,

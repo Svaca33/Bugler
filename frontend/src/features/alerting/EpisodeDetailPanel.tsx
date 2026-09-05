@@ -442,6 +442,21 @@ function EpisodeBody(props: {
             )}
           </>
         )}
+        {/* Filing is about this one Episode, so it reaches history too — no newest-of-kind gate
+            (Alerting CONTEXT.md: Archived) — and only a closed Episode may be filed at all. */}
+        {episode.state !== "Open" && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actions.archive.isPending || actions.unarchive.isPending}
+            onClick={() =>
+              episode.archivedAt === null ? actions.archive.mutate() : actions.unarchive.mutate()}
+          >
+            {episode.archivedAt === null
+              ? t.alerting.actions.archive
+              : t.alerting.actions.unarchive}
+          </Button>
+        )}
         {!isHealthCheck && (
           <Button size="sm" variant="ghost" onClick={() => props.onOpenLogs(episode)}>
             {t.alerting.actions.openInLogs}
@@ -817,6 +832,22 @@ function JournalMoments(props: {
       return (
         <Moment key={index} dot={machineDot}>
           <p className="text-[12.5px]">{machineNarration}</p>
+          <p className="font-mono text-[11px] text-[#7D93AA]">{clock(entry.at)}</p>
+        </Moment>
+      );
+    }
+
+    // Filing and finding again: a mark on the reader's view, so it narrates its own hand and
+    // leaves the acknowledgement's story — held, taken over, withdrawn — exactly where it was.
+    if (entry.kind === "Archived" || entry.kind === "Unarchived") {
+      const filed = entry.kind === "Archived";
+      return (
+        <Moment key={index} dot="bg-[#22394F]">
+          <p className="text-[12.5px]">
+            {filed
+              ? isMe ? words.youArchived : words.archived(name)
+              : isMe ? words.youUnarchived : words.unarchived(name)}
+          </p>
           <p className="font-mono text-[11px] text-[#7D93AA]">{clock(entry.at)}</p>
         </Moment>
       );

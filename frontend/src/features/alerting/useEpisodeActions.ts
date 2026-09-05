@@ -4,9 +4,10 @@ import { api } from "@/api/client";
 import { getMessages } from "@/i18n/runtime";
 
 /**
- * The human hands on an Episode — acknowledge, take over, withdraw, solve — shared by the band
- * cards and the detail panel. Every alerts query keys under ["alerts"], so one invalidation
- * refreshes the list, the band, the counts, the nav badge, the detail and the history alike.
+ * The human hands on an Episode — acknowledge, take over, withdraw, solve, and file away or find
+ * again — shared by the band cards and the detail panel. Every alerts query keys under
+ * ["alerts"], so one invalidation refreshes the list, the band, the counts, the nav badge, the
+ * detail and the history alike.
  */
 export function useEpisodeActions(episodeId: string) {
   const queryClient = useQueryClient();
@@ -48,6 +49,32 @@ export function useEpisodeActions(episodeId: string) {
       const words = getMessages().alerting.actions;
       if (response.status === 409) throw new Error(refusal(error, words.alreadySolvedByOther));
       if (!response.ok) throw new Error(words.verdictNotSaved);
+    },
+    onSettled: refresh,
+  });
+
+  // Filing a dealt-with Episode away, and finding it again (Alerting CONTEXT.md: Archived).
+  // Reversible, shared with everyone who reads it, and it says nothing about the trouble.
+  const archive = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await api.POST("/api/alerting/episodes/{id}/archive", {
+        params: { path: { id: episodeId } },
+      });
+      const words = getMessages().alerting.actions;
+      if (response.status === 409) throw new Error(refusal(error, words.archiveFailed));
+      if (!response.ok) throw new Error(words.archiveFailed);
+    },
+    onSettled: refresh,
+  });
+
+  const unarchive = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await api.DELETE("/api/alerting/episodes/{id}/archive", {
+        params: { path: { id: episodeId } },
+      });
+      const words = getMessages().alerting.actions;
+      if (response.status === 409) throw new Error(refusal(error, words.unarchiveFailed));
+      if (!response.ok) throw new Error(words.unarchiveFailed);
     },
     onSettled: refresh,
   });
@@ -94,10 +121,15 @@ export function useEpisodeActions(episodeId: string) {
     acknowledge.error
     ?? withdraw.error
     ?? solve.error
+    ?? archive.error
+    ?? unarchive.error
     ?? rejectProposal.error
     ?? dismissResignation.error
     ?? withdrawClaim.error;
-  return { acknowledge, withdraw, solve, rejectProposal, dismissResignation, withdrawClaim, failure };
+  return {
+    acknowledge, withdraw, solve, archive, unarchive, rejectProposal, dismissResignation,
+    withdrawClaim, failure,
+  };
 }
 
 /** A 409 carries the model's own sentence (e.g. "The action belongs to the newest Episode of its

@@ -86,6 +86,18 @@ test("an error log opens an episode that is worked in the panel and deep-links t
   await page.getByRole("dialog").getByRole("button", { name: "Solve" }).click();
   await expect(panel.getByText(/Solved by/)).toBeVisible();
 
+  // Filed away: the dealt-with Episode leaves the everyday view, and one click in the rail
+  // brings it back. Archived is a filter of its own, never a fifth lifecycle box, and lifting
+  // it restores the Episode with its verdict intact.
+  await panel.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(row).toHaveCount(0);
+  await page.getByLabel("Show archived").click();
+  await expect(row).toBeVisible();
+  await panel.getByRole("button", { name: "Unarchive", exact: true }).click();
+  await page.getByLabel("Show archived").click();
+  await expect(row).toBeVisible();
+  await expect(panel.getByText(/Solved by/)).toBeVisible();
+
   // The panel deep-links to the logs view with the first record already open.
   await panel.getByRole("button", { name: "Open in logs", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Log record", exact: true })).toBeVisible();

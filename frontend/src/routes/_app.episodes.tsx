@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FocusEmptyState, useIsWatchingNothing } from "@/features/access/FocusEmptyState";
 import {
   asAck,
+  asArchived,
   asLifecycle,
   asOpened,
   type EpisodesFilters,
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/_app/episodes")({
     section: search.section === "subscriptions" ? "subscriptions" : "episodes",
     lifecycle: asLifecycle(search.lifecycle),
     ack: asAck(search.ack),
+    archived: asArchived(search.archived),
     applicationId: asString(search.applicationId),
     namespace: asString(search.namespace),
     environment: asString(search.environment),

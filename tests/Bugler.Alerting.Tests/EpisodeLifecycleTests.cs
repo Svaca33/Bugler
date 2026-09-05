@@ -158,4 +158,64 @@ public class EpisodeLifecycleTests
         Assert.Equal(HandOutcome.Refused, episode.Acknowledge(OtherDev, Now.AddMinutes(2)));
         Assert.Null(episode.AcknowledgedByUserId);
     }
+
+    [Fact]
+    public void Only_a_closed_episode_is_filed_away()
+    {
+        var episode = Episode();
+
+        // An open Episode is still taking Matches; filing it would be Muting by the back door.
+        Assert.Equal(HandOutcome.Refused, episode.Archive(Dev, Now));
+        Assert.Null(episode.ArchivedAt);
+        Assert.Null(episode.ArchivedByUserId);
+    }
+
+    [Fact]
+    public void Filing_says_nothing_about_the_trouble_and_lifting_restores_it_unchanged()
+    {
+        var episode = Quieted();
+        episode.Acknowledge(Dev, Now);
+
+        Assert.Equal(HandOutcome.Acted, episode.Archive(OtherDev, Now.AddMinutes(1)));
+        Assert.Equal(Now.AddMinutes(1), episode.ArchivedAt);
+        Assert.Equal(OtherDev, episode.ArchivedByUserId);
+        // A mark on top of a state, never a state of its own: Quieted still says how the stretch
+        // ended, and the marks the Episode already carried are untouched.
+        Assert.Equal(EpisodeState.Quieted, episode.State);
+        Assert.Equal(Dev, episode.AcknowledgedByUserId);
+
+        Assert.Equal(HandOutcome.Acted, episode.Unarchive());
+        Assert.Null(episode.ArchivedAt);
+        Assert.Null(episode.ArchivedByUserId);
+        Assert.Equal(EpisodeState.Quieted, episode.State);
+        Assert.Equal(Dev, episode.AcknowledgedByUserId);
+    }
+
+    [Fact]
+    public void Filing_the_filed_and_lifting_the_unfiled_are_nothing()
+    {
+        var episode = Quieted();
+        episode.Archive(Dev, Now);
+
+        // The mark is shared, so a second hand has nothing to add — and the first one's moment
+        // stands, the way a re-acknowledgement keeps its own.
+        Assert.Equal(HandOutcome.Nothing, episode.Archive(OtherDev, Now.AddMinutes(1)));
+        Assert.Equal(Dev, episode.ArchivedByUserId);
+        Assert.Equal(Now, episode.ArchivedAt);
+
+        Assert.Equal(HandOutcome.Acted, episode.Unarchive());
+        Assert.Equal(HandOutcome.Nothing, episode.Unarchive());
+    }
+
+    [Fact]
+    public void The_verdict_does_not_file_the_episode_away()
+    {
+        var episode = Episode();
+        episode.Solve(Dev, Now);
+
+        // Solved says what became of the trouble; filing says what the everyday view shows.
+        Assert.Null(episode.ArchivedAt);
+        Assert.Equal(HandOutcome.Acted, episode.Archive(Dev, Now.AddMinutes(1)));
+        Assert.Equal(EpisodeState.Solved, episode.State);
+    }
 }

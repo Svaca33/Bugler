@@ -128,6 +128,15 @@ public sealed class Episode
     /// <summary>The match tally when the proposal was laid — what "matches since" is measured against.</summary>
     public int? ProposalMatchesWhenLaid { get; private set; }
 
+    /// <summary>
+    /// The shared mark filing a closed Episode out of the everyday view (see CONTEXT.md:
+    /// Archived) — laid on top of the state rather than becoming one, and one Episode is filed
+    /// for everyone who reads it.
+    /// </summary>
+    public DateTimeOffset? ArchivedAt { get; private set; }
+
+    public Guid? ArchivedByUserId { get; private set; }
+
     /// <summary>The Resignation: a machine's finding about itself that this trouble is not one it can fix.</summary>
     public Guid? ResignedByDelegationId { get; private set; }
 
@@ -354,6 +363,43 @@ public sealed class Episode
         ResignationReason = reason;
         ShedClaim();
         return MachineHandOutcome.Acted;
+    }
+
+    /// <summary>
+    /// Files the Episode away (see CONTEXT.md: Archived). Only a closed one: an open Episode is
+    /// still taking Matches, and filing it would be Muting by the back door. It says nothing
+    /// about the trouble — Quieted, Solved and Muted have already said it — so it touches no
+    /// other mark. The mark is shared, so a second hand on a filed Episode adds nothing to it
+    /// and the first hand's moment stands, exactly as a re-acknowledgement keeps its own.
+    /// </summary>
+    public HandOutcome Archive(Guid userId, DateTimeOffset now)
+    {
+        if (ClosedAt is null)
+        {
+            return HandOutcome.Refused;
+        }
+
+        if (ArchivedAt is not null)
+        {
+            return HandOutcome.Nothing;
+        }
+
+        ArchivedByUserId = userId;
+        ArchivedAt = now;
+        return HandOutcome.Acted;
+    }
+
+    /// <summary>Lifts the mark: the Episode returns to the everyday view exactly as it was.</summary>
+    public HandOutcome Unarchive()
+    {
+        if (ArchivedAt is null)
+        {
+            return HandOutcome.Nothing;
+        }
+
+        ArchivedByUserId = null;
+        ArchivedAt = null;
+        return HandOutcome.Acted;
     }
 
     /// <summary>A person sweeping the Resignation aside: the machine's statement is refused, machines may claim again.</summary>

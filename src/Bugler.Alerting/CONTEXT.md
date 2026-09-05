@@ -85,11 +85,11 @@ The machine hand's finding about itself: this trouble is not one it can fix, sai
 _Avoid_: handover, escalation, give-up, unsolvable flag, needs-human
 
 **Journal**:
-The append-only record of every hand laid on an Episode, and whether it was flesh or machine — Acknowledged, Withdrawn, Solved, and the machine hand's claims, notes, proposals and Resignations, each machine entry naming the delegation and through it its User. Entries are only ever added, never changed or removed; the live marks say what holds now, the Journal says what happened. When a Solve consumes an acknowledgement held by an earlier Episode of its kind, that Episode's Journal records the withdrawal by the solver's hand.
+The append-only record of every hand laid on an Episode, and whether it was flesh or machine — Acknowledged, Withdrawn, Solved, Archived, Unarchived, and the machine hand's claims, notes, proposals and Resignations, each machine entry naming the delegation and through it its User. Entries are only ever added, never changed or removed; the live marks say what holds now, the Journal says what happened. When a Solve consumes an acknowledgement held by an earlier Episode of its kind, that Episode's Journal records the withdrawal by the solver's hand.
 _Avoid_: audit log, history, event log, activity feed
 
 **Archived**:
-A closed Episode filed out of the everyday view — a mark laid on top of a state, never a state of its own. It says nothing about the trouble, because Quieted, Solved and Muted have already said it; any closed Episode may carry it, an open one may not, and lifting it restores the Episode unchanged. Shared rather than each reader's own: one Episode is filed for everyone, and the Journal records whose hand did it.
+A closed Episode filed out of the everyday view — a mark laid on top of a state, never a state of its own. It says nothing about the trouble, because Quieted, Solved and Muted have already said it; any closed Episode may carry it, an open one may not, and lifting it restores the Episode unchanged. Shared rather than each reader's own: one Episode is filed for everyone, and the Journal records whose hand did it. Anyone who may see the Application may file or lift it, and on any Episode of a kind rather than only its newest — the newest-of-kind gate is for verdicts about a kind of trouble, and filing is about one Episode. It is counted even while it is hidden: an observability tool must never let "hidden" read as "absent". Filing tidies the everyday view a person reads, so the machine door is blind to it — a tool holding a Machine Delegation lists a Scope's Episodes whole, filed or not, exactly as it reads the ones a lifecycle filter would hide.
 _Avoid_: deleted, resolved, closed, done, dismissed, hidden
 
 **Deletion**:

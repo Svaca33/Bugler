@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  asArchived,
   asLifecycle,
   asOpened,
   effectiveLifecycle,
@@ -62,6 +63,17 @@ describe("lifecycle round-trip", () => {
     expect(asLifecycle(["Open", "bogus", "Muted"])).toEqual(["Open", "Muted"]);
     expect(asLifecycle([])).toEqual([]);
     expect(asLifecycle("Open")).toBeUndefined();
+  });
+});
+
+describe("archived", () => {
+  test("only being shown rides in the URL; the default view says nothing", () => {
+    // A boolean from a hand-typed URL arrives as a string, and anything else is not an answer.
+    expect(asArchived(true)).toBe(true);
+    expect(asArchived("true")).toBe(true);
+    expect(asArchived(false)).toBeUndefined();
+    expect(asArchived("yes")).toBeUndefined();
+    expect(asArchived(undefined)).toBeUndefined();
   });
 });
 

@@ -15,6 +15,9 @@ internal sealed class EnglishAlertingMessages : AlertingMessages
     public override string EpisodeAlreadySolved =>
         "The Episode is already Solved; the verdict is rendered once.";
 
+    public override string OnlyAClosedEpisodeIsArchived =>
+        "An open Episode is still taking matches and cannot be archived.";
+
     public override string QuietWindowAtLeastOneMinute =>
         "The quiet window must be at least 1 minute.";
 

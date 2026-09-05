@@ -8,10 +8,13 @@ namespace Bugler.Alerting.ListEpisodes;
 
 /// <summary>
 /// Proposals and Resignations are counted only where they stand — on the newest Episode of
-/// their kind; an overtaken mark is history, not a call for a verdict.
+/// their kind; an overtaken mark is history, not a call for a verdict. Archived stands beside
+/// the four lifecycle states rather than among them (see CONTEXT.md: Archived): it is a mark on
+/// top of a state, and it is counted even while it is hidden, so nobody reads "hidden" as
+/// "absent".
 /// </summary>
 public sealed record EpisodeCountsResponse(
-    int Open, int Quieted, int Solved, int Muted, int Proposals, int Resignations);
+    int Open, int Quieted, int Solved, int Muted, int Proposals, int Resignations, int Archived);
 
 internal static class EpisodeCountsEndpoint
 {
@@ -29,6 +32,7 @@ internal static class EpisodeCountsEndpoint
         string? q,
         string? acknowledged,
         bool? latestPerFingerprint,
+        bool? includeArchived,
         ClaimsPrincipal principal,
         AlertingDbContext dbContext,
         IReadVisibility readVisibility,
@@ -51,7 +55,7 @@ internal static class EpisodeCountsEndpoint
             readVisibility, readFocus, applicationId, serviceId, cancellationToken);
         if (visible is { Count: 0 })
         {
-            return Results.Ok(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0));
+            return Results.Ok(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0, 0));
         }
 
         // One pass over the filtered set: each state as its defining predicate (ADR 0003 — the
@@ -65,6 +69,15 @@ internal static class EpisodeCountsEndpoint
             // Counting kinds of trouble by the state of their face — the same rows the grouped
             // list shows, so the rail's numbers can never drift from the table.
             filtered = filtered.WhereLatestPerFingerprint(dbContext.Episodes);
+        }
+
+        // How many are filed away under these filters — asked of the whole set, because the rail
+        // shows this number precisely while the rows are hidden. The state counts then break
+        // down what the list actually shows, filed ones in or out with it.
+        var archived = await filtered.CountAsync(e => e.ArchivedAt != null, cancellationToken);
+        if (includeArchived != true)
+        {
+            filtered = filtered.WhereNotArchived();
         }
 
         var counts = await filtered
@@ -98,9 +111,10 @@ internal static class EpisodeCountsEndpoint
                 && p.Id.CompareTo(e.Id) > 0), cancellationToken);
 
         return Results.Ok(counts is null
-            ? new EpisodeCountsResponse(0, 0, 0, 0, proposals, resignations)
+            ? new EpisodeCountsResponse(0, 0, 0, 0, proposals, resignations, archived)
             : new EpisodeCountsResponse(
-                counts.Open, counts.Quieted, counts.Solved, counts.Muted, proposals, resignations));
+                counts.Open, counts.Quieted, counts.Solved, counts.Muted, proposals, resignations,
+                archived));
     }
 
     // Access's claim helper is internal to Access; the two lines are cheaper than a contract.

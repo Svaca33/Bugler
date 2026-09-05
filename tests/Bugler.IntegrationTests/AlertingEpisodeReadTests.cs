@@ -81,22 +81,22 @@ public sealed class AlertingEpisodeReadTests : IAsyncLifetime
 
         // The admin's whole picture, one number per state.
         var all = await CountsAsync("");
-        Assert.Equal(new EpisodeCountsResponse(2, 1, 1, 1, 0, 0), all);
+        Assert.Equal(new EpisodeCountsResponse(2, 1, 1, 1, 0, 0, 0), all);
 
         // The same filters as the list narrow the breakdown.
         var quiet = await CountsAsync("?q=quiet");
-        Assert.Equal(new EpisodeCountsResponse(0, 1, 0, 0, 0, 0), quiet);
+        Assert.Equal(new EpisodeCountsResponse(0, 1, 0, 0, 0, 0, 0), quiet);
 
         // A member counts only what they may see; a stranger counts nothing.
         var member = await _harness.CreateUserClientAsync(
             "member@bugler.test", "MemberPass123!", _harness.ApplicationId);
         var scoped = await member.GetFromJsonAsync<EpisodeCountsResponse>(
             "/api/alerting/episodes/counts");
-        Assert.Equal(new EpisodeCountsResponse(1, 1, 1, 1, 0, 0), scoped);
+        Assert.Equal(new EpisodeCountsResponse(1, 1, 1, 1, 0, 0, 0), scoped);
         var stranger = await _harness.CreateUserClientAsync("stranger@bugler.test", "Stranger123!");
         var nothing = await stranger.GetFromJsonAsync<EpisodeCountsResponse>(
             "/api/alerting/episodes/counts");
-        Assert.Equal(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0), nothing);
+        Assert.Equal(new EpisodeCountsResponse(0, 0, 0, 0, 0, 0, 0), nothing);
     }
 
     [Fact]

@@ -103,6 +103,10 @@ public static class AlertingModule
         user.MapPost("/episodes/{id:guid}/acknowledge", EpisodeActionEndpoints.Acknowledge);
         user.MapDelete("/episodes/{id:guid}/acknowledgement", EpisodeActionEndpoints.Unacknowledge);
         user.MapPost("/episodes/{id:guid}/solve", EpisodeActionEndpoints.Solve);
+        // Filing a dealt-with Episode away, and finding it again (see CONTEXT.md: Archived) —
+        // a reversible triage gesture, so it is nobody's privilege beyond seeing the Application.
+        user.MapPost("/episodes/{id:guid}/archive", EpisodeActionEndpoints.Archive);
+        user.MapDelete("/episodes/{id:guid}/archive", EpisodeActionEndpoints.Unarchive);
         // The human answers to the machine hand: reject its proposal, sweep its resignation
         // aside, withdraw its claim. Confirming a proposal is the Solve above — same verdict.
         user.MapPost("/episodes/{id:guid}/proposal/reject", EpisodeActionEndpoints.RejectProposal);

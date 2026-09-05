@@ -21,6 +21,8 @@ export const alerting: AlertingMessages = {
 
   filters: {
     lifecycle: "LIFECYCLE",
+    archived: "ARCHIVED",
+    showArchived: "Show archived",
     whoIsOnIt: "WHO IS ON IT",
     source: "SOURCE",
     opened: "OPENED",
@@ -68,6 +70,7 @@ export const alerting: AlertingMessages = {
     showEarlier: times =>
       `This kind of trouble burned ${times === 1 ? "once" : `${times} times`} before — show them`,
     mutedDuringEpisode: "alerting turned off during the episode",
+    archived: "archived",
     errCount: count => `${count} err`,
     warnCount: count => `${count} warn`,
   },
@@ -173,6 +176,10 @@ export const alerting: AlertingMessages = {
     withdrewOf: (name, holder) => `${cap(name)} withdrew ${holder}'s acknowledgement`,
     solvedByYou: "Solved by you",
     solvedBy: name => `Solved by ${name}`,
+    youArchived: "You archived the episode",
+    archived: name => `${cap(name)} archived the episode`,
+    youUnarchived: "You brought the episode back from the archive",
+    unarchived: name => `${cap(name)} brought the episode back from the archive`,
     formerMachine: "unknown",
     claimed: machine => `Machine "${machine}" claimed the episode`,
     claimRenewed: machine => `Machine "${machine}" renewed its lease`,
@@ -264,12 +271,16 @@ export const alerting: AlertingMessages = {
     withdraw: "Withdraw",
     takeOver: "Take over",
     solve: "Solve",
+    archive: "Archive",
+    unarchive: "Unarchive",
     openInLogs: "Open in logs",
     alreadySolvedNoAck: "Already solved — a Solved Episode is never acknowledged.",
     ackNotSaved: "The acknowledgement was not saved.",
     withdrawFailed: "The acknowledgement was not withdrawn.",
     alreadySolvedByOther: "Already solved by someone else.",
     verdictNotSaved: "The verdict was not saved.",
+    archiveFailed: "The episode was not archived.",
+    unarchiveFailed: "The episode was not brought back from the archive.",
   },
 
   subscriptions: {

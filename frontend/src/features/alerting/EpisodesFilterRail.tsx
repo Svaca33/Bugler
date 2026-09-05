@@ -54,7 +54,7 @@ export function EpisodesFilterRail(props: {
       };
 
   const canClear = [
-    filters.lifecycle, filters.ack, filters.applicationId, filters.namespace,
+    filters.lifecycle, filters.ack, filters.archived, filters.applicationId, filters.namespace,
     filters.environment, filters.service, filters.opened, filters.q,
   ].some(value => value !== undefined);
 
@@ -86,6 +86,28 @@ export function EpisodesFilterRail(props: {
             </span>
           </div>
         ))}
+      </FilterGroup>
+
+      {/*
+        A filter of its own, never a fifth lifecycle box: Archived is a mark laid on top of a
+        state (Alerting CONTEXT.md), so it says nothing about how the trouble ended. The count
+        stands whether the rows are shown or not — hidden must never read as absent.
+      */}
+      <FilterGroup label={t.alerting.filters.archived}>
+        <div className="flex items-center gap-[9px]">
+          <Checkbox
+            id="archived"
+            checked={filters.archived === true}
+            onCheckedChange={checked =>
+              onChange({ ...filters, archived: checked === true ? true : undefined })}
+          />
+          <Label htmlFor="archived" className="font-normal text-[12.5px]">
+            {t.alerting.filters.showArchived}
+          </Label>
+          <span className="ml-auto font-mono text-[11px] text-[#7D93AA]">
+            {counts === undefined ? "—" : Number(counts.archived)}
+          </span>
+        </div>
       </FilterGroup>
 
       <FilterGroup label={t.alerting.filters.whoIsOnIt}>

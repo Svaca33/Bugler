@@ -2219,6 +2219,13 @@
             }
           },
           {
+            "name": "includeArchived",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "beforeId",
             "in": "query",
             "schema": {
@@ -2316,6 +2323,13 @@
           },
           {
             "name": "latestPerFingerprint",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeArchived",
             "in": "query",
             "schema": {
               "type": "boolean"
@@ -2509,6 +2523,50 @@
     },
     "/api/alerting/episodes/{id}/solve": {
       "post": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/alerting/episodes/{id}/archive": {
+      "post": {
+        "tags": [
+          "EpisodeActionEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
         "tags": [
           "EpisodeActionEndpoints"
         ],
@@ -3357,7 +3415,8 @@
           "solved",
           "muted",
           "proposals",
-          "resignations"
+          "resignations",
+          "archived"
         ],
         "type": "object",
         "properties": {
@@ -3402,6 +3461,14 @@
             "format": "int32"
           },
           "resignations": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "archived": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3512,6 +3579,8 @@
           "acknowledgedBy",
           "solvedAt",
           "solvedBy",
+          "archivedAt",
+          "archivedBy",
           "earlierAcknowledgedAt",
           "earlierAcknowledgedBy",
           "priorCount",
@@ -3656,6 +3725,19 @@
             "format": "date-time"
           },
           "solvedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "archivedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "archivedBy": {
             "type": [
               "null",
               "string"
@@ -4168,7 +4250,9 @@
           "ProposalLaid",
           "ProposalRejected",
           "Resigned",
-          "ResignationDismissed"
+          "ResignationDismissed",
+          "Archived",
+          "Unarchived"
         ]
       },
       "JsonElement": { },

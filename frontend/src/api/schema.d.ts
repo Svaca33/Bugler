@@ -2142,6 +2142,7 @@ export interface paths {
                     q?: string;
                     acknowledged?: string;
                     latestPerFingerprint?: boolean;
+                    includeArchived?: boolean;
                     beforeId?: string;
                     limit?: number | string;
                 };
@@ -2188,6 +2189,7 @@ export interface paths {
                     q?: string;
                     acknowledged?: string;
                     latestPerFingerprint?: boolean;
+                    includeArchived?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -2429,6 +2431,60 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerting/episodes/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -3100,6 +3156,8 @@ export interface components {
             proposals: number | string;
             /** Format: int32 */
             resignations: number | string;
+            /** Format: int32 */
+            archived: number | string;
         };
         EpisodeDetailDto: {
             episode: components["schemas"]["EpisodeDto"];
@@ -3154,6 +3212,9 @@ export interface components {
             /** Format: date-time */
             solvedAt: null | string;
             solvedBy: null | string;
+            /** Format: date-time */
+            archivedAt: null | string;
+            archivedBy: null | string;
             /** Format: date-time */
             earlierAcknowledgedAt: null | string;
             earlierAcknowledgedBy: null | string;
@@ -3273,7 +3334,7 @@ export interface components {
             machine: null | components["schemas"]["MachineHandByDto"];
         };
         /** @enum {unknown} */
-        JournalEntryKind: "Acknowledged" | "Withdrawn" | "Solved" | "Claimed" | "ClaimRenewed" | "ClaimReleased" | "ClaimLapsed" | "ClaimDisplaced" | "NotePinned" | "ProposalLaid" | "ProposalRejected" | "Resigned" | "ResignationDismissed";
+        JournalEntryKind: "Acknowledged" | "Withdrawn" | "Solved" | "Claimed" | "ClaimRenewed" | "ClaimReleased" | "ClaimLapsed" | "ClaimDisplaced" | "NotePinned" | "ProposalLaid" | "ProposalRejected" | "Resigned" | "ResignationDismissed" | "Archived" | "Unarchived";
         JsonElement: unknown;
         ListEpisodesResponse: {
             items: components["schemas"]["EpisodeDto"][];
