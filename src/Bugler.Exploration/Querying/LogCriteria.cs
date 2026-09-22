@@ -44,6 +44,35 @@ internal sealed record LogCriteria(
             return false;
         }
 
+        return TryCreate(
+            applicationId, serviceNamespace, environment, service, severityMin,
+            range, from, to, q, traceId, attributeFilters, resourceFilters,
+            out criteria, out error);
+    }
+
+    /// <summary>
+    /// The same criteria from Attribute Filters that are already parsed. The machine door writes a
+    /// Filter `key=value` rather than as the query string's JSON, so it arrives here past the wire
+    /// format — and can refuse a malformed one in the words its own callers were given.
+    /// </summary>
+    public static bool TryCreate(
+        Guid? applicationId,
+        string? serviceNamespace,
+        string? environment,
+        string? service,
+        short? severityMin,
+        RelativeRange? range,
+        RangeBound? from,
+        RangeBound? to,
+        string? q,
+        string? traceId,
+        AttributeFilter[] attributeFilters,
+        AttributeFilter[] resourceFilters,
+        out LogCriteria criteria,
+        out string? error)
+    {
+        criteria = null!;
+
         if (!TimeFilter.TryCreate(range, from, to, out var timeFilter, out error))
         {
             return false;

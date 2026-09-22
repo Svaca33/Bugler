@@ -9,7 +9,9 @@ public sealed record AttributeFilter(string[] Path, string Value);
 internal static class AttributeFilters
 {
     private static readonly JsonSerializerOptions Json = JsonSerializerOptions.Web;
-    private const int MaxFilters = 32;
+
+    /// <summary>Internal so the machine door refuses at the same count rather than one of its own.</summary>
+    internal const int MaxFilters = 32;
 
     /// <summary>Parses repeated query items, each a JSON object {"path":["a","b"],"value":"x"}.</summary>
     public static bool TryParse(string[]? items, out AttributeFilter[] filters)

@@ -84,9 +84,13 @@ public sealed class ExplorationTools
         string? bodyContains = null,
         [Description("Only Log Records belonging to this trace id.")]
         string? traceId = null,
-        [Description("Attribute Filters on the Log Record's own attributes, each written key=value.")]
+        [Description(
+            "Attribute Filters on the Log Record's own attributes, each written key=value. The key " +
+            "is one whole attribute key, never a path: http.method=GET asks for the key " +
+            "'http.method'. A key nested inside another is written the way list_observed_keys " +
+            "reports it, {\"path\":[\"order\",\"total\"],\"value\":\"42\"}. Values match as exact text.")]
         string[]? attributes = null,
-        [Description("Attribute Filters on Resource Attributes — the entity that emitted the record.")]
+        [Description("Attribute Filters on Resource Attributes — the entity that emitted the record. Written as above.")]
         string[]? resourceAttributes = null,
         [Description("How many to return. Default 50, at most 200.")]
         int? limit = null)
@@ -94,11 +98,13 @@ public sealed class ExplorationTools
         // A refused Filter is raised rather than answered: an empty list with an explanation beside
         // it reads, to whoever asked, exactly like "nothing is wrong" (ADR 0031).
         var severityMin = ReadBand(severityBand);
+        var attributeFilters = ReadFilters(attributes, "attributes");
+        var resourceFilters = ReadFilters(resourceAttributes, "resourceAttributes");
 
         if (!LogCriteria.TryCreate(
                 applicationId, serviceNamespace, environment, serviceName, severityMin,
                 ParseWithin(within), ParseBound(from), ParseBound(to),
-                bodyContains, traceId, attributes, resourceAttributes,
+                bodyContains, traceId, attributeFilters, resourceFilters,
                 out var criteria, out var error))
         {
             throw new McpException(error ?? "The filter could not be read.");
@@ -112,7 +118,7 @@ public sealed class ExplorationTools
         }
 
         var take = Math.Clamp(limit ?? DefaultLimit, 1, MaxLimit);
-        var named = Named(attributes, resourceAttributes);
+        var named = Named(attributeFilters, resourceFilters);
 
         await using var command = dataSource.CreateCommand();
         var where = criteria.Where(command, serviceIds);
@@ -416,17 +422,60 @@ public sealed class ExplorationTools
         RangeBound.TryParse(bound, null, out var parsed) ? parsed : null;
 
     /// <summary>
+    /// The Attribute Filters as this door lets them be written: `key=value` for the ordinary case,
+    /// and the query string's JSON for the rest. A model writes the pair on its own — the JSON form
+    /// alone was a wire format it had to be told about, and being told in a refusal is too late.
+    /// </summary>
+    private static AttributeFilter[] ReadFilters(string[]? items, string parameter)
+    {
+        if (items is null || items.Length == 0)
+        {
+            return [];
+        }
+
+        if (items.Length > AttributeFilters.MaxFilters)
+        {
+            throw new McpException(
+                $"At most {AttributeFilters.MaxFilters} Attribute Filters in '{parameter}'.");
+        }
+
+        return [.. items.Select(item => ReadFilter(item)
+            ?? throw new McpException(
+                $"'{item}' is not an Attribute Filter for '{parameter}'. Write it key=value, where " +
+                "the key is one whole attribute key — a dot in it belongs to the key. A nested key " +
+                "is written {\"path\":[\"outer\",\"inner\"],\"value\":\"x\"}."))];
+    }
+
+    private static AttributeFilter? ReadFilter(string item)
+    {
+        // The JSON form is the query string's, and the only way to name a key nested inside another.
+        if (item.StartsWith('{'))
+        {
+            return AttributeFilters.TryParse([item], out var structural) ? structural[0] : null;
+        }
+
+        var cut = item.IndexOf('=');
+
+        // One segment, never split on its dots: `http.method` is a single OTel key, and a path of
+        // `http` then `method` would look inside an object that is not there and match nothing —
+        // which reads exactly like an absence of trouble (ADR 0001).
+        return cut > 0 ? new AttributeFilter([item[..cut]], item[(cut + 1)..]) : null;
+    }
+
+    /// <summary>
     /// The attribute keys the caller named in a Filter. They come back on every row because they
     /// are why the row matched — everything else stays behind get_log_record, where one record's
     /// worth of `telemetry.sdk.*` costs nothing.
     /// </summary>
-    private static string[] Named(string[]? attributes, string[]? resourceAttributes) =>
-        [.. (attributes ?? []).Concat(resourceAttributes ?? [])
-            .Select(pair => pair.Split('=', 2)[0])
-            .Where(key => key.Length > 0)
-            .Distinct()];
+    private static string[][] Named(AttributeFilter[] attributes, AttributeFilter[] resourceAttributes) =>
+        [.. attributes.Concat(resourceAttributes)
+            .Select(filter => filter.Path)
+            .DistinctBy(Display)];
 
-    private static LogRecordSummary ReadSummary(NpgsqlDataReader reader, string[] named)
+    /// <summary>Display only, exactly as the UI joins a path: dots in a segment make it unparseable back.</summary>
+    private static string Display(string[] path) => string.Join('.', path);
+
+    private static LogRecordSummary ReadSummary(NpgsqlDataReader reader, string[][] named)
     {
         var attributes = Sql.ParseJson(reader.GetString(10));
         var resource = Sql.ParseJson(reader.GetString(9));
@@ -442,30 +491,26 @@ public sealed class ExplorationTools
     }
 
     private static Dictionary<string, string>? Pick(
-        string[] named, JsonElement attributes, JsonElement resource)
+        string[][] named, JsonElement attributes, JsonElement resource)
     {
         var picked = new Dictionary<string, string>();
-        foreach (var key in named)
+        foreach (var path in named)
         {
-            if (TryRead(attributes, key, out var value) || TryRead(resource, key, out value))
+            if (TryRead(attributes, path, out var value) || TryRead(resource, path, out value))
             {
-                picked[key] = value;
+                picked[Display(path)] = value;
             }
         }
 
         return picked.Count == 0 ? null : picked;
     }
 
-    private static bool TryRead(JsonElement source, string path, out string value)
+    private static bool TryRead(JsonElement source, string[] path, out string value)
     {
         value = "";
-        if (source.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
 
         var current = source;
-        foreach (var segment in path.Split('.'))
+        foreach (var segment in path)
         {
             if (current.ValueKind != JsonValueKind.Object
                 || !current.TryGetProperty(segment, out current))
