@@ -12,20 +12,20 @@
 
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <!--
       Referenced only to lift it. Microsoft.AspNetCore.OpenApi 10.0.10, the newest there is, still
       depends on Microsoft.OpenApi 2.0.0, and everything from 2.0.0-preview.11 to 2.7.4 carries
       GHSA-v5pm-xwqc-g5wc. A direct reference is a floor rather than a pin, so a later ASP.NET Core
       that asks for more than this still wins, and this line can go the day it does.
     -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+    <PackageReference Include="Microsoft.OpenApi" Version="2.12.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.1.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
     <PackageReference Include="Npgsql.DependencyInjection" Version="10.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
